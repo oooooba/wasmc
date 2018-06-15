@@ -1,0 +1,6 @@
+[package]
+name = "wasmc"
+version = "0.1.0"
+authors = ["oooooba <fuumin.23@gmail.com>"]
+
+[dependencies]

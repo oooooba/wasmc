@@ -1,0 +1,266 @@
+use context::Context;
+use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
+use machineir::basicblock::BasicBlockKind;
+use machineir::opcode::Opcode;
+use machineir::typ::{ResultType, Type};
+use machineir::operand::{Operand, OperandKind};
+use wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr};
+
+#[derive(Debug)]
+struct OperandStack {
+    stack: Vec<Operand>,
+}
+
+impl OperandStack {
+    pub fn new() -> OperandStack {
+        OperandStack { stack: vec![] }
+    }
+
+    fn push(&mut self, operand: Operand) {
+        self.stack.push(operand)
+    }
+
+    fn pop(&mut self) -> Option<Operand> {
+        self.stack.pop()
+    }
+}
+
+#[derive(Debug)]
+pub struct WasmToMachine {
+    operand_stack: OperandStack,
+    current_basic_block: BasicBlockHandle,
+    basic_blocks: Vec<BasicBlockHandle>,
+    exit_block: BasicBlockHandle,
+}
+
+impl WasmToMachine {
+    pub fn new() -> WasmToMachine {
+        let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
+        let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
+        WasmToMachine {
+            operand_stack: OperandStack::new(),
+            current_basic_block: entry_block,
+            basic_blocks: vec![entry_block],
+            exit_block: exit_block,
+        }
+    }
+
+    pub fn finalize(mut self) -> FunctionHandle {
+        self.basic_blocks.push(self.exit_block);
+        let mut function = Context::create_function();
+        for basic_block in self.basic_blocks.iter() {
+            function.get_mut_basic_blocks().push_back(*basic_block);
+        }
+        function
+    }
+
+    pub fn emit_ir(&mut self, wasm_instr: &WasmInstr) {
+        match wasm_instr {
+            &WasmInstr::Const(Const::I32(i)) => {
+                let register = Operand::new_register(Context::create_register(Type::I32));
+                self.operand_stack.push(register.clone());
+                self.emit_on_current_basic_block(Opcode::Const(Type::I32, register, Operand::new_const_i32(i)));
+            }
+            &WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)) => {
+                let register = Operand::new_register(Context::create_register(Type::I32));
+                let rhs = self.operand_stack.pop().unwrap();
+                let lhs = self.operand_stack.pop().unwrap();
+                self.operand_stack.push(register.clone());
+                self.emit_on_current_basic_block(Opcode::Add(Type::I32, register, lhs, rhs));
+            }
+            &WasmInstr::Binop(Binop::Ibinop(Ibinop::Sub32)) => {
+                let register = Operand::new_register(Context::create_register(Type::I32));
+                let rhs = self.operand_stack.pop().unwrap();
+                let lhs = self.operand_stack.pop().unwrap();
+                self.operand_stack.push(register.clone());
+                self.emit_on_current_basic_block(Opcode::Sub(Type::I32, register, lhs, rhs));
+            }
+            &WasmInstr::Block(ref resulttype, ref instrs) => {
+                let result_registers = self.setup_result_registers(resulttype);
+                let cont_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
+                let expr_block = Context::create_basic_block(BasicBlockKind::ExprBlock(cont_block));
+
+                self.emit_on_expr_basic_block(expr_block, cont_block, instrs);
+                self.reset_for_continuation(cont_block);
+            }
+            &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs) => {
+                let cond_reg = self.pop_conditional_register();
+                let result_registers = self.setup_result_registers(resulttype);
+                let merge_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
+                let then_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
+                let else_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
+
+                self.emit_on_current_basic_block(Opcode::BrIfZero(Operand::new_register(cond_reg), Operand::new_label(else_block)));
+
+                self.emit_on_expr_basic_block(then_block, merge_block, then_instrs);
+                self.emit_on_expr_basic_block(else_block, merge_block, else_instrs);
+                self.reset_for_continuation(merge_block);
+            }
+            &WasmInstr::Loop(ref resulttype, ref instrs) => {
+                let result_registers = self.setup_result_registers(resulttype);
+                assert_eq!(result_registers.len(), 0);
+                let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
+                let body_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
+
+                self.emit_on_current_basic_block(Opcode::Br(Operand::new_label(body_block)));
+
+                self.emit_on_expr_basic_block(body_block, body_block, instrs);
+                self.reset_for_continuation(exit_block);
+            }
+            &WasmInstr::Br(index) => {
+                let target_block = self.get_label_at(index);
+                self.emit_copy_for_transition(target_block);
+                let target_cont_block = *target_block.get_continuation_block().unwrap();
+                self.emit_on_current_basic_block(Opcode::Br(Operand::new_label(target_cont_block)));
+
+                let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
+                let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
+
+                self.basic_blocks.push(new_basic_block);
+                self.current_basic_block = new_basic_block;
+                self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
+            }
+            &WasmInstr::BrIf(index) => {
+                let cond_reg = self.pop_conditional_register();
+                let target_block = self.get_label_at(index);
+                self.emit_copy_for_transition(target_block);
+                let target_cont_block = *target_block.get_continuation_block().unwrap();
+                self.emit_on_current_basic_block(Opcode::BrIfNonZero(Operand::new_register(cond_reg), Operand::new_label(target_cont_block)));
+
+                let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
+                let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
+
+                self.basic_blocks.push(new_basic_block);
+                self.current_basic_block = new_basic_block;
+            }
+        }
+    }
+
+    fn emit_on_current_basic_block(&mut self, opcode: Opcode) -> InstrHandle {
+        let instr = Context::create_instr(opcode, self.current_basic_block);
+        self.current_basic_block.add_instr(instr);
+        instr
+    }
+
+    fn emit_on_expr_basic_block(&mut self, expr_block: BasicBlockHandle, cont_block: BasicBlockHandle, instrs: &Vec<WasmInstr>) {
+        self.basic_blocks.push(expr_block);
+        self.current_basic_block = expr_block;
+        self.operand_stack.push(Operand::new_label(expr_block));
+        for instr in instrs.iter() {
+            self.emit_ir(instr);
+        }
+        self.finalize_basic_block(expr_block);
+
+        let num_results = cont_block.get_result_registers()
+            .map_or(0, |r| r.len()); // 0 for loop
+        self.emit_on_current_basic_block(Opcode::Br(Operand::new_label(cont_block)));
+        for _ in 0..num_results {
+            self.operand_stack.pop();
+        }
+    }
+
+    fn reset_for_continuation(&mut self, basic_block: BasicBlockHandle) {
+        let result_registers = basic_block.get_result_registers().unwrap();
+        for register in result_registers.iter() {
+            self.operand_stack.push(Operand::new_register(*register));
+        }
+        self.basic_blocks.push(basic_block);
+        self.current_basic_block = basic_block;
+    }
+
+    fn get_label_at(&mut self, index: usize) -> BasicBlockHandle {
+        let mut num_labels = 0;
+        for operand in self.operand_stack.stack.iter().rev() {
+            if let &OperandKind::Label(ref bb) = operand.get_kind() {
+                num_labels += 1;
+                if index + 1 == num_labels {
+                    return *bb;
+                }
+            }
+        }
+        panic!()
+    }
+
+    fn emit_copy_for_transition(&mut self, basic_block: BasicBlockHandle) {
+        let merge_block = *basic_block.get_continuation_block().unwrap();
+        let mut registers = merge_block.get_result_registers().unwrap().clone();
+        let mut tmp_operand_stack = OperandStack::new();
+        while let Some(register) = registers.pop() {
+            let operand = self.operand_stack.pop().unwrap();
+            tmp_operand_stack.push(operand.clone());
+            let typ = register.get_typ().clone();
+            if let &OperandKind::Register(src_register) = operand.get_kind() {
+                self.emit_on_current_basic_block(Opcode::Copy(typ, Operand::new_register(register), Operand::new_register(src_register)));
+            } else {
+                unimplemented!()
+            }
+        }
+        while let Some(operand) = tmp_operand_stack.pop() {
+            self.operand_stack.push(operand);
+        }
+    }
+
+    fn finalize_basic_block(&mut self, basic_block: BasicBlockHandle) {
+        let mut tmp_stack = OperandStack::new();
+        let mut is_valid = false;
+        while let Some(operand) = self.operand_stack.pop() {
+            if operand.get_kind() == &OperandKind::Label(basic_block) {
+                is_valid = true;
+                break;
+            }
+            tmp_stack.push(operand);
+        }
+
+        assert!(is_valid);
+
+        while let Some(operand) = tmp_stack.pop() {
+            self.operand_stack.push(operand);
+        }
+
+        self.emit_copy_for_transition(basic_block);
+    }
+
+    fn setup_result_registers(&mut self, resulttype: &Resulttype) -> Vec<RegisterHandle> {
+        let result_type = WasmToMachine::map_resulttype(resulttype);
+        let result_registers = result_type.typs().iter().map(|t| {
+            Context::create_register(t.clone())
+        }).collect();
+        result_registers
+    }
+
+    fn pop_conditional_register(&mut self) -> RegisterHandle {
+        match self.operand_stack.pop() {
+            Some(operand) => {
+                match operand.get_kind() {
+                    &OperandKind::Register(register) => {
+                        if register.get_typ() == &Type::I32 {
+                            register
+                        } else {
+                            panic!()
+                        }
+                    }
+                    _ => panic!(),
+                }
+            }
+            _ => panic!(),
+        }
+    }
+
+    fn map_resulttype(resulttype: &Resulttype) -> ResultType {
+        match resulttype.peek() {
+            &Some(ref vt) => ResultType::new(vt.iter().map(|t| { WasmToMachine::map_valtype(t) }).collect()),
+            &None => ResultType::new(vec![]),
+        }
+    }
+
+    fn map_valtype(valtype: &Valtype) -> Type {
+        use wasmir::Valtype::*;
+        match valtype {
+            &U32 => Type::I32,
+        }
+    }
+
+    pub fn emit(&mut self, wasm_instr: &WasmInstr) {
+        self.emit_ir(wasm_instr);
+    }
+}
