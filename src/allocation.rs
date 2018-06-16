@@ -128,7 +128,7 @@ impl AnalyzeMemoryOffsetPass {
     }
 
     fn decide_offset(&self, reg: RegisterHandle) -> usize {
-        format!("{}", reg).parse::<usize>().unwrap() // ToDo: fix
+        format!("{}", reg).parse::<usize>().unwrap() * reg.get_typ().get_size() // ToDo: fix
     }
 }
 
@@ -242,7 +242,7 @@ impl InstrPass for EmitAssemblyPass {
                 assert!(!src.is_physical());
                 let src_offset = src.get_offset();
 
-                println!("mov {}, dword ptr [{} - {}]", dst_name, self.base_pointer_register, src_offset * 4);
+                println!("mov {}, dword ptr [{} - {}]", dst_name, self.base_pointer_register, src_offset);
             }
             &Store(_, ref dst, ref src) => {
                 let dst = dst.get_as_register().unwrap();
@@ -253,7 +253,7 @@ impl InstrPass for EmitAssemblyPass {
                 assert!(src.is_physical());
                 let src_name = self.physical_register_name_map.get(&src).unwrap();
 
-                println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset * 4, src_name);
+                println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
             }
         }
     }
