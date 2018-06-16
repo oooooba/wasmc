@@ -76,7 +76,7 @@ impl WasmToMachine {
                 self.emit_on_current_basic_block(Opcode::Sub(Type::I32, register, lhs, rhs));
             }
             &WasmInstr::Block(ref resulttype, ref instrs) => {
-                let result_registers = self.setup_result_registers(resulttype);
+                let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 let cont_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
                 let expr_block = Context::create_basic_block(BasicBlockKind::ExprBlock(cont_block));
 
@@ -85,7 +85,7 @@ impl WasmToMachine {
             }
             &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs) => {
                 let cond_reg = self.pop_conditional_register();
-                let result_registers = self.setup_result_registers(resulttype);
+                let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 let merge_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
                 let then_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
                 let else_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
@@ -97,7 +97,7 @@ impl WasmToMachine {
                 self.reset_for_continuation(merge_block);
             }
             &WasmInstr::Loop(ref resulttype, ref instrs) => {
-                let result_registers = self.setup_result_registers(resulttype);
+                let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 assert_eq!(result_registers.len(), 0);
                 let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
                 let body_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
@@ -220,7 +220,7 @@ impl WasmToMachine {
         self.emit_copy_for_transition(basic_block);
     }
 
-    fn setup_result_registers(&mut self, resulttype: &Resulttype) -> Vec<RegisterHandle> {
+    fn setup_result_registers(resulttype: &Resulttype) -> Vec<RegisterHandle> {
         let result_type = WasmToMachine::map_resulttype(resulttype);
         let result_registers = result_type.typs().iter().map(|t| {
             Context::create_register(t.clone())
