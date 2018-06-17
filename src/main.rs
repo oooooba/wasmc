@@ -42,7 +42,7 @@ fn main() {
                     WasmInstr::BrIf(0),
                 ]),
         ]);
-        let mut wasm_to_ir = WasmToMachine::new();
+        let mut wasm_to_ir = WasmToMachine::new(Resulttype::new(Some(vec![Valtype::U32])));
         wasm_to_ir.emit(&code);
         wasm_to_ir.finalize()
     };

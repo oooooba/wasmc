@@ -23,6 +23,10 @@ impl OperandStack {
     fn pop(&mut self) -> Option<Operand> {
         self.stack.pop()
     }
+
+    fn len(&self) -> usize {
+        self.stack.len()
+    }
 }
 
 #[derive(Debug)]
@@ -31,10 +35,12 @@ pub struct WasmToMachine {
     current_basic_block: BasicBlockHandle,
     basic_blocks: Vec<BasicBlockHandle>,
     exit_block: BasicBlockHandle,
+    result_registers: Vec<RegisterHandle>,
 }
 
 impl WasmToMachine {
-    pub fn new() -> WasmToMachine {
+    pub fn new(resulttype: Resulttype) -> WasmToMachine {
+        let result_registers = WasmToMachine::setup_result_registers(&resulttype);
         let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
         let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
         WasmToMachine {
@@ -42,6 +48,7 @@ impl WasmToMachine {
             current_basic_block: entry_block,
             basic_blocks: vec![entry_block],
             exit_block: exit_block,
+            result_registers: result_registers,
         }
     }
 
@@ -51,6 +58,9 @@ impl WasmToMachine {
         for basic_block in self.basic_blocks.iter() {
             function.get_mut_basic_blocks().push_back(*basic_block);
         }
+        assert_eq!(self.result_registers.len(), self.operand_stack.len());
+        let result_registers = self.result_registers.clone();
+        self.emit_copy_to_store_result(result_registers, false);
         function
     }
 
@@ -181,9 +191,7 @@ impl WasmToMachine {
         panic!()
     }
 
-    fn emit_copy_for_transition(&mut self, basic_block: BasicBlockHandle) {
-        let merge_block = *basic_block.get_continuation_block().unwrap();
-        let mut registers = merge_block.get_result_registers().unwrap().clone();
+    fn emit_copy_to_store_result(&mut self, mut registers: Vec<RegisterHandle>, restores_operands: bool) {
         let mut tmp_operand_stack = OperandStack::new();
         while let Some(register) = registers.pop() {
             let operand = self.operand_stack.pop().unwrap();
@@ -195,9 +203,17 @@ impl WasmToMachine {
                 unimplemented!()
             }
         }
-        while let Some(operand) = tmp_operand_stack.pop() {
-            self.operand_stack.push(operand);
+        if restores_operands {
+            while let Some(operand) = tmp_operand_stack.pop() {
+                self.operand_stack.push(operand);
+            }
         }
+    }
+
+    fn emit_copy_for_transition(&mut self, basic_block: BasicBlockHandle) {
+        let merge_block = *basic_block.get_continuation_block().unwrap();
+        let registers = merge_block.get_result_registers().unwrap().clone();
+        self.emit_copy_to_store_result(registers, true);
     }
 
     fn finalize_basic_block(&mut self, basic_block: BasicBlockHandle) {
