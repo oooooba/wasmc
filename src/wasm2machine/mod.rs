@@ -33,9 +33,9 @@ impl OperandStack {
 pub struct WasmToMachine {
     operand_stack: OperandStack,
     current_basic_block: BasicBlockHandle,
-    basic_blocks: Vec<BasicBlockHandle>,
     exit_block: BasicBlockHandle,
     result_registers: Vec<RegisterHandle>,
+    function: FunctionHandle,
 }
 
 impl WasmToMachine {
@@ -43,25 +43,23 @@ impl WasmToMachine {
         let result_registers = WasmToMachine::setup_result_registers(&resulttype);
         let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
         let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
+        let mut function = Context::create_function();
+        function.get_mut_basic_blocks().push_back(entry_block);
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: entry_block,
-            basic_blocks: vec![entry_block],
             exit_block: exit_block,
             result_registers: result_registers,
+            function: function,
         }
     }
 
     pub fn finalize(mut self) -> FunctionHandle {
-        self.basic_blocks.push(self.exit_block);
-        let mut function = Context::create_function();
-        for basic_block in self.basic_blocks.iter() {
-            function.get_mut_basic_blocks().push_back(*basic_block);
-        }
+        self.function.get_mut_basic_blocks().push_back(self.exit_block);
         assert_eq!(self.result_registers.len(), self.operand_stack.len());
         let result_registers = self.result_registers.clone();
         self.emit_copy_to_store_result(result_registers, false);
-        function
+        self.function
     }
 
     pub fn emit_ir(&mut self, wasm_instr: &WasmInstr) {
@@ -126,7 +124,7 @@ impl WasmToMachine {
                 let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
                 let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
 
-                self.basic_blocks.push(new_basic_block);
+                self.function.get_mut_basic_blocks().push_back(new_basic_block);
                 self.current_basic_block = new_basic_block;
                 self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
             }
@@ -140,7 +138,7 @@ impl WasmToMachine {
                 let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
                 let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
 
-                self.basic_blocks.push(new_basic_block);
+                self.function.get_mut_basic_blocks().push_back(new_basic_block);
                 self.current_basic_block = new_basic_block;
             }
         }
@@ -153,7 +151,7 @@ impl WasmToMachine {
     }
 
     fn emit_on_expr_basic_block(&mut self, expr_block: BasicBlockHandle, cont_block: BasicBlockHandle, instrs: &Vec<WasmInstr>) {
-        self.basic_blocks.push(expr_block);
+        self.function.get_mut_basic_blocks().push_back(expr_block);
         self.current_basic_block = expr_block;
         self.operand_stack.push(Operand::new_label(expr_block));
         for instr in instrs.iter() {
@@ -174,7 +172,7 @@ impl WasmToMachine {
         for register in result_registers.iter() {
             self.operand_stack.push(Operand::new_register(*register));
         }
-        self.basic_blocks.push(basic_block);
+        self.function.get_mut_basic_blocks().push_back(basic_block);
         self.current_basic_block = basic_block;
     }
 
