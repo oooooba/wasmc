@@ -43,7 +43,7 @@ impl WasmToMachine {
         let result_registers = WasmToMachine::setup_result_registers(&resulttype);
         let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
         let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
-        let mut function = Context::create_function();
+        let mut function = Context::create_function(WasmToMachine::map_resulttype(&resulttype));
         function.get_mut_basic_blocks().push_back(entry_block);
         WasmToMachine {
             operand_stack: OperandStack::new(),
