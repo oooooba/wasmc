@@ -8,7 +8,7 @@ use machineir::function::Function;
 use machineir::instruction::Instr;
 use machineir::register::Register;
 use machineir::opcode::Opcode;
-use machineir::typ::{ResultType, Type};
+use machineir::typ::Type;
 use pass::PassKind;
 
 #[derive(Debug)]
@@ -82,12 +82,12 @@ impl Context {
         }
     }
 
-    pub fn create_function(result_type: ResultType) -> FunctionHandle {
+    pub fn create_function(result_types: Vec<Type>) -> FunctionHandle {
         unsafe {
             let id = CONTEXT.num_created_functions;
             CONTEXT.num_created_functions += 1;
             let handle = FunctionHandle::new(id);
-            let function = Function::new(handle, result_type);
+            let function = Function::new(handle, result_types);
             CONTEXT.functions.as_mut().unwrap().insert(handle, function);
             handle
         }

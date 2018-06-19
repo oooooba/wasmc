@@ -2,7 +2,7 @@ use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use machineir::basicblock::BasicBlockKind;
 use machineir::opcode::Opcode;
-use machineir::typ::{ResultType, Type};
+use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr, WasmModule};
 
@@ -235,11 +235,9 @@ impl WasmToMachine {
     }
 
     fn setup_result_registers(resulttype: &Resulttype) -> Vec<RegisterHandle> {
-        let result_type = WasmToMachine::map_resulttype(resulttype);
-        let result_registers = result_type.typs().iter().map(|t| {
+        WasmToMachine::map_resulttype(resulttype).iter().map(|t| {
             Context::create_register(t.clone())
-        }).collect();
-        result_registers
+        }).collect()
     }
 
     fn pop_conditional_register(&mut self) -> RegisterHandle {
@@ -260,10 +258,10 @@ impl WasmToMachine {
         }
     }
 
-    fn map_resulttype(resulttype: &Resulttype) -> ResultType {
+    fn map_resulttype(resulttype: &Resulttype) -> Vec<Type> {
         match resulttype.peek() {
-            &Some(ref vt) => ResultType::new(vt.iter().map(|t| { WasmToMachine::map_valtype(t) }).collect()),
-            &None => ResultType::new(vec![]),
+            &Some(ref vt) => vt.iter().map(|t| { WasmToMachine::map_valtype(t) }).collect(),
+            &None => vec![],
         }
     }
 

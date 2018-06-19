@@ -2,21 +2,21 @@ use std::collections::VecDeque;
 use std::fmt;
 
 use context::handle::{BasicBlockHandle, FunctionHandle};
-use machineir::typ::ResultType;
+use machineir::typ::Type;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function {
     handle: FunctionHandle,
     basic_blocks: VecDeque<BasicBlockHandle>,
-    result_type: ResultType,
+    result_types: Vec<Type>,
 }
 
 impl Function {
-    pub fn new(handle: FunctionHandle, result_type: ResultType) -> Function {
+    pub fn new(handle: FunctionHandle, result_types: Vec<Type>) -> Function {
         Function {
             handle: handle,
             basic_blocks: VecDeque::new(),
-            result_type: result_type,
+            result_types: result_types,
         }
     }
 
