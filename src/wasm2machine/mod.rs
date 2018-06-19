@@ -4,7 +4,7 @@ use machineir::basicblock::BasicBlockKind;
 use machineir::opcode::Opcode;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
-use wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr, WasmModule};
+use wasmir::{Binop, Const, Functype, Ibinop, Resulttype, Valtype, WasmInstr, WasmModule};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -39,11 +39,13 @@ pub struct WasmToMachine {
 }
 
 impl WasmToMachine {
-    pub fn new(resulttype: Resulttype) -> WasmToMachine {
-        let result_registers = WasmToMachine::setup_result_registers(&resulttype);
+    pub fn new(functype: Functype) -> WasmToMachine {
+        let result_registers = WasmToMachine::map_functype(&functype).1.iter().map(|t| {
+            Context::create_register(t.clone())
+        }).collect();
         let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
         let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
-        let mut function = Context::create_function(WasmToMachine::map_resulttype(&resulttype));
+        let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1);
         function.get_mut_basic_blocks().push_back(entry_block);
         WasmToMachine {
             operand_stack: OperandStack::new(),
@@ -263,6 +265,12 @@ impl WasmToMachine {
             &Some(ref vt) => vt.iter().map(|t| { WasmToMachine::map_valtype(t) }).collect(),
             &None => vec![],
         }
+    }
+
+    fn map_functype(functype: &Functype) -> (Vec<Type>, Vec<Type>) {
+        let typ_in = functype.peek_in_typ().iter().map(|t| { WasmToMachine::map_valtype(t) }).collect();
+        let typ_out = functype.peek_out_typ().iter().map(|t| { WasmToMachine::map_valtype(t) }).collect();
+        (typ_in, typ_out)
     }
 
     fn map_valtype(valtype: &Valtype) -> Type {

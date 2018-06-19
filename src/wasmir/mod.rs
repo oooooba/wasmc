@@ -13,6 +13,22 @@ impl Resulttype {
     }
 }
 
+pub struct Functype(Vec<Valtype>, Vec<Valtype>);
+
+impl Functype {
+    pub fn new(t_in: Vec<Valtype>, t_out: Vec<Valtype>) -> Functype {
+        Functype(t_in, t_out)
+    }
+
+    pub fn peek_in_typ(&self) -> &Vec<Valtype> {
+        &self.0
+    }
+
+    pub fn peek_out_typ(&self) -> &Vec<Valtype> {
+        &self.1
+    }
+}
+
 pub enum Const {
     I32(u32),
 }
