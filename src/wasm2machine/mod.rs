@@ -4,7 +4,7 @@ use machineir::basicblock::BasicBlockKind;
 use machineir::opcode::Opcode;
 use machineir::typ::{ResultType, Type};
 use machineir::operand::{Operand, OperandKind};
-use wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr};
+use wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr, WasmModule};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -274,7 +274,9 @@ impl WasmToMachine {
         }
     }
 
-    pub fn emit(&mut self, wasm_instr: &WasmInstr) {
-        self.emit_ir(wasm_instr);
+    pub fn emit(&mut self, wasm_module: &WasmModule) {
+        match wasm_module {
+            &WasmModule::Function { ref body, .. } => self.emit_ir(body),
+        }
     }
 }

@@ -7,7 +7,7 @@ use wasmc::allocation::{AnalyzeMemoryOffsetPass, EmitAssemblyPass, InsertBasicBl
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::pass::PassManager;
-use wasmc::wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr};
+use wasmc::wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr, WasmModule};
 use wasmc::wasm2machine::WasmToMachine;
 
 fn main() {
@@ -42,8 +42,9 @@ fn main() {
                     WasmInstr::BrIf(0),
                 ]),
         ]);
+        let function = WasmModule::Function { typ: (), locals: vec![], body: code };
         let mut wasm_to_ir = WasmToMachine::new(Resulttype::new(Some(vec![Valtype::U32])));
-        wasm_to_ir.emit(&code);
+        wasm_to_ir.emit(&function);
         wasm_to_ir.finalize()
     };
     {

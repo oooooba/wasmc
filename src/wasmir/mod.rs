@@ -35,3 +35,7 @@ pub enum WasmInstr {
     Br(usize),
     BrIf(usize),
 }
+
+pub enum WasmModule {
+    Function { typ: (), locals: Vec<()>, body: WasmInstr }, // ToDo
+}
