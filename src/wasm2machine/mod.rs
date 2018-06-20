@@ -40,9 +40,8 @@ pub struct WasmToMachine {
 
 impl WasmToMachine {
     pub fn new(functype: Functype) -> WasmToMachine {
-        let result_registers = WasmToMachine::map_functype(&functype).1.iter().map(|t| {
-            Context::create_register(t.clone())
-        }).collect();
+        let (_in_typs, out_typs) = WasmToMachine::map_functype(&functype);
+        let result_registers = WasmToMachine::create_registers_for_types(out_typs);
         let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
         let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
         let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1);
@@ -236,10 +235,14 @@ impl WasmToMachine {
         self.emit_copy_for_transition(basic_block);
     }
 
-    fn setup_result_registers(resulttype: &Resulttype) -> Vec<RegisterHandle> {
-        WasmToMachine::map_resulttype(resulttype).iter().map(|t| {
-            Context::create_register(t.clone())
+    fn create_registers_for_types(typs: Vec<Type>) -> Vec<RegisterHandle> {
+        typs.into_iter().map(|t| {
+            Context::create_register(t)
         }).collect()
+    }
+
+    fn setup_result_registers(resulttype: &Resulttype) -> Vec<RegisterHandle> {
+        WasmToMachine::create_registers_for_types(WasmToMachine::map_resulttype(resulttype))
     }
 
     fn pop_conditional_register(&mut self) -> RegisterHandle {
