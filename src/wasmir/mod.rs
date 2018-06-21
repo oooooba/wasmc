@@ -52,6 +52,18 @@ pub enum WasmInstr {
     BrIf(usize),
 }
 
-pub enum WasmModule {
-    Function { typ: (), locals: Vec<()>, body: WasmInstr }, // ToDo
+pub struct Func {
+    _typ: (),
+    _locals: Vec<()>,
+    body: WasmInstr,
+}
+
+impl Func {
+    pub fn new(_typ: (), _locals: Vec<()>, body: WasmInstr) -> Func {
+        Func { _typ, _locals, body }
+    }
+
+    pub fn get_body(&self) -> &WasmInstr {
+        &self.body
+    }
 }
