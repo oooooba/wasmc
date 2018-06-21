@@ -40,19 +40,15 @@ pub struct WasmToMachine {
 }
 
 impl WasmToMachine {
-    pub fn new(functype: Functype) -> WasmToMachine {
-        let (_in_typs, out_typs) = WasmToMachine::map_functype(&functype);
-        let result_registers = WasmToMachine::create_registers_for_types(out_typs);
-        let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
-        let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
-        let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1);
-        function.get_mut_basic_blocks().push_back(entry_block);
+    pub fn new() -> WasmToMachine {
+        let dummy_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
+        let dummy_function = Context::create_function(WasmToMachine::map_functype(&wasmir::Functype::new(vec![], vec![])).1);
         WasmToMachine {
             operand_stack: OperandStack::new(),
-            current_basic_block: entry_block,
-            exit_block: exit_block,
-            result_registers: result_registers,
-            function: function,
+            current_basic_block: dummy_block,
+            exit_block: dummy_block,
+            result_registers: vec![],
+            function: dummy_function,
         }
     }
 
@@ -285,6 +281,22 @@ impl WasmToMachine {
     }
 
     pub fn emit(&mut self, module: &wasmir::Module) {
-        self.emit_ir(module.get_funcs()[0].get_body())
+        for func in module.get_funcs().iter() {
+            let typeidx = func.get_type();
+            let functype = &module.get_types()[typeidx.as_index()];
+            let (_in_typs, out_typs) = WasmToMachine::map_functype(&functype);
+            let result_registers = WasmToMachine::create_registers_for_types(out_typs);
+            let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
+            let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
+            let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1);
+            function.get_mut_basic_blocks().push_back(entry_block);
+
+            self.current_basic_block = entry_block;
+            self.exit_block = exit_block;
+            self.result_registers = result_registers;
+            self.function = function;
+
+            self.emit_ir(func.get_body())
+        }
     }
 }

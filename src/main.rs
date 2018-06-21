@@ -8,7 +8,7 @@ use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::pass::PassManager;
 use wasmc::wasmir;
-use wasmc::wasmir::{Binop, Const, Functype, Ibinop, Resulttype, Valtype, WasmInstr};
+use wasmc::wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
 
 fn main() {
@@ -43,9 +43,10 @@ fn main() {
                     WasmInstr::BrIf(0),
                 ]),
         ]);
-        let function = wasmir::Func::new((), vec![], code);
-        let module = wasmir::Module::new(vec![function]);
-        let mut wasm_to_ir = WasmToMachine::new(Functype::new(vec![], vec![Valtype::U32]));
+        let functype = wasmir::Functype::new(vec![], vec![Valtype::U32]);
+        let function = wasmir::Func::new(wasmir::Typeidx::new(0), vec![], code);
+        let module = wasmir::Module::new(vec![functype], vec![function]);
+        let mut wasm_to_ir = WasmToMachine::new();
         wasm_to_ir.emit(&module);
         wasm_to_ir.finalize()
     };

@@ -1,3 +1,16 @@
+#[derive(Clone, Copy)]
+pub struct Typeidx(u32);
+
+impl Typeidx {
+    pub fn new(idx: u32) -> Typeidx {
+        Typeidx(idx)
+    }
+
+    pub fn as_index(&self) -> usize {
+        self.0 as usize
+    }
+}
+
 pub enum Valtype {
     U32,
 }
@@ -53,14 +66,18 @@ pub enum WasmInstr {
 }
 
 pub struct Func {
-    _typ: (),
+    typ: Typeidx,
     _locals: Vec<()>,
     body: WasmInstr,
 }
 
 impl Func {
-    pub fn new(_typ: (), _locals: Vec<()>, body: WasmInstr) -> Func {
-        Func { _typ, _locals, body }
+    pub fn new(typ: Typeidx, _locals: Vec<()>, body: WasmInstr) -> Func {
+        Func { typ, _locals, body }
+    }
+
+    pub fn get_type(&self) -> &Typeidx {
+        &self.typ
     }
 
     pub fn get_body(&self) -> &WasmInstr {
@@ -69,14 +86,20 @@ impl Func {
 }
 
 pub struct Module {
+    types: Vec<Functype>,
     funcs: Vec<Func>,
 }
 
 impl Module {
-    pub fn new(funcs: Vec<Func>) -> Module {
+    pub fn new(types: Vec<Functype>, funcs: Vec<Func>) -> Module {
         Module {
+            types: types,
             funcs,
         }
+    }
+
+    pub fn get_types(&self) -> &Vec<Functype> {
+        &self.types
     }
 
     pub fn get_funcs(&self) -> &Vec<Func> {
