@@ -284,7 +284,7 @@ impl WasmToMachine {
         }
     }
 
-    pub fn emit(&mut self, func: &wasmir::Func) {
-        self.emit_ir(func.get_body())
+    pub fn emit(&mut self, module: &wasmir::Module) {
+        self.emit_ir(module.get_funcs()[0].get_body())
     }
 }

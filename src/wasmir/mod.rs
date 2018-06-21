@@ -67,3 +67,19 @@ impl Func {
         &self.body
     }
 }
+
+pub struct Module {
+    funcs: Vec<Func>,
+}
+
+impl Module {
+    pub fn new(funcs: Vec<Func>) -> Module {
+        Module {
+            funcs,
+        }
+    }
+
+    pub fn get_funcs(&self) -> &Vec<Func> {
+        &self.funcs
+    }
+}

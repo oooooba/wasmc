@@ -44,8 +44,9 @@ fn main() {
                 ]),
         ]);
         let function = wasmir::Func::new((), vec![], code);
+        let module = wasmir::Module::new(vec![function]);
         let mut wasm_to_ir = WasmToMachine::new(Functype::new(vec![], vec![Valtype::U32]));
-        wasm_to_ir.emit(&function);
+        wasm_to_ir.emit(&module);
         wasm_to_ir.finalize()
     };
     {
