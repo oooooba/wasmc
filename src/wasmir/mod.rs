@@ -63,16 +63,29 @@ pub enum WasmInstr {
     Loop(Resulttype, Vec<WasmInstr>),
     Br(usize),
     BrIf(usize),
+    Return,
+}
+
+pub struct Expr(Vec<WasmInstr>);
+
+impl Expr {
+    pub fn new(expr: Vec<WasmInstr>) -> Expr {
+        Expr(expr)
+    }
+
+    pub fn get_instr_sequences(&self) -> &Vec<WasmInstr> {
+        &self.0
+    }
 }
 
 pub struct Func {
     typ: Typeidx,
     _locals: Vec<()>,
-    body: WasmInstr,
+    body: Expr,
 }
 
 impl Func {
-    pub fn new(typ: Typeidx, _locals: Vec<()>, body: WasmInstr) -> Func {
+    pub fn new(typ: Typeidx, _locals: Vec<()>, body: Expr) -> Func {
         Func { typ, _locals, body }
     }
 
@@ -80,7 +93,7 @@ impl Func {
         &self.typ
     }
 
-    pub fn get_body(&self) -> &WasmInstr {
+    pub fn get_body(&self) -> &Expr {
         &self.body
     }
 }

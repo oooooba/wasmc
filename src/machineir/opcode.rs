@@ -17,6 +17,7 @@ pub enum Opcode {
     Copy(Type, Operand, Operand),
     Load(Type, Operand, Operand),
     Store(Type, Operand, Operand),
+    Return(Type, Option<Operand>),
 }
 
 impl Opcode {
@@ -229,6 +230,22 @@ impl Opcode {
         }
     }
 
+    pub fn get_result_register_operand(&self) -> Option<&Option<Operand>> {
+        use self::Opcode::*;
+        match self {
+            &Return(_, ref result) => Some(result),
+            _ => None,
+        }
+    }
+
+    pub fn set_result_operand(&mut self, new_operand: Option<Operand>) {
+        use self::Opcode::*;
+        match self {
+            &mut Return(_, ref mut result) => *result = new_operand,
+            _ => panic!(),
+        }
+    }
+
     pub fn is_jump_instr(&self) -> bool {
         use self::Opcode::*;
         match self {
@@ -243,6 +260,14 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Copy(_, _, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_return_instr(&self) -> bool {
+        use self::Opcode::*;
+        match self {
+            &Return(_, _) => true,
             _ => false,
         }
     }
@@ -296,6 +321,7 @@ impl Opcode {
 }
 
 macro_rules! format {
+    (0)=>("{:<8}");
     (1)=>("{:<8}{}");
     (2)=>("{:<8}{}, {}");
     (3)=>("{:<8}{}, {}, {}");
@@ -316,6 +342,8 @@ impl fmt::Display for Opcode {
             &Copy(_, ref dst, ref src) => write!(f, format!(2), "copy", dst, src),
             &Load(_, ref dst, ref src) => write!(f, format!(2), "load", dst, src),
             &Store(_, ref dst, ref src) => write!(f, format!(2), "store", dst, src),
+            &Return(_, None) => write!(f, format!(0), "ret"),
+            &Return(_, Some(ref result)) => write!(f, format!(1), "ret", result),
         }
     }
 }

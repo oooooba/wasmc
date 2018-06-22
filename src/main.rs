@@ -3,7 +3,7 @@ extern crate wasmc;
 use std::collections::HashMap;
 
 use wasmc::allocation::{AnalyzeMemoryOffsetPass, EmitAssemblyPass, InsertBasicBlockLabelPass,
-                        PostEmitAssemblyPass, PreEmitAssemblyPass, SimpleRegisterAllocationPass};
+                        PreEmitAssemblyPass, SimpleRegisterAllocationPass};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::pass::PassManager;
@@ -15,7 +15,7 @@ fn main() {
     Context::init();
 
     let function = {
-        let code = WasmInstr::Block(Resulttype::new(Some(vec![Valtype::U32])), vec![
+        let code = vec![
             WasmInstr::Const(Const::I32(5)),
             WasmInstr::Const(Const::I32(6)),
             WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)),
@@ -42,9 +42,10 @@ fn main() {
                     WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)),
                     WasmInstr::BrIf(0),
                 ]),
-        ]);
+            WasmInstr::Return,
+        ];
         let functype = wasmir::Functype::new(vec![], vec![Valtype::U32]);
-        let function = wasmir::Func::new(wasmir::Typeidx::new(0), vec![], code);
+        let function = wasmir::Func::new(wasmir::Typeidx::new(0), vec![], wasmir::Expr::new(code));
         let module = wasmir::Module::new(vec![functype], vec![function]);
         let mut wasm_to_ir = WasmToMachine::new();
         wasm_to_ir.emit(&module);
@@ -71,7 +72,6 @@ fn main() {
 
         pass_manager.add_function_pass(PreEmitAssemblyPass::create());
         pass_manager.add_instr_pass(EmitAssemblyPass::create(reg_name_map, "rdi"));
-        pass_manager.add_function_pass(PostEmitAssemblyPass::create());
 
         pass_manager.run(function);
     }

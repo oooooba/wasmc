@@ -32,6 +32,10 @@ impl BasicBlockPass for SimpleRegisterAllocationPass {
                 continue;
             }
 
+            if instr.get_opcode().is_return_instr() {
+                continue;
+            }
+
             // load source registers
             let num_srcs = instr.get_opcode().get_source_operands().len();
             for src_i in 1..num_srcs + 1 {
@@ -101,6 +105,10 @@ impl InstrPass for AnalyzeMemoryOffsetPass {
                 let offset = self.decide_offset(cond_reg);
                 cond_reg.set_offset(offset);
             }
+            return;
+        }
+
+        if instr.get_opcode().is_return_instr() {
             return;
         }
 
@@ -255,6 +263,10 @@ impl InstrPass for EmitAssemblyPass {
 
                 println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
             }
+            &Return(_, _) => {
+                println!("pop rbp");
+                println!("ret");
+            }
         }
     }
 }
@@ -269,21 +281,5 @@ impl EmitAssemblyPass {
 
     fn emit_binop_reg_reg(&mut self, op: &'static str, dst: RegisterHandle, src: RegisterHandle) {
         println!("{} {}, {}", op, self.physical_register_name_map.get(&dst).unwrap(), self.physical_register_name_map.get(&src).unwrap());
-    }
-}
-
-#[derive(Debug)]
-pub struct PostEmitAssemblyPass {}
-
-impl FunctionPass for PostEmitAssemblyPass {
-    fn do_action(&mut self, _function: FunctionHandle) {
-        println!("pop rbp");
-        println!("ret");
-    }
-}
-
-impl PostEmitAssemblyPass {
-    pub fn create() -> Box<PostEmitAssemblyPass> {
-        Box::new(PostEmitAssemblyPass {})
     }
 }
