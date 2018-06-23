@@ -11,6 +11,19 @@ impl Typeidx {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct Localidx(u32);
+
+impl Localidx {
+    pub fn new(idx: u32) -> Localidx {
+        Localidx(idx)
+    }
+
+    pub fn as_index(&self) -> usize {
+        self.0 as usize
+    }
+}
+
 pub enum Valtype {
     U32,
 }
@@ -64,6 +77,7 @@ pub enum WasmInstr {
     Br(usize),
     BrIf(usize),
     Return,
+    GetLocal(Localidx),
 }
 
 pub struct Expr(Vec<WasmInstr>);

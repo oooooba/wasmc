@@ -149,6 +149,13 @@ impl WasmToMachine {
                     self.emit_on_current_basic_block(Opcode::Return(Type::I32, Some(result)));
                 }
             }
+            &WasmInstr::GetLocal(ref localidx) => {
+                let index = localidx.as_index();
+                let typ = Type::I32;
+                let dst_reg = Operand::new_register(Context::create_register(typ.clone()));
+                let src_mem = Operand::new_memory(index, typ.clone());
+                self.emit_on_current_basic_block(Opcode::Load(typ, dst_reg, src_mem));
+            }
         }
     }
 

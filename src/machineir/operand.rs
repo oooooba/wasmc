@@ -1,6 +1,7 @@
 use std::fmt;
 
 use context::handle::{BasicBlockHandle, RegisterHandle};
+use machineir::typ::Type;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum OperandKind {
@@ -8,6 +9,7 @@ pub enum OperandKind {
     PhysicalRegister(RegisterHandle),
     ConstI32(u32),
     Label(BasicBlockHandle),
+    Memory { index: usize, typ: Type },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -37,6 +39,12 @@ impl Operand {
     pub fn new_label(handle: BasicBlockHandle) -> Operand {
         Operand {
             kind: OperandKind::Label(handle),
+        }
+    }
+
+    pub fn new_memory(index: usize, typ: Type) -> Operand {
+        Operand {
+            kind: OperandKind::Memory { index, typ },
         }
     }
 
@@ -94,6 +102,7 @@ impl Operand {
             PhysicalRegister(reg) => reg.get().print(),
             ConstI32(n) => print!("{}", n),
             Label(bb) => bb.print(),
+            Memory { index, .. } => print!("[{}]", index),
         }
     }
 }
@@ -106,6 +115,7 @@ impl fmt::Display for Operand {
             PhysicalRegister(reg) => write!(f, "{}", reg.get()),
             ConstI32(n) => write!(f, "{}", n),
             Label(bb) => write!(f, "label_{}", bb),
+            Memory { index, .. } => write!(f, "[{}]", index),
         }
     }
 }
@@ -118,6 +128,7 @@ impl fmt::Debug for OperandKind {
             &PhysicalRegister(ref register) => write!(f, "PhysicalRegister({:?})", register),
             &ConstI32(ref i) => write!(f, "ConstantI32({:?})", i),
             &Label(ref basic_block) => write!(f, "Label({:?})", basic_block),
+            &Memory { index, ref typ } => write!(f, "Memory({} / {:?})", index, typ),
         }
     }
 }
