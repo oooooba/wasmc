@@ -39,11 +39,24 @@ impl fmt::Debug for FunctionPass {
     }
 }
 
+pub trait GroupPass {
+    fn do_action(&mut self, pass_manager: &mut PassManager);
+    fn initialize(&mut self) {}
+    fn finalize(&mut self) {}
+}
+
+impl fmt::Debug for GroupPass {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+        unimplemented!()
+    }
+}
+
 #[derive(Debug)]
 pub enum PassKind {
     InstrPass(Box<InstrPass>),
     BasicBlockPass(Box<BasicBlockPass>),
     FunctionPass(Box<FunctionPass>),
+    GroupPass(Box<GroupPass>),
 }
 
 pub struct PassManager {
@@ -75,6 +88,12 @@ impl PassManager {
         handle
     }
 
+    pub fn add_group_pass(&mut self, pass: Box<GroupPass>) -> PassHandle {
+        let handle = Context::create_pass(PassKind::GroupPass(pass));
+        self.passes.push(handle);
+        handle
+    }
+
     fn run_on_instr(&mut self, instr: InstrHandle, pass: &mut Box<InstrPass>) {
         pass.initialize();
         pass.do_action(instr);
@@ -90,6 +109,14 @@ impl PassManager {
     fn run_on_function(&mut self, function: FunctionHandle, pass: &mut Box<FunctionPass>) {
         pass.initialize();
         pass.do_action(function);
+        pass.finalize();
+    }
+
+    fn run_on_group(&mut self, pass: &mut Box<GroupPass>, function: FunctionHandle) {
+        pass.initialize();
+        let mut pass_manager = PassManager::new();
+        pass.do_action(&mut pass_manager);
+        pass_manager.run(function);
         pass.finalize();
     }
 
@@ -112,6 +139,9 @@ impl PassManager {
                 }
                 &mut FunctionPass(ref mut pass) => {
                     self.run_on_function(function, pass);
+                }
+                &mut GroupPass(ref mut pass) => {
+                    self.run_on_group(pass, function);
                 }
             }
         }
