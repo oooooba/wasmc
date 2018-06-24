@@ -9,6 +9,7 @@ use pass::{BasicBlockPass, FunctionPass, InstrPass};
 #[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<RegisterHandle>,
+    virtual_register_indexes: HashMap<RegisterHandle, usize>,
 }
 
 impl FunctionPass for SimpleRegisterAllocationPass {
@@ -70,75 +71,43 @@ impl SimpleRegisterAllocationPass {
     pub fn create(physical_registers: Vec<RegisterHandle>) -> Box<SimpleRegisterAllocationPass> {
         Box::new(SimpleRegisterAllocationPass {
             physical_registers: physical_registers,
+            virtual_register_indexes: HashMap::new(),
         })
     }
 
-    fn emit_load_instr(&self, mut basic_block: BasicBlockHandle, insertion_point: usize, preg: RegisterHandle, vreg: RegisterHandle) {
+    fn get_or_create_virtual_register_index(&mut self, vreg: RegisterHandle) -> usize {
+        assert!(!vreg.is_physical());
+        let mut vreg_index = self.virtual_register_indexes.get(&vreg).map(|i| *i);
+        if vreg_index.is_none() {
+            let new_index = self.virtual_register_indexes.len();
+            self.virtual_register_indexes.insert(vreg, new_index);
+            vreg_index = Some(new_index);
+        }
+        vreg_index.unwrap()
+    }
+
+    fn emit_load_instr(&mut self, mut basic_block: BasicBlockHandle, insertion_point: usize, preg: RegisterHandle, vreg: RegisterHandle) {
         assert!(preg.is_physical());
         assert!(!vreg.is_physical());
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
-        let load_instr = Context::create_instr(Opcode::Load(typ,
+        let vreg_index = self.get_or_create_virtual_register_index(vreg);
+        let load_instr = Context::create_instr(Opcode::Load(typ.clone(),
                                                             Operand::new_physical_register(preg),
-                                                            Operand::new_register(vreg)), basic_block);
+                                                            Operand::new_memory(vreg_index, typ)), basic_block);
         basic_block.get_mut_instrs().insert(insertion_point, load_instr);
     }
 
-    fn emit_store_instr(&self, mut basic_block: BasicBlockHandle, insertion_point: usize, vreg: RegisterHandle, preg: RegisterHandle) {
+    fn emit_store_instr(&mut self, mut basic_block: BasicBlockHandle, insertion_point: usize, vreg: RegisterHandle, preg: RegisterHandle) {
         assert!(!vreg.is_physical());
         assert!(preg.is_physical());
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
-        let store_instr = Context::create_instr(Opcode::Store(typ,
-                                                              Operand::new_register(vreg),
+        let vreg_index = self.get_or_create_virtual_register_index(vreg);
+        let store_instr = Context::create_instr(Opcode::Store(typ.clone(),
+                                                              Operand::new_memory(vreg_index, typ),
                                                               Operand::new_physical_register(preg)), basic_block);
         basic_block.get_mut_instrs().insert(insertion_point, store_instr);
-    }
-}
-
-#[derive(Debug)]
-pub struct AnalyzeMemoryOffsetPass {}
-
-impl InstrPass for AnalyzeMemoryOffsetPass {
-    fn do_action(&mut self, instr: InstrHandle) {
-        if instr.get_opcode().is_jump_instr() {
-            if let Some(cond) = instr.get_opcode().get_condition_register_operand() {
-                let mut cond_reg = cond.get_as_register().unwrap();
-                let offset = self.decide_offset(cond_reg);
-                cond_reg.set_offset(offset);
-            }
-            return;
-        }
-
-        if instr.get_opcode().is_return_instr() {
-            return;
-        }
-
-        for src_i in 1..instr.get_opcode().get_source_operands().len() + 1 {
-            if let Some(mut src_reg) = instr.get_opcode().get_source_operand(src_i) {
-                if !src_reg.is_register() {
-                    continue;
-                }
-                let mut reg = src_reg.get_as_register().unwrap();
-                let offset = self.decide_offset(reg);
-                reg.set_offset(offset);
-            }
-        }
-
-        let reg = instr.get_opcode().get_destination_register_operand().unwrap();
-        let mut reg = reg.get_as_register().unwrap();
-        let offset = self.decide_offset(reg);
-        reg.set_offset(offset);
-    }
-}
-
-impl AnalyzeMemoryOffsetPass {
-    pub fn create() -> Box<AnalyzeMemoryOffsetPass> {
-        Box::new(AnalyzeMemoryOffsetPass {})
-    }
-
-    fn decide_offset(&self, reg: RegisterHandle) -> usize {
-        format!("{}", reg).parse::<usize>().unwrap() * reg.get_typ().get_size() // ToDo: fix
     }
 }
 
@@ -248,16 +217,18 @@ impl InstrPass for EmitAssemblyPass {
                 assert!(dst.is_physical());
                 let dst_name = self.physical_register_name_map.get(&dst).unwrap();
 
-                let src = src.get_as_register().unwrap();
-                assert!(!src.is_physical());
-                let src_offset = src.get_offset();
+                let src_offset = match src.get_kind() {
+                    &OperandKind::Memory { index, ref typ } => index * typ.get_size(),
+                    _ => unimplemented!(),
+                };
 
                 println!("mov {}, dword ptr [{} - {}]", dst_name, self.base_pointer_register, src_offset);
             }
             &Store(_, ref dst, ref src) => {
-                let dst = dst.get_as_register().unwrap();
-                assert!(!dst.is_physical());
-                let dst_offset = dst.get_offset();
+                let dst_offset = match dst.get_kind() {
+                    &OperandKind::Memory { index, ref typ } => index * typ.get_size(),
+                    _ => unimplemented!(),
+                };
 
                 let src = src.get_as_physical_register().unwrap();
                 assert!(src.is_physical());

@@ -2,7 +2,7 @@ extern crate wasmc;
 
 use std::collections::HashMap;
 
-use wasmc::allocation::{AnalyzeMemoryOffsetPass, EmitAssemblyPass, InsertBasicBlockLabelPass,
+use wasmc::allocation::{EmitAssemblyPass, InsertBasicBlockLabelPass,
                         PreEmitAssemblyPass, SimpleRegisterAllocationPass};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
@@ -22,7 +22,6 @@ impl GroupPass for MainPass {
         let mut r3 = Context::create_register(Type::I32);
         r3.set_physical();
 
-        pass_manager.add_instr_pass(AnalyzeMemoryOffsetPass::create());
         pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(vec![r1, r2, r3]));
         pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
 
