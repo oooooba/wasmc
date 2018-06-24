@@ -23,7 +23,7 @@ impl GroupPass for MainPass {
         r3.set_physical();
 
         pass_manager.add_instr_pass(AnalyzeMemoryOffsetPass::create());
-        pass_manager.add_basic_block_pass(SimpleRegisterAllocationPass::create(vec![r1, r2, r3]));
+        pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(vec![r1, r2, r3]));
         pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
 
         let mut reg_name_map = HashMap::new();

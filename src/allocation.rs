@@ -11,55 +11,57 @@ pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<RegisterHandle>,
 }
 
-impl BasicBlockPass for SimpleRegisterAllocationPass {
-    fn do_action(&mut self, mut basic_block: BasicBlockHandle) {
-        let num_instrs = basic_block.get_instrs().len();
-        let mut num_insertion = 0;
+impl FunctionPass for SimpleRegisterAllocationPass {
+    fn do_action(&mut self, mut function: FunctionHandle) {
+        for basic_block in function.get_mut_basic_blocks().iter_mut() {
+            let num_instrs = basic_block.get_instrs().len();
+            let mut num_insertion = 0;
 
-        for instr_i in 0..num_instrs {
-            let mut instr = basic_block.get_mut_instrs()[instr_i + num_insertion];
+            for instr_i in 0..num_instrs {
+                let mut instr = basic_block.get_mut_instrs()[instr_i + num_insertion];
 
-            if instr.get_opcode().is_jump_instr() {
-                let cond_reg = if let Some(cond) = instr.get_opcode().get_condition_register_operand() {
-                    cond.get_as_register().unwrap()
-                } else {
+                if instr.get_opcode().is_jump_instr() {
+                    let cond_reg = if let Some(cond) = instr.get_opcode().get_condition_register_operand() {
+                        cond.get_as_register().unwrap()
+                    } else {
+                        continue;
+                    };
+                    let preg = self.physical_registers[0];
+                    self.emit_load_instr(*basic_block, instr_i + num_insertion, preg, cond_reg);
+                    num_insertion += 1;
+                    instr.get_mut_opcode().set_condition_operand(Operand::new_physical_register(preg));
                     continue;
-                };
+                }
+
+                if instr.get_opcode().is_return_instr() {
+                    continue;
+                }
+
+                // load source registers
+                let num_srcs = instr.get_opcode().get_source_operands().len();
+                for src_i in 1..num_srcs + 1 {
+                    let insertion_point = instr_i + num_insertion;
+                    let vreg = if let Some(vreg) = instr.get_opcode().get_source_operand(src_i).and_then(|o| o.get_as_register()) {
+                        vreg
+                    } else {
+                        continue;
+                    };
+                    let preg = self.physical_registers[src_i - 1];
+                    self.emit_load_instr(*basic_block, insertion_point, preg, vreg);
+                    num_insertion += 1;
+                    instr.get_mut_opcode().set_source_operand(src_i, Operand::new_physical_register(preg));
+                }
+
+                // replace destination register
                 let preg = self.physical_registers[0];
-                self.emit_load_instr(basic_block, instr_i + num_insertion, preg, cond_reg);
+                let vreg = instr.get_opcode().get_destination_register_operand().and_then(|o| o.get_as_register()).unwrap();
+                instr.get_mut_opcode().set_destination_operand(Operand::new_physical_register(preg));
+
+                // store destination register
+                let insertion_point = instr_i + num_insertion + 1;
+                self.emit_store_instr(*basic_block, insertion_point, vreg, preg);
                 num_insertion += 1;
-                instr.get_mut_opcode().set_condition_operand(Operand::new_physical_register(preg));
-                continue;
             }
-
-            if instr.get_opcode().is_return_instr() {
-                continue;
-            }
-
-            // load source registers
-            let num_srcs = instr.get_opcode().get_source_operands().len();
-            for src_i in 1..num_srcs + 1 {
-                let insertion_point = instr_i + num_insertion;
-                let vreg = if let Some(vreg) = instr.get_opcode().get_source_operand(src_i).and_then(|o| o.get_as_register()) {
-                    vreg
-                } else {
-                    continue;
-                };
-                let preg = self.physical_registers[src_i - 1];
-                self.emit_load_instr(basic_block, insertion_point, preg, vreg);
-                num_insertion += 1;
-                instr.get_mut_opcode().set_source_operand(src_i, Operand::new_physical_register(preg));
-            }
-
-            // replace destination register
-            let preg = self.physical_registers[0];
-            let vreg = instr.get_opcode().get_destination_register_operand().and_then(|o| o.get_as_register()).unwrap();
-            instr.get_mut_opcode().set_destination_operand(Operand::new_physical_register(preg));
-
-            // store destination register
-            let insertion_point = instr_i + num_insertion + 1;
-            self.emit_store_instr(basic_block, insertion_point, vreg, preg);
-            num_insertion += 1;
         }
     }
 }
