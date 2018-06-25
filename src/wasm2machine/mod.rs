@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use machineir::basicblock::BasicBlockKind;
@@ -42,7 +44,9 @@ pub struct WasmToMachine {
 impl WasmToMachine {
     pub fn new() -> WasmToMachine {
         let dummy_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
-        let dummy_function = Context::create_function(WasmToMachine::map_functype(&wasmir::Functype::new(vec![], vec![])).1);
+        let dummy_function = Context::create_function(
+            WasmToMachine::map_functype(&wasmir::Functype::new(vec![], vec![])).1,
+            HashMap::new());
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
@@ -305,7 +309,7 @@ impl WasmToMachine {
             let result_registers = WasmToMachine::create_registers_for_types(out_typs);
             let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
             let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
-            let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1);
+            let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1, HashMap::new());
             function.get_mut_basic_blocks().push_back(entry_block);
 
             self.current_basic_block = entry_block;

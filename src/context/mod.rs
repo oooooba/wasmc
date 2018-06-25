@@ -82,12 +82,12 @@ impl Context {
         }
     }
 
-    pub fn create_function(result_types: Vec<Type>) -> FunctionHandle {
+    pub fn create_function(result_types: Vec<Type>, local_variables: HashMap<usize, Type>) -> FunctionHandle {
         unsafe {
             let id = CONTEXT.num_created_functions;
             CONTEXT.num_created_functions += 1;
             let handle = FunctionHandle::new(id);
-            let function = Function::new(handle, result_types);
+            let function = Function::new(handle, result_types, local_variables);
             CONTEXT.functions.as_mut().unwrap().insert(handle, function);
             handle
         }
