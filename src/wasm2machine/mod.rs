@@ -309,7 +309,10 @@ impl WasmToMachine {
             let result_registers = WasmToMachine::create_registers_for_types(out_typs);
             let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
             let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
-            let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1, HashMap::new());
+            let local_variables = func.get_locals().iter().enumerate().map(|p| match p.1 {
+                &Valtype::U32 => (p.0, Type::I32),
+            }).collect();
+            let mut function = Context::create_function(WasmToMachine::map_functype(&functype).1, local_variables);
             function.get_mut_basic_blocks().push_back(entry_block);
 
             self.current_basic_block = entry_block;

@@ -94,17 +94,21 @@ impl Expr {
 
 pub struct Func {
     typ: Typeidx,
-    _locals: Vec<()>,
+    locals: Vec<Valtype>,
     body: Expr,
 }
 
 impl Func {
-    pub fn new(typ: Typeidx, _locals: Vec<()>, body: Expr) -> Func {
-        Func { typ, _locals, body }
+    pub fn new(typ: Typeidx, locals: Vec<Valtype>, body: Expr) -> Func {
+        Func { typ, locals, body }
     }
 
     pub fn get_type(&self) -> &Typeidx {
         &self.typ
+    }
+
+    pub fn get_locals(&self) -> &Vec<Valtype> {
+        &self.locals
     }
 
     pub fn get_body(&self) -> &Expr {
