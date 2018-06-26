@@ -158,6 +158,7 @@ impl WasmToMachine {
                 let typ = Type::I32;
                 let dst_reg = Operand::new_register(Context::create_register(typ.clone()));
                 let src_mem = Operand::new_memory(index, typ.clone());
+                self.operand_stack.push(dst_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Load(typ, dst_reg, src_mem));
             }
         }
