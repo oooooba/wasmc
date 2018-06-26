@@ -134,22 +134,34 @@ impl InsertBasicBlockLabelPass {
 }
 
 #[derive(Debug)]
-pub struct PreEmitAssemblyPass {}
+pub struct PreEmitAssemblyPass {
+    base_pointer_register: &'static str,
+}
 
 impl FunctionPass for PreEmitAssemblyPass {
-    fn do_action(&mut self, _function: FunctionHandle) {
+    fn do_action(&mut self, function: FunctionHandle) {
         println!(".intel_syntax noprefix");
         println!(".global {}", "entry_point");
         println!();
         println!("entry_point:");
         println!("push rbp");
         println!("mov rbp, rsp");
+
+        // store parameter registers to memory
+        let param_regs = vec![/* "edi", */ "esi", "edx", "ecx"]; // treat only 32 bit integers currently
+        //let param_regs=vec!["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
+        assert!(function.get_parameter_types().len() < param_regs.len());
+        for (i, typ) in function.get_parameter_types().iter().enumerate() {
+            let dst_offset = i * typ.get_size();
+            let src_name = param_regs[i];
+            println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
+        }
     }
 }
 
 impl PreEmitAssemblyPass {
-    pub fn create() -> Box<PreEmitAssemblyPass> {
-        Box::new(PreEmitAssemblyPass {})
+    pub fn create(base_pointer_register: &'static str) -> Box<PreEmitAssemblyPass> {
+        Box::new(PreEmitAssemblyPass { base_pointer_register })
     }
 }
 

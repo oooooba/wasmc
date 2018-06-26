@@ -38,6 +38,10 @@ impl Function {
         &mut self.basic_blocks
     }
 
+    pub fn get_parameter_types(&self) -> &Vec<Type> {
+        &self.parameter_types
+    }
+
     pub fn get_local_variables(&self) -> &HashMap<usize, Type> {
         &self.local_variables
     }

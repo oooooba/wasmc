@@ -30,7 +30,7 @@ impl GroupPass for MainPass {
         reg_name_map.insert(r2, "ebx");
         reg_name_map.insert(r3, "ecx");
 
-        pass_manager.add_function_pass(PreEmitAssemblyPass::create());
+        pass_manager.add_function_pass(PreEmitAssemblyPass::create("rdi"));
         pass_manager.add_instr_pass(EmitAssemblyPass::create(reg_name_map, "rdi"));
     }
 }
