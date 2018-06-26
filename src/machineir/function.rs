@@ -8,15 +8,19 @@ use machineir::typ::Type;
 pub struct Function {
     handle: FunctionHandle,
     basic_blocks: VecDeque<BasicBlockHandle>,
+    parameter_types: Vec<Type>,
     result_types: Vec<Type>,
     local_variables: HashMap<usize, Type>,
 }
 
 impl Function {
-    pub fn new(handle: FunctionHandle, result_types: Vec<Type>, local_variables: HashMap<usize, Type>) -> Function {
+    pub fn new(handle: FunctionHandle, parameter_types: Vec<Type>, result_types: Vec<Type>) -> Function {
+        let local_variables = parameter_types.iter().enumerate()
+            .map(|p| (p.0, p.1.clone())).collect();
         Function {
             handle: handle,
             basic_blocks: VecDeque::new(),
+            parameter_types: parameter_types,
             result_types: result_types,
             local_variables: local_variables,
         }
