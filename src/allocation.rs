@@ -4,6 +4,7 @@ use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use machineir::opcode::Opcode;
 use machineir::operand::{Operand, OperandKind};
+use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass};
 
 #[derive(Debug)]
@@ -146,13 +147,16 @@ impl FunctionPass for PreEmitAssemblyPass {
         println!("entry_point:");
         println!("push rbp");
         println!("mov rbp, rsp");
+        let len_buffer = (function.get_local_variables().len() + 1) * Type::I32.get_size();
+        let word_size = 8;
+        println!("sub rsp, {}", ((len_buffer + word_size - 1) / word_size) * word_size);
 
         // store parameter registers to memory
-        let param_regs = vec![/* "edi", */ "esi", "edx", "ecx"]; // treat only 32 bit integers currently
+        let param_regs = vec!["edi", "esi", "edx", "ecx"]; // treat only 32 bit integers currently
         //let param_regs=vec!["rdi", "rsi", "rdx", "rcx", "r8", "r9"];
         assert!(function.get_parameter_types().len() < param_regs.len());
         for (i, typ) in function.get_parameter_types().iter().enumerate() {
-            let dst_offset = i * typ.get_size();
+            let dst_offset = (i + 1) * typ.get_size();
             let src_name = param_regs[i];
             println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
         }
@@ -234,7 +238,7 @@ impl InstrPass for EmitAssemblyPass {
                 let dst_name = self.physical_register_name_map.get(&dst).unwrap();
 
                 let src_offset = match src.get_kind() {
-                    &OperandKind::Memory { index, ref typ } => index * typ.get_size(),
+                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
                     _ => unimplemented!(),
                 };
 
@@ -242,7 +246,7 @@ impl InstrPass for EmitAssemblyPass {
             }
             &Store(_, ref dst, ref src) => {
                 let dst_offset = match dst.get_kind() {
-                    &OperandKind::Memory { index, ref typ } => index * typ.get_size(),
+                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
                     _ => unimplemented!(),
                 };
 
@@ -253,6 +257,7 @@ impl InstrPass for EmitAssemblyPass {
                 println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
             }
             &Return(_, _) => {
+                println!("mov rsp, rbp");
                 println!("pop rbp");
                 println!("ret");
             }
