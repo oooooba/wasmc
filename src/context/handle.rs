@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 use machineir::basicblock::BasicBlock;
 use machineir::function::Function;
 use machineir::instruction::Instr;
+use machineir::module::Module;
 use machineir::register::Register;
 use pass::PassKind;
 
@@ -178,6 +179,50 @@ impl DerefMut for FunctionHandle {
 }
 
 impl fmt::Display for FunctionHandle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
+pub struct ModuleHandle(usize);
+
+impl ModuleHandle {
+    pub(super) fn new(id: usize) -> Self {
+        ModuleHandle(id)
+    }
+
+    pub fn get(&self) -> &Module {
+        unsafe {
+            super::CONTEXT.modules.as_ref().unwrap().get(self).unwrap()
+        }
+    }
+
+    pub fn get_mut(&mut self) -> &mut Module {
+        unsafe {
+            super::CONTEXT.modules.as_mut().unwrap().get_mut(self).unwrap()
+        }
+    }
+
+    pub fn print(&self) {
+        print!("m{}", self.0);
+    }
+}
+
+impl Deref for ModuleHandle {
+    type Target = Module;
+    fn deref(&self) -> &Module {
+        self.get()
+    }
+}
+
+impl DerefMut for ModuleHandle {
+    fn deref_mut(&mut self) -> &mut Module {
+        self.get_mut()
+    }
+}
+
+impl fmt::Display for ModuleHandle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }

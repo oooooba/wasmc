@@ -2,10 +2,11 @@ pub mod handle;
 
 use std::collections::HashMap;
 
-use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, PassHandle, RegisterHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, PassHandle, RegisterHandle};
 use machineir::basicblock::{BasicBlock, BasicBlockKind};
 use machineir::function::Function;
 use machineir::instruction::Instr;
+use machineir::module::Module;
 use machineir::register::Register;
 use machineir::opcode::Opcode;
 use machineir::typ::Type;
@@ -21,6 +22,8 @@ pub struct Context {
     num_created_basic_blocks: usize,
     functions: Option<HashMap<FunctionHandle, Function>>,
     num_created_functions: usize,
+    modules: Option<HashMap<ModuleHandle, Module>>,
+    num_created_modules: usize,
     passes: Option<HashMap<PassHandle, PassKind>>,
     num_created_passes3: usize,
 }
@@ -34,6 +37,8 @@ static mut CONTEXT: Context = Context {
     num_created_basic_blocks: 0,
     functions: None,
     num_created_functions: 0,
+    modules: None,
+    num_created_modules: 0,
     passes: None,
     num_created_passes3: 0,
 };
@@ -45,6 +50,7 @@ impl Context {
             CONTEXT.instrs = Some(HashMap::new());
             CONTEXT.basic_blocks = Some(HashMap::new());
             CONTEXT.functions = Some(HashMap::new());
+            CONTEXT.modules = Some(HashMap::new());
             CONTEXT.passes = Some(HashMap::new());
         }
     }
@@ -89,6 +95,17 @@ impl Context {
             let handle = FunctionHandle::new(id);
             let function = Function::new(handle, parameter_types, result_types);
             CONTEXT.functions.as_mut().unwrap().insert(handle, function);
+            handle
+        }
+    }
+
+    pub fn create_module() -> ModuleHandle {
+        unsafe {
+            let id = CONTEXT.num_created_modules;
+            CONTEXT.num_created_modules += 1;
+            let handle = ModuleHandle::new(id);
+            let module = Module::new(handle);
+            CONTEXT.modules.as_mut().unwrap().insert(handle, module);
             handle
         }
     }

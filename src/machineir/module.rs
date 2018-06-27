@@ -1,0 +1,22 @@
+use std::collections::HashMap;
+
+use context::handle::{FunctionHandle, ModuleHandle};
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct Module {
+    handle: ModuleHandle,
+    functions: HashMap<String, FunctionHandle>,
+}
+
+impl Module {
+    pub fn new(handle: ModuleHandle) -> Module {
+        Module {
+            handle: handle,
+            functions: HashMap::new(),
+        }
+    }
+
+    pub fn get_handle(&self) -> &ModuleHandle {
+        &self.handle
+    }
+}
