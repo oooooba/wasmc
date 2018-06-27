@@ -18,6 +18,7 @@ pub enum Opcode {
     Load(Type, Operand, Operand),
     Store(Type, Operand, Operand),
     Return(Type, Option<Operand>),
+    Call(String, Type, Option<Operand>, Vec<Operand>),
 }
 
 impl Opcode {
@@ -344,6 +345,8 @@ impl fmt::Display for Opcode {
             &Store(_, ref dst, ref src) => write!(f, format!(2), "store", dst, src),
             &Return(_, None) => write!(f, format!(0), "ret"),
             &Return(_, Some(ref result)) => write!(f, format!(1), "ret", result),
+            &Call(ref _funcname, _, Some(ref _result), ref _args) => unimplemented!(),
+            &Call(ref _funcname, _, None, ref _args) => unimplemented!(),
         }
     }
 }

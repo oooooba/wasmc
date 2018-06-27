@@ -42,6 +42,10 @@ impl Function {
         &self.parameter_types
     }
 
+    pub fn get_result_types(&self) -> &Vec<Type> {
+        &self.result_types
+    }
+
     pub fn get_local_variables(&self) -> &HashMap<usize, Type> {
         &self.local_variables
     }

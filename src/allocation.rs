@@ -261,6 +261,9 @@ impl InstrPass for EmitAssemblyPass {
                 println!("pop rbp");
                 println!("ret");
             }
+            &Call(_, _, _, _) => {
+                unimplemented!()
+            }
         }
     }
 }

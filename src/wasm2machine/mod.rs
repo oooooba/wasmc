@@ -158,6 +158,28 @@ impl WasmToMachine {
                 self.operand_stack.push(dst_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Load(typ, dst_reg, src_mem));
             }
+            &WasmInstr::Call(ref funcidx) => {
+                let index = funcidx.as_index();
+                let funcname = format!("f_{}", index);
+                let function = self.function; // Dummy
+
+                let mut args = vec![];
+                assert!(function.get_parameter_types().len() <= self.operand_stack.len());
+                for _ in 0..function.get_parameter_types().len() {
+                    args.push(self.operand_stack.pop().unwrap());
+                }
+                args.reverse();
+
+                assert!(function.get_result_types().len() == 0 || function.get_result_types().len() == 1);
+                if function.get_result_types().len() == 0 {
+                    self.emit_on_current_basic_block(Opcode::Call(funcname, Type::I32, None, args));
+                } else if function.get_result_types().len() == 1 {
+                    let typ = &function.get_result_types()[0];
+                    let result_reg = Operand::new_register(Context::create_register(typ.clone()));
+                    self.operand_stack.push(result_reg.clone());
+                    self.emit_on_current_basic_block(Opcode::Call(funcname, Type::I32, Some(result_reg), args));
+                }
+            }
         }
     }
 
