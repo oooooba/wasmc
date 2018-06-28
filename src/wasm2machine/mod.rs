@@ -36,7 +36,7 @@ pub struct WasmToMachine {
     current_basic_block: BasicBlockHandle,
     exit_block: BasicBlockHandle,
     result_registers: Vec<RegisterHandle>,
-    function: FunctionHandle,
+    current_function: FunctionHandle,
     module: ModuleHandle,
 }
 
@@ -50,7 +50,7 @@ impl WasmToMachine {
             current_basic_block: dummy_block,
             exit_block: dummy_block,
             result_registers: vec![],
-            function: dummy_function,
+            current_function: dummy_function,
             module: Context::create_module(),
         }
     }
@@ -121,7 +121,7 @@ impl WasmToMachine {
                 let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
                 let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
 
-                self.function.get_mut_basic_blocks().push_back(new_basic_block);
+                self.current_function.get_mut_basic_blocks().push_back(new_basic_block);
                 self.current_basic_block = new_basic_block;
                 self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
             }
@@ -135,7 +135,7 @@ impl WasmToMachine {
                 let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
                 let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
 
-                self.function.get_mut_basic_blocks().push_back(new_basic_block);
+                self.current_function.get_mut_basic_blocks().push_back(new_basic_block);
                 self.current_basic_block = new_basic_block;
             }
             &WasmInstr::Return => {
@@ -162,7 +162,7 @@ impl WasmToMachine {
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
                 let funcname = format!("f_{}", index);
-                let function = self.function; // Dummy
+                let function = self.current_function; // Dummy
 
                 let mut args = vec![];
                 assert!(function.get_parameter_types().len() <= self.operand_stack.len());
@@ -191,7 +191,7 @@ impl WasmToMachine {
     }
 
     fn emit_on_expr_basic_block(&mut self, expr_block: BasicBlockHandle, cont_block: BasicBlockHandle, instrs: &Vec<WasmInstr>) {
-        self.function.get_mut_basic_blocks().push_back(expr_block);
+        self.current_function.get_mut_basic_blocks().push_back(expr_block);
         self.current_basic_block = expr_block;
         self.operand_stack.push(Operand::new_label(expr_block));
         for instr in instrs.iter() {
@@ -212,7 +212,7 @@ impl WasmToMachine {
         for register in result_registers.iter() {
             self.operand_stack.push(Operand::new_register(*register));
         }
-        self.function.get_mut_basic_blocks().push_back(basic_block);
+        self.current_function.get_mut_basic_blocks().push_back(basic_block);
         self.current_basic_block = basic_block;
     }
 
@@ -330,24 +330,24 @@ impl WasmToMachine {
             let result_registers = WasmToMachine::create_registers_for_types(out_typs);
             let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
             let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
-            let dummy_func = self.function;
+            let dummy_func = self.current_function;
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
             let function = Context::create_function(parameter_types, result_types);
 
             self.current_basic_block = entry_block;
             self.exit_block = exit_block;
             self.result_registers = result_registers;
-            self.function = function;
+            self.current_function = function;
 
-            self.function.get_mut_basic_blocks().push_back(entry_block);
+            self.current_function.get_mut_basic_blocks().push_back(entry_block);
             for instr in func.get_body().get_instr_sequences() {
                 self.emit_ir(instr)
             }
-            self.function.get_mut_basic_blocks().push_back(self.exit_block);
+            self.current_function.get_mut_basic_blocks().push_back(self.exit_block);
 
             let funcname = format!("f_{}", funcidx);
-            self.module.get_mut_functions().insert(funcname, self.function);
-            self.function = dummy_func;
+            self.module.get_mut_functions().insert(funcname, self.current_function);
+            self.current_function = dummy_func;
         }
     }
 }
