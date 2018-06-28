@@ -19,4 +19,8 @@ impl Module {
     pub fn get_handle(&self) -> &ModuleHandle {
         &self.handle
     }
+
+    pub fn get_mut_functions(&mut self) -> &mut HashMap<String, FunctionHandle> {
+        &mut self.functions
+    }
 }

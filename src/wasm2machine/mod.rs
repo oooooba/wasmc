@@ -1,5 +1,5 @@
 use context::Context;
-use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::basicblock::BasicBlockKind;
 use machineir::opcode::Opcode;
 use machineir::typ::Type;
@@ -37,6 +37,7 @@ pub struct WasmToMachine {
     exit_block: BasicBlockHandle,
     result_registers: Vec<RegisterHandle>,
     function: FunctionHandle,
+    module: ModuleHandle,
 }
 
 impl WasmToMachine {
@@ -50,12 +51,12 @@ impl WasmToMachine {
             exit_block: dummy_block,
             result_registers: vec![],
             function: dummy_function,
+            module: Context::create_module(),
         }
     }
 
-    pub fn finalize(mut self) -> FunctionHandle {
-        self.function.get_mut_basic_blocks().push_back(self.exit_block);
-        self.function
+    pub fn finalize(self) -> ModuleHandle {
+        self.module
     }
 
     pub fn emit_ir(&mut self, wasm_instr: &WasmInstr) {
@@ -322,25 +323,31 @@ impl WasmToMachine {
     }
 
     pub fn emit(&mut self, module: &wasmir::Module) {
-        for func in module.get_funcs().iter() {
+        for (funcidx, func) in module.get_funcs().iter().enumerate() {
             let typeidx = func.get_type();
             let functype = &module.get_types()[typeidx.as_index()];
             let (_in_typs, out_typs) = WasmToMachine::map_functype(&functype);
             let result_registers = WasmToMachine::create_registers_for_types(out_typs);
             let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
             let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
+            let dummy_func = self.function;
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
-            let mut function = Context::create_function(parameter_types, result_types);
-            function.get_mut_basic_blocks().push_back(entry_block);
+            let function = Context::create_function(parameter_types, result_types);
 
             self.current_basic_block = entry_block;
             self.exit_block = exit_block;
             self.result_registers = result_registers;
             self.function = function;
 
+            self.function.get_mut_basic_blocks().push_back(entry_block);
             for instr in func.get_body().get_instr_sequences() {
                 self.emit_ir(instr)
             }
+            self.function.get_mut_basic_blocks().push_back(self.exit_block);
+
+            let funcname = format!("f_{}", funcidx);
+            self.module.get_mut_functions().insert(funcname, self.function);
+            self.function = dummy_func;
         }
     }
 }

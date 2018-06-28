@@ -44,7 +44,7 @@ impl MainPass {
 fn main() {
     Context::init();
 
-    let function = {
+    let mut module = {
         let code = vec![
             WasmInstr::Const(Const::I32(5)),
             WasmInstr::Const(Const::I32(6)),
@@ -83,5 +83,5 @@ fn main() {
     };
     let mut pass_manager = PassManager::new();
     pass_manager.add_group_pass(MainPass::create());
-    pass_manager.run(function);
+    pass_manager.run(*module.get_mut_functions().get(&format!("f_{}", 0)).unwrap());
 }
