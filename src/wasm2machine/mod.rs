@@ -162,7 +162,7 @@ impl WasmToMachine {
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
                 let funcname = format!("f_{}", index);
-                let function = self.current_function; // Dummy
+                let function = *self.module.get_functions().get(&funcname).unwrap();
 
                 let mut args = vec![];
                 assert!(function.get_parameter_types().len() <= self.operand_stack.len());

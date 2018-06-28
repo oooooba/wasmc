@@ -20,6 +20,10 @@ impl Module {
         &self.handle
     }
 
+    pub fn get_functions(&self) -> &HashMap<String, FunctionHandle> {
+        &self.functions
+    }
+
     pub fn get_mut_functions(&mut self) -> &mut HashMap<String, FunctionHandle> {
         &mut self.functions
     }
