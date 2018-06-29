@@ -5,7 +5,7 @@ use machineir::opcode::Opcode;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
-use wasmir::{Binop, Const, Functype, Ibinop, Resulttype, Valtype, WasmInstr};
+use wasmir::{Binop, Const, Functype, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -79,6 +79,13 @@ impl WasmToMachine {
                 let lhs = self.operand_stack.pop().unwrap();
                 self.operand_stack.push(register.clone());
                 self.emit_on_current_basic_block(Opcode::Sub(Type::I32, register, lhs, rhs));
+            }
+            &WasmInstr::Binop(Binop::Irelop(Irelop::Eq32)) => {
+                let register = Operand::new_register(Context::create_register(Type::I32));
+                let rhs = self.operand_stack.pop().unwrap();
+                let lhs = self.operand_stack.pop().unwrap();
+                self.operand_stack.push(register.clone());
+                self.emit_on_current_basic_block(Opcode::Eq(Type::I32, register, lhs, rhs));
             }
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);

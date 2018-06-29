@@ -77,8 +77,13 @@ pub enum Ibinop {
     Sub32,
 }
 
+pub enum Irelop {
+    Eq32,
+}
+
 pub enum Binop {
     Ibinop(Ibinop),
+    Irelop(Irelop),
 }
 
 pub enum WasmInstr {

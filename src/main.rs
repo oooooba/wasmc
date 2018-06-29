@@ -8,7 +8,7 @@ use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::pass::{GroupPass, PassManager};
 use wasmc::wasmir;
-use wasmc::wasmir::{Binop, Const, Ibinop, Resulttype, Valtype, WasmInstr};
+use wasmc::wasmir::{Binop, Const, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
 
 pub struct MainPass {}
@@ -47,8 +47,8 @@ fn main() {
     let mut module = {
         let code = vec![
             WasmInstr::Const(Const::I32(5)),
-            WasmInstr::Const(Const::I32(6)),
-            WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)),
+            WasmInstr::Const(Const::I32(5)),
+            WasmInstr::Binop(Binop::Irelop(Irelop::Eq32)),
             WasmInstr::If(
                 Resulttype::new(Some(vec![Valtype::U32])),
                 vec![

@@ -264,6 +264,24 @@ impl InstrPass for EmitAssemblyPass {
             &Call(_, _, _, _) => {
                 unimplemented!()
             }
+            &Eq(_, ref dst, ref src1, ref src2) => {
+                assert_eq!(dst, src1);
+                let dst = dst.get_as_physical_register().unwrap();
+                let dst_name = *self.physical_register_name_map.get(&dst).unwrap();
+                assert!(dst.is_physical());
+                match src2.get_kind() {
+                    &OperandKind::PhysicalRegister(preg) => {
+                        self.emit_binop_reg_reg("cmp", dst, preg);
+                        println!("jnz label_i{}x", instr);
+                        println!("mov {}, {}", dst_name, 1);
+                        println!("jmp label_i{}y", instr);
+                        println!("label_i{}x:", instr);
+                        println!("mov {}, {}", dst_name, 0);
+                        println!("label_i{}y:", instr);
+                    }
+                    _ => unimplemented!(),
+                }
+            }
         }
     }
 }

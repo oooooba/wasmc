@@ -19,6 +19,7 @@ pub enum Opcode {
     Store(Type, Operand, Operand),
     Return(Type, Option<Operand>),
     Call(String, Type, Option<Operand>, Vec<Operand>),
+    Eq(Type, Operand, Operand, Operand),
 }
 
 impl Opcode {
@@ -33,6 +34,8 @@ impl Opcode {
             &Copy(_, _, ref operand) if index == 1 => Some(operand),
             &Load(_, _, ref operand) if index == 1 => Some(operand),
             &Store(_, _, ref operand) if index == 1 => Some(operand),
+            &Eq(_, _, ref operand, _) if index == 1 => Some(operand),
+            &Eq(_, _, _, ref operand) if index == 2 => Some(operand),
             _ => None,
         }
     }
@@ -48,6 +51,8 @@ impl Opcode {
             &mut Copy(_, _, ref mut operand) if index == 1 => Some(operand),
             &mut Load(_, _, ref mut operand) if index == 1 => Some(operand),
             &mut Store(_, _, ref mut operand) if index == 1 => Some(operand),
+            &mut Eq(_, _, ref mut operand, _) if index == 1 => Some(operand),
+            &mut Eq(_, _, _, ref mut operand) if index == 2 => Some(operand),
             _ => None,
         }
     }
@@ -63,6 +68,8 @@ impl Opcode {
             &mut Copy(_, _, ref mut operand) if index == 1 => *operand = new_operand,
             &mut Load(_, _, ref mut operand) if index == 1 => *operand = new_operand,
             &mut Store(_, _, ref mut operand) if index == 1 => *operand = new_operand,
+            &mut Eq(_, _, ref mut operand, _) if index == 1 => *operand = new_operand,
+            &mut Eq(_, _, _, ref mut operand) if index == 2 => *operand = new_operand,
             _ => panic!(),
         }
     }
@@ -76,6 +83,7 @@ impl Opcode {
             &Copy(_, _, ref operand) => vec![operand],
             &Load(_, _, ref operand) => vec![operand],
             &Store(_, _, ref operand) => vec![operand],
+            &Eq(_, _, ref operand1, ref operand2) => vec![operand1, operand2],
             _ => vec![],
         }
     }
@@ -89,6 +97,7 @@ impl Opcode {
             &Copy(ref typ, _, _) => Some(typ),
             &Load(ref typ, _, _) => Some(typ),
             &Store(ref typ, _, _) => Some(typ),
+            &Eq(ref typ, _, _, _) => Some(typ),
             _ => None,
         }
     }
@@ -102,6 +111,7 @@ impl Opcode {
             &Copy(_, ref dst, _) if dst.is_register() => Some(dst),
             &Load(_, ref dst, _) if dst.is_register() => Some(dst),
             &Store(_, ref dst, _) if dst.is_register() => Some(dst),
+            &Eq(_, ref dst, _, _) if dst.is_register() => Some(dst),
             _ => None,
         }
     }
@@ -115,6 +125,7 @@ impl Opcode {
             &mut Copy(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Load(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Store(_, ref mut dst, _) if dst.is_register() => Some(dst),
+            &mut Eq(_, ref mut dst, _, _) if dst.is_register() => Some(dst),
             _ => None,
         }
     }
@@ -128,6 +139,7 @@ impl Opcode {
             &mut Copy(_, ref mut operand, _) => *operand = new_operand,
             &mut Load(_, ref mut operand, _) => *operand = new_operand,
             &mut Store(_, ref mut operand, _) => *operand = new_operand,
+            &mut Eq(_, ref mut operand, _, _) => *operand = new_operand,
             _ => panic!(),
         }
     }
@@ -141,6 +153,7 @@ impl Opcode {
             &Copy(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Load(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Store(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
+            &Eq(_, ref dst, _, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             _ => None,
         }
     }
@@ -157,6 +170,9 @@ impl Opcode {
             &Copy(_, _, ref src) if src.is_register() => vec![src],
             &Load(_, _, ref src) if src.is_register() => vec![src],
             &Store(_, _, ref src) if src.is_register() => vec![src],
+            &Eq(_, _, ref src1, ref src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
+            &Eq(_, _, ref src1, _) if src1.is_register() => vec![src1],
+            &Eq(_, _, _, ref src2) if src2.is_register() => vec![src2],
             _ => vec![],
         }
     }
@@ -173,6 +189,9 @@ impl Opcode {
             &mut Copy(_, _, ref mut src) if src.is_register() => vec![src],
             &mut Load(_, _, ref mut src) if src.is_register() => vec![src],
             &mut Store(_, _, ref mut src) if src.is_register() => vec![src],
+            &mut Eq(_, _, ref mut src1, ref mut src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
+            &mut Eq(_, _, ref mut src1, _) if src1.is_register() => vec![src1],
+            &mut Eq(_, _, _, ref mut src2) if src2.is_register() => vec![src2],
             _ => vec![],
         }
     }
@@ -191,6 +210,10 @@ impl Opcode {
             &Copy(_, _, ref src) if src.is_register() => vec![src.get_as_register().unwrap()],
             &Load(_, _, ref src) if src.is_register() => vec![src.get_as_register().unwrap()],
             &Store(_, _, ref src) if src.is_register() => vec![src.get_as_register().unwrap()],
+            &Eq(_, _, ref src1, ref src2) if src1.is_register() && src2.is_register() =>
+                vec![src1.get_as_register().unwrap(), src2.get_as_register().unwrap()],
+            &Eq(_, _, ref src1, _) if src1.is_register() => vec![src1.get_as_register().unwrap()],
+            &Eq(_, _, _, ref src2) if src2.is_register() => vec![src2.get_as_register().unwrap()],
             _ => vec![],
         }
     }
@@ -347,6 +370,7 @@ impl fmt::Display for Opcode {
             &Return(_, Some(ref result)) => write!(f, format!(1), "ret", result),
             &Call(ref _funcname, _, Some(ref _result), ref _args) => unimplemented!(),
             &Call(ref _funcname, _, None, ref _args) => unimplemented!(),
+            &Eq(_, ref _dst, ref _src1, ref _src2) => unimplemented!(),
         }
     }
 }
