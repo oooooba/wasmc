@@ -7,6 +7,7 @@ use machineir::typ::Type;
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function {
     handle: FunctionHandle,
+    func_name: String,
     basic_blocks: VecDeque<BasicBlockHandle>,
     parameter_types: Vec<Type>,
     result_types: Vec<Type>,
@@ -14,11 +15,12 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(handle: FunctionHandle, parameter_types: Vec<Type>, result_types: Vec<Type>) -> Function {
+    pub fn new(handle: FunctionHandle, func_name: String, parameter_types: Vec<Type>, result_types: Vec<Type>) -> Function {
         let local_variables = parameter_types.iter().enumerate()
             .map(|p| (p.0, p.1.clone())).collect();
         Function {
             handle: handle,
+            func_name: func_name,
             basic_blocks: VecDeque::new(),
             parameter_types: parameter_types,
             result_types: result_types,
@@ -28,6 +30,10 @@ impl Function {
 
     pub fn get_handle(&self) -> &FunctionHandle {
         &self.handle
+    }
+
+    pub fn get_func_name(&self) -> &String {
+        &self.func_name
     }
 
     pub fn get_basic_blocks(&self) -> &VecDeque<BasicBlockHandle> {

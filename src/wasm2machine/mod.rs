@@ -44,7 +44,7 @@ impl WasmToMachine {
     pub fn new() -> WasmToMachine {
         let dummy_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
         let (parameter_types, result_types) = WasmToMachine::map_functype(&wasmir::Functype::new(vec![], vec![]));
-        let dummy_function = Context::create_function(parameter_types, result_types);
+        let dummy_function = Context::create_function("".to_string(), parameter_types, result_types);
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
@@ -339,7 +339,9 @@ impl WasmToMachine {
             let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
             let dummy_func = self.current_function;
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
-            let function = Context::create_function(parameter_types, result_types);
+            let func_name = format!("f_{}", funcidx);
+            let function = Context::create_function(func_name.clone(), parameter_types, result_types);
+            self.module.get_mut_functions().insert(func_name, function);
 
             self.current_basic_block = entry_block;
             self.exit_block = exit_block;
@@ -352,8 +354,6 @@ impl WasmToMachine {
             }
             self.current_function.get_mut_basic_blocks().push_back(self.exit_block);
 
-            let funcname = format!("f_{}", funcidx);
-            self.module.get_mut_functions().insert(funcname, self.current_function);
             self.current_function = dummy_func;
         }
     }

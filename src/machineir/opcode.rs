@@ -34,6 +34,7 @@ impl Opcode {
             &Copy(_, _, ref operand) if index == 1 => Some(operand),
             &Load(_, _, ref operand) if index == 1 => Some(operand),
             &Store(_, _, ref operand) if index == 1 => Some(operand),
+            &Call(_, _, _, ref operands) if 1 <= index && index <= operands.len() => Some(&operands[index - 1]),
             &Eq(_, _, ref operand, _) if index == 1 => Some(operand),
             &Eq(_, _, _, ref operand) if index == 2 => Some(operand),
             _ => None,
@@ -51,6 +52,7 @@ impl Opcode {
             &mut Copy(_, _, ref mut operand) if index == 1 => Some(operand),
             &mut Load(_, _, ref mut operand) if index == 1 => Some(operand),
             &mut Store(_, _, ref mut operand) if index == 1 => Some(operand),
+            &mut Call(_, _, _, ref mut operands) if 1 <= index && index <= operands.len() => Some(&mut operands[index - 1]),
             &mut Eq(_, _, ref mut operand, _) if index == 1 => Some(operand),
             &mut Eq(_, _, _, ref mut operand) if index == 2 => Some(operand),
             _ => None,
@@ -68,6 +70,7 @@ impl Opcode {
             &mut Copy(_, _, ref mut operand) if index == 1 => *operand = new_operand,
             &mut Load(_, _, ref mut operand) if index == 1 => *operand = new_operand,
             &mut Store(_, _, ref mut operand) if index == 1 => *operand = new_operand,
+            &mut Call(_, _, _, ref mut operands) if 1 <= index && index <= operands.len() => operands[index - 1] = new_operand,
             &mut Eq(_, _, ref mut operand, _) if index == 1 => *operand = new_operand,
             &mut Eq(_, _, _, ref mut operand) if index == 2 => *operand = new_operand,
             _ => panic!(),
@@ -83,6 +86,7 @@ impl Opcode {
             &Copy(_, _, ref operand) => vec![operand],
             &Load(_, _, ref operand) => vec![operand],
             &Store(_, _, ref operand) => vec![operand],
+            &Call(_, _, _, ref operands) => operands.iter().map(|o| o).collect(),
             &Eq(_, _, ref operand1, ref operand2) => vec![operand1, operand2],
             _ => vec![],
         }
@@ -111,6 +115,7 @@ impl Opcode {
             &Copy(_, ref dst, _) if dst.is_register() => Some(dst),
             &Load(_, ref dst, _) if dst.is_register() => Some(dst),
             &Store(_, ref dst, _) if dst.is_register() => Some(dst),
+            &Call(_, _, Some(ref dst), _) if dst.is_register() => Some(dst),
             &Eq(_, ref dst, _, _) if dst.is_register() => Some(dst),
             _ => None,
         }
@@ -139,6 +144,7 @@ impl Opcode {
             &mut Copy(_, ref mut operand, _) => *operand = new_operand,
             &mut Load(_, ref mut operand, _) => *operand = new_operand,
             &mut Store(_, ref mut operand, _) => *operand = new_operand,
+            &mut Call(_, _, Some(ref mut operand), _) => *operand = new_operand,
             &mut Eq(_, ref mut operand, _, _) => *operand = new_operand,
             _ => panic!(),
         }
@@ -292,6 +298,14 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Return(_, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_call_instr(&self) -> bool {
+        use self::Opcode::*;
+        match self {
+            &Call(_, _, _, _) => true,
             _ => false,
         }
     }

@@ -10,6 +10,8 @@ use pass::{BasicBlockPass, FunctionPass, InstrPass};
 #[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<RegisterHandle>,
+    physical_argument_registers: Vec<RegisterHandle>,
+    physical_result_register: RegisterHandle,
     virtual_register_indexes: HashMap<RegisterHandle, usize>,
 }
 
@@ -49,14 +51,24 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     } else {
                         continue;
                     };
-                    let preg = self.physical_registers[src_i - 1];
+                    let preg = if instr.get_opcode().is_call_instr() {
+                        self.physical_argument_registers[src_i - 1]
+                    } else {
+                        self.physical_registers[src_i - 1]
+                    };
                     self.emit_load_instr(basic_block, insertion_point, preg, vreg, function);
                     num_insertion += 1;
                     instr.get_mut_opcode().set_source_operand(src_i, Operand::new_physical_register(preg));
                 }
 
+                if instr.get_opcode().is_call_instr() {
+                    if instr.get_opcode().get_destination_register_operand().is_none() {
+                        continue;
+                    }
+                }
+
                 // replace destination register
-                let preg = self.physical_registers[0];
+                let preg = self.physical_result_register;
                 let vreg = instr.get_opcode().get_destination_register_operand().and_then(|o| o.get_as_register()).unwrap();
                 instr.get_mut_opcode().set_destination_operand(Operand::new_physical_register(preg));
 
@@ -70,9 +82,14 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 }
 
 impl SimpleRegisterAllocationPass {
-    pub fn create(physical_registers: Vec<RegisterHandle>) -> Box<SimpleRegisterAllocationPass> {
+    pub fn create(
+        physical_registers: Vec<RegisterHandle>,
+        physical_argument_registers: Vec<RegisterHandle>,
+        physical_result_register: RegisterHandle) -> Box<SimpleRegisterAllocationPass> {
         Box::new(SimpleRegisterAllocationPass {
             physical_registers: physical_registers,
+            physical_argument_registers: physical_argument_registers,
+            physical_result_register: physical_result_register,
             virtual_register_indexes: HashMap::new(),
         })
     }
@@ -145,6 +162,7 @@ impl FunctionPass for PreEmitAssemblyPass {
         println!(".global {}", "entry_point");
         println!();
         println!("entry_point:");
+        println!("{}:", function.get_func_name());
         println!("push rbp");
         println!("mov rbp, rsp");
         let len_buffer = (function.get_local_variables().len() + 1) * Type::I32.get_size();
@@ -261,8 +279,8 @@ impl InstrPass for EmitAssemblyPass {
                 println!("pop rbp");
                 println!("ret");
             }
-            &Call(_, _, _, _) => {
-                unimplemented!()
+            &Call(ref funcname, _, _, _) => {
+                println!("call {}", funcname);
             }
             &Eq(_, ref dst, ref src1, ref src2) => {
                 assert_eq!(dst, src1);
