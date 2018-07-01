@@ -5,6 +5,11 @@ use machineir::operand::Operand;
 use machineir::typ::Type;
 
 #[derive(Debug, PartialEq, Eq)]
+pub enum BinaryOpKind {
+    Mul,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Opcode {
     Debug(String),
     Label(String),
@@ -20,6 +25,7 @@ pub enum Opcode {
     Return(Type, Option<Operand>),
     Call(String, Type, Option<Operand>, Vec<Operand>),
     Eq(Type, Operand, Operand, Operand),
+    BinaryOp { typ: Type, kind: BinaryOpKind, dst: Operand, src1: Operand, src2: Operand },
 }
 
 impl Opcode {
@@ -37,6 +43,8 @@ impl Opcode {
             &Call(_, _, _, ref operands) if 1 <= index && index <= operands.len() => Some(&operands[index - 1]),
             &Eq(_, _, ref operand, _) if index == 1 => Some(operand),
             &Eq(_, _, _, ref operand) if index == 2 => Some(operand),
+            &BinaryOp { ref src1, .. } if index == 1 => Some(src1),
+            &BinaryOp { ref src2, .. } if index == 2 => Some(src2),
             _ => None,
         }
     }
@@ -55,6 +63,8 @@ impl Opcode {
             &mut Call(_, _, _, ref mut operands) if 1 <= index && index <= operands.len() => Some(&mut operands[index - 1]),
             &mut Eq(_, _, ref mut operand, _) if index == 1 => Some(operand),
             &mut Eq(_, _, _, ref mut operand) if index == 2 => Some(operand),
+            &mut BinaryOp { ref mut src1, .. } if index == 1 => Some(src1),
+            &mut BinaryOp { ref mut src2, .. } if index == 2 => Some(src2),
             _ => None,
         }
     }
@@ -73,6 +83,8 @@ impl Opcode {
             &mut Call(_, _, _, ref mut operands) if 1 <= index && index <= operands.len() => operands[index - 1] = new_operand,
             &mut Eq(_, _, ref mut operand, _) if index == 1 => *operand = new_operand,
             &mut Eq(_, _, _, ref mut operand) if index == 2 => *operand = new_operand,
+            &mut BinaryOp { ref mut src1, .. } if index == 1 => *src1 = new_operand,
+            &mut BinaryOp { ref mut src2, .. } if index == 2 => *src2 = new_operand,
             _ => panic!(),
         }
     }
@@ -88,6 +100,7 @@ impl Opcode {
             &Store(_, _, ref operand) => vec![operand],
             &Call(_, _, _, ref operands) => operands.iter().map(|o| o).collect(),
             &Eq(_, _, ref operand1, ref operand2) => vec![operand1, operand2],
+            &BinaryOp { ref src1, ref src2, .. } => vec![src1, src2],
             _ => vec![],
         }
     }
@@ -117,6 +130,7 @@ impl Opcode {
             &Store(_, ref dst, _) if dst.is_register() => Some(dst),
             &Call(_, _, Some(ref dst), _) if dst.is_register() => Some(dst),
             &Eq(_, ref dst, _, _) if dst.is_register() => Some(dst),
+            &BinaryOp { ref dst, .. } if dst.is_register() => Some(dst),
             _ => None,
         }
     }
@@ -131,6 +145,7 @@ impl Opcode {
             &mut Load(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Store(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Eq(_, ref mut dst, _, _) if dst.is_register() => Some(dst),
+            &mut BinaryOp { ref mut dst, .. } if dst.is_register() => Some(dst),
             _ => None,
         }
     }
@@ -146,6 +161,7 @@ impl Opcode {
             &mut Store(_, ref mut operand, _) => *operand = new_operand,
             &mut Call(_, _, Some(ref mut operand), _) => *operand = new_operand,
             &mut Eq(_, ref mut operand, _, _) => *operand = new_operand,
+            &mut BinaryOp { ref mut dst, .. } => *dst = new_operand,
             _ => panic!(),
         }
     }
@@ -160,6 +176,7 @@ impl Opcode {
             &Load(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Store(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Eq(_, ref dst, _, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
+            &BinaryOp { ref dst, .. } if dst.is_register() => Some(dst.get_as_register().unwrap()),
             _ => None,
         }
     }
@@ -179,6 +196,9 @@ impl Opcode {
             &Eq(_, _, ref src1, ref src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
             &Eq(_, _, ref src1, _) if src1.is_register() => vec![src1],
             &Eq(_, _, _, ref src2) if src2.is_register() => vec![src2],
+            &BinaryOp { ref src1, ref src2, .. } if src1.is_register() && src2.is_register() => vec![src1, src2],
+            &BinaryOp { ref src1, .. } if src1.is_register() => vec![src1],
+            &BinaryOp { ref src2, .. } if src2.is_register() => vec![src2],
             _ => vec![],
         }
     }
@@ -198,6 +218,9 @@ impl Opcode {
             &mut Eq(_, _, ref mut src1, ref mut src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
             &mut Eq(_, _, ref mut src1, _) if src1.is_register() => vec![src1],
             &mut Eq(_, _, _, ref mut src2) if src2.is_register() => vec![src2],
+            &mut BinaryOp { ref mut src1, ref mut src2, .. } if src1.is_register() && src2.is_register() => vec![src1, src2],
+            &mut BinaryOp { ref mut src1, .. } if src1.is_register() => vec![src1],
+            &mut BinaryOp { ref mut src2, .. } if src2.is_register() => vec![src2],
             _ => vec![],
         }
     }
@@ -220,6 +243,10 @@ impl Opcode {
                 vec![src1.get_as_register().unwrap(), src2.get_as_register().unwrap()],
             &Eq(_, _, ref src1, _) if src1.is_register() => vec![src1.get_as_register().unwrap()],
             &Eq(_, _, _, ref src2) if src2.is_register() => vec![src2.get_as_register().unwrap()],
+            &BinaryOp { ref src1, ref src2, .. } if src1.is_register() && src2.is_register() =>
+                vec![src1.get_as_register().unwrap(), src2.get_as_register().unwrap()],
+            &BinaryOp { ref src1, .. } if src1.is_register() => vec![src1.get_as_register().unwrap()],
+            &BinaryOp { ref src2, .. } if src2.is_register() => vec![src2.get_as_register().unwrap()],
             _ => vec![],
         }
     }
@@ -385,6 +412,7 @@ impl fmt::Display for Opcode {
             &Call(ref _funcname, _, Some(ref _result), ref _args) => unimplemented!(),
             &Call(ref _funcname, _, None, ref _args) => unimplemented!(),
             &Eq(_, ref _dst, ref _src1, ref _src2) => unimplemented!(),
+            &BinaryOp { .. } => unimplemented!(),
         }
     }
 }

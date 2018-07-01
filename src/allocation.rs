@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
-use machineir::opcode::Opcode;
+use machineir::opcode::{BinaryOpKind, Opcode};
 use machineir::operand::{Operand, OperandKind};
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass};
@@ -314,6 +314,18 @@ impl InstrPass for EmitAssemblyPass {
                         println!("mov {}, {}", dst_name, 0);
                         println!("label_i{}y:", instr);
                     }
+                    _ => unimplemented!(),
+                }
+            }
+            &BinaryOp { ref kind, ref dst, ref src1, ref src2, .. } => {
+                assert_eq!(dst, src1);
+                let dst = dst.get_as_physical_register().unwrap();
+                assert!(dst.is_physical());
+                let op = match kind {
+                    &BinaryOpKind::Mul => "imul",
+                };
+                match src2.get_kind() {
+                    &OperandKind::PhysicalRegister(preg) => self.emit_binop_reg_reg(op, dst, preg),
                     _ => unimplemented!(),
                 }
             }
