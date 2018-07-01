@@ -3,7 +3,7 @@ extern crate wasmc;
 use std::collections::HashMap;
 
 use wasmc::allocation::{EmitAssemblyPass, InsertBasicBlockLabelPass,
-                        PreEmitAssemblyPass, SimpleRegisterAllocationPass};
+                        PreEmitAssemblyPass, PostEmitAssemblyPass, SimpleRegisterAllocationPass};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::pass::{GroupPass, PassManager};
@@ -41,6 +41,7 @@ impl GroupPass for MainPass {
 
         pass_manager.add_function_pass(PreEmitAssemblyPass::create("rbp"));
         pass_manager.add_instr_pass(EmitAssemblyPass::create(reg_name_map, "rbp"));
+        pass_manager.add_function_pass(PostEmitAssemblyPass::create());
     }
 }
 
@@ -70,7 +71,6 @@ fn main() {
                     WasmInstr::Call(wasmir::Funcidx::new(0)),
                     WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)),
                 ]),
-            WasmInstr::Return,
         ];
         let functype = wasmir::Functype::new(vec![Valtype::U32], vec![Valtype::U32]);
         let function = wasmir::Func::new(wasmir::Typeidx::new(0), vec![], wasmir::Expr::new(code));
