@@ -1,7 +1,9 @@
 use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::basicblock::BasicBlockKind;
+use machineir::opcode;
 use machineir::opcode::Opcode;
+use machineir::typ;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
@@ -71,7 +73,13 @@ impl WasmToMachine {
                 let rhs = self.operand_stack.pop().unwrap();
                 let lhs = self.operand_stack.pop().unwrap();
                 self.operand_stack.push(register.clone());
-                self.emit_on_current_basic_block(Opcode::Add(Type::I32, register, lhs, rhs));
+                self.emit_on_current_basic_block(opcode::Opcode::BinaryOp {
+                    typ: typ::Type::I32,
+                    kind: opcode::BinaryOpKind::Add,
+                    dst: register,
+                    src1: lhs,
+                    src2: rhs,
+                });
             }
             &WasmInstr::Binop(Binop::Ibinop(Ibinop::Sub32)) => {
                 let register = Operand::new_register(Context::create_register(Type::I32));

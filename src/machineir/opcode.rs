@@ -6,6 +6,7 @@ use machineir::typ::Type;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum BinaryOpKind {
+    Add,
     Mul,
 }
 
@@ -14,7 +15,6 @@ pub enum Opcode {
     Debug(String),
     Label(String),
     Const(Type, Operand, Operand),
-    Add(Type, Operand, Operand, Operand),
     Sub(Type, Operand, Operand, Operand),
     Br(Operand),
     BrIfZero(Operand, Operand),
@@ -33,8 +33,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Const(_, _, ref operand) if index == 1 => Some(operand),
-            &Add(_, _, ref operand, _) if index == 1 => Some(operand),
-            &Add(_, _, _, ref operand) if index == 2 => Some(operand),
             &Sub(_, _, ref operand, _) if index == 1 => Some(operand),
             &Sub(_, _, _, ref operand) if index == 2 => Some(operand),
             &Copy(_, _, ref operand) if index == 1 => Some(operand),
@@ -53,8 +51,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &mut Const(_, _, ref mut operand) if index == 1 => Some(operand),
-            &mut Add(_, _, ref mut operand, _) if index == 1 => Some(operand),
-            &mut Add(_, _, _, ref mut operand) if index == 2 => Some(operand),
             &mut Sub(_, _, ref mut operand, _) if index == 1 => Some(operand),
             &mut Sub(_, _, _, ref mut operand) if index == 2 => Some(operand),
             &mut Copy(_, _, ref mut operand) if index == 1 => Some(operand),
@@ -73,8 +69,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &mut Const(_, _, ref mut operand) if index == 1 => *operand = new_operand,
-            &mut Add(_, _, ref mut operand, _) if index == 1 => *operand = new_operand,
-            &mut Add(_, _, _, ref mut operand) if index == 2 => *operand = new_operand,
             &mut Sub(_, _, ref mut operand, _) if index == 1 => *operand = new_operand,
             &mut Sub(_, _, _, ref mut operand) if index == 2 => *operand = new_operand,
             &mut Copy(_, _, ref mut operand) if index == 1 => *operand = new_operand,
@@ -93,7 +87,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Const(_, _, ref operand) => vec![operand],
-            &Add(_, _, ref operand1, ref operand2) => vec![operand1, operand2],
             &Sub(_, _, ref operand1, ref operand2) => vec![operand1, operand2],
             &Copy(_, _, ref operand) => vec![operand],
             &Load(_, _, ref operand) => vec![operand],
@@ -109,7 +102,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Const(ref typ, _, _) => Some(typ),
-            &Add(ref typ, _, _, _) => Some(typ),
             &Sub(ref typ, _, _, _) => Some(typ),
             &Copy(ref typ, _, _) => Some(typ),
             &Load(ref typ, _, _) => Some(typ),
@@ -123,7 +115,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Const(_, ref dst, _) if dst.is_register() => Some(dst),
-            &Add(_, ref dst, _, _) if dst.is_register() => Some(dst),
             &Sub(_, ref dst, _, _) if dst.is_register() => Some(dst),
             &Copy(_, ref dst, _) if dst.is_register() => Some(dst),
             &Load(_, ref dst, _) if dst.is_register() => Some(dst),
@@ -139,7 +130,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &mut Const(_, ref mut dst, _) if dst.is_register() => Some(dst),
-            &mut Add(_, ref mut dst, _, _) if dst.is_register() => Some(dst),
             &mut Sub(_, ref mut dst, _, _) if dst.is_register() => Some(dst),
             &mut Copy(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Load(_, ref mut dst, _) if dst.is_register() => Some(dst),
@@ -154,7 +144,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &mut Const(_, ref mut operand, _) => *operand = new_operand,
-            &mut Add(_, ref mut operand, _, _) => *operand = new_operand,
             &mut Sub(_, ref mut operand, _, _) => *operand = new_operand,
             &mut Copy(_, ref mut operand, _) => *operand = new_operand,
             &mut Load(_, ref mut operand, _) => *operand = new_operand,
@@ -170,7 +159,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Const(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
-            &Add(_, ref dst, _, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Sub(_, ref dst, _, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Copy(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Load(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
@@ -184,9 +172,6 @@ impl Opcode {
     pub fn get_source_register_operands(&self) -> Vec<&Operand> {
         use self::Opcode::*;
         match self {
-            &Add(_, _, ref src1, ref src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
-            &Add(_, _, ref src1, _) if src1.is_register() => vec![src1],
-            &Add(_, _, _, ref src2) if src2.is_register() => vec![src2],
             &Sub(_, _, ref src1, ref src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
             &Sub(_, _, ref src1, _) if src1.is_register() => vec![src1],
             &Sub(_, _, _, ref src2) if src2.is_register() => vec![src2],
@@ -206,9 +191,6 @@ impl Opcode {
     pub fn get_mut_source_register_operands(&mut self) -> Vec<&mut Operand> {
         use self::Opcode::*;
         match self {
-            &mut Add(_, _, ref mut src1, ref mut src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
-            &mut Add(_, _, ref mut src1, _) if src1.is_register() => vec![src1],
-            &mut Add(_, _, _, ref mut src2) if src2.is_register() => vec![src2],
             &mut Sub(_, _, ref mut src1, ref mut src2) if src1.is_register() && src2.is_register() => vec![src1, src2],
             &mut Sub(_, _, ref mut src1, _) if src1.is_register() => vec![src1],
             &mut Sub(_, _, _, ref mut src2) if src2.is_register() => vec![src2],
@@ -228,10 +210,6 @@ impl Opcode {
     pub fn get_source_registers(&self) -> Vec<RegisterHandle> {
         use self::Opcode::*;
         match self {
-            &Add(_, _, ref src1, ref src2) if src1.is_register() && src2.is_register() =>
-                vec![src1.get_as_register().unwrap(), src2.get_as_register().unwrap()],
-            &Add(_, _, ref src1, _) if src1.is_register() => vec![src1.get_as_register().unwrap()],
-            &Add(_, _, _, ref src2) if src2.is_register() => vec![src2.get_as_register().unwrap()],
             &Sub(_, _, ref src1, ref src2) if src1.is_register() && src2.is_register() =>
                 vec![src1.get_as_register().unwrap(), src2.get_as_register().unwrap()],
             &Sub(_, _, ref src1, _) if src1.is_register() => vec![src1.get_as_register().unwrap()],
@@ -346,14 +324,6 @@ impl Opcode {
                 print!(", ");
                 src.print();
             }
-            &Add(_, ref dst, ref src1, ref src2) => {
-                print!("add   ");
-                dst.print();
-                print!(", ");
-                src1.print();
-                print!(", ");
-                src2.print();
-            }
             &Sub(_, ref dst, ref src1, ref src2) => {
                 print!("sub   ");
                 dst.print();
@@ -399,7 +369,6 @@ impl fmt::Display for Opcode {
             &Debug(ref msg) => write!(f, format!(1), "debug", msg),
             &Label(ref label) => write!(f, format!(1), "label", label),
             &Const(_, ref dst, ref src) => write!(f, format!(2), "const", dst, src),
-            &Add(_, ref dst, ref src1, ref src2) => write!(f, format!(3), "add", dst, src1, src2),
             &Sub(_, ref dst, ref src1, ref src2) => write!(f, format!(3), "sub", dst, src1, src2),
             &Br(ref target) => write!(f, format!(1), "br", target),
             &BrIfZero(ref cond, ref target) => write!(f, format!(2), "brifzero", cond, target),
