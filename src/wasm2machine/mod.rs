@@ -7,7 +7,7 @@ use machineir::typ;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
-use wasmir::{Binop, Const, Functype, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
+use wasmir::{Binop, Const, Functype, Resulttype, Valtype, WasmInstr};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -61,6 +61,25 @@ impl WasmToMachine {
         self.module
     }
 
+    fn emit_binop(&mut self, op: &Binop) {
+        let register = Operand::new_register(Context::create_register(Type::I32));
+        let rhs = self.operand_stack.pop().unwrap();
+        let lhs = self.operand_stack.pop().unwrap();
+        self.operand_stack.push(register.clone());
+        let opcode = match op {
+            &wasmir::Binop::Ibinop(wasmir::Ibinop::Add32) => opcode::Opcode::BinaryOp {
+                typ: typ::Type::I32,
+                kind: opcode::BinaryOpKind::Add,
+                dst: register,
+                src1: lhs,
+                src2: rhs,
+            },
+            &wasmir::Binop::Ibinop(wasmir::Ibinop::Sub32) => Opcode::Sub(Type::I32, register, lhs, rhs),
+            &wasmir::Binop::Irelop(wasmir::Irelop::Eq32) => Opcode::Eq(Type::I32, register, lhs, rhs),
+        };
+        self.emit_on_current_basic_block(opcode);
+    }
+
     fn emit_body(&mut self, wasm_instr: &WasmInstr) {
         match wasm_instr {
             &WasmInstr::Const(Const::I32(i)) => {
@@ -68,33 +87,7 @@ impl WasmToMachine {
                 self.operand_stack.push(register.clone());
                 self.emit_on_current_basic_block(Opcode::Const(Type::I32, register, Operand::new_const_i32(i)));
             }
-            &WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)) => {
-                let register = Operand::new_register(Context::create_register(Type::I32));
-                let rhs = self.operand_stack.pop().unwrap();
-                let lhs = self.operand_stack.pop().unwrap();
-                self.operand_stack.push(register.clone());
-                self.emit_on_current_basic_block(opcode::Opcode::BinaryOp {
-                    typ: typ::Type::I32,
-                    kind: opcode::BinaryOpKind::Add,
-                    dst: register,
-                    src1: lhs,
-                    src2: rhs,
-                });
-            }
-            &WasmInstr::Binop(Binop::Ibinop(Ibinop::Sub32)) => {
-                let register = Operand::new_register(Context::create_register(Type::I32));
-                let rhs = self.operand_stack.pop().unwrap();
-                let lhs = self.operand_stack.pop().unwrap();
-                self.operand_stack.push(register.clone());
-                self.emit_on_current_basic_block(Opcode::Sub(Type::I32, register, lhs, rhs));
-            }
-            &WasmInstr::Binop(Binop::Irelop(Irelop::Eq32)) => {
-                let register = Operand::new_register(Context::create_register(Type::I32));
-                let rhs = self.operand_stack.pop().unwrap();
-                let lhs = self.operand_stack.pop().unwrap();
-                self.operand_stack.push(register.clone());
-                self.emit_on_current_basic_block(Opcode::Eq(Type::I32, register, lhs, rhs));
-            }
+            &WasmInstr::Binop(ref op) => self.emit_binop(op),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 let cont_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
