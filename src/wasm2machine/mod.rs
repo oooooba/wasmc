@@ -74,7 +74,13 @@ impl WasmToMachine {
                 src1: lhs,
                 src2: rhs,
             },
-            &wasmir::Binop::Ibinop(wasmir::Ibinop::Sub32) => Opcode::Sub(Type::I32, register, lhs, rhs),
+            &wasmir::Binop::Ibinop(wasmir::Ibinop::Sub32) => opcode::Opcode::BinaryOp {
+                typ: typ::Type::I32,
+                kind: opcode::BinaryOpKind::Sub,
+                dst: register,
+                src1: lhs,
+                src2: rhs,
+            },
             &wasmir::Binop::Irelop(wasmir::Irelop::Eq32) => Opcode::Eq(Type::I32, register, lhs, rhs),
         };
         self.emit_on_current_basic_block(opcode);

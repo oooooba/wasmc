@@ -226,15 +226,6 @@ impl InstrPass for EmitAssemblyPass {
                 let cst = cst.get_as_const_i32().unwrap();
                 println!("mov {}, {}", dst_name, cst);
             }
-            &Sub(_, ref dst, ref src1, ref src2) => {
-                assert_eq!(dst, src1);
-                let dst = dst.get_as_physical_register().unwrap();
-                assert!(dst.is_physical());
-                match src2.get_kind() {
-                    &OperandKind::PhysicalRegister(preg) => self.emit_binop_reg_reg("sub", dst, preg),
-                    _ => unimplemented!(),
-                }
-            }
             &Br(ref target) => {
                 let target = target.get_as_label().unwrap();
                 println!("jmp label_{}", target);
@@ -314,6 +305,7 @@ impl InstrPass for EmitAssemblyPass {
                 assert!(dst.is_physical());
                 let op = match kind {
                     &BinaryOpKind::Add => "add",
+                    &BinaryOpKind::Sub => "sub",
                     &BinaryOpKind::Mul => "imul",
                 };
                 match src2.get_kind() {
