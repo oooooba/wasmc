@@ -61,7 +61,7 @@ impl WasmToMachine {
         self.module
     }
 
-    pub fn emit_ir(&mut self, wasm_instr: &WasmInstr) {
+    fn emit_body(&mut self, wasm_instr: &WasmInstr) {
         match wasm_instr {
             &WasmInstr::Const(Const::I32(i)) => {
                 let register = Operand::new_register(Context::create_register(Type::I32));
@@ -210,7 +210,7 @@ impl WasmToMachine {
         self.current_basic_block = expr_block;
         self.operand_stack.push(Operand::new_label(expr_block));
         for instr in instrs.iter() {
-            self.emit_ir(instr);
+            self.emit_body(instr);
         }
         self.finalize_basic_block(expr_block);
 
@@ -358,7 +358,7 @@ impl WasmToMachine {
 
             self.current_function.get_mut_basic_blocks().push_back(entry_block);
             for instr in func.get_body().get_instr_sequences() {
-                self.emit_ir(instr)
+                self.emit_body(instr)
             }
             self.current_function.get_mut_basic_blocks().push_back(self.exit_block);
 
