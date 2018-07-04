@@ -204,13 +204,17 @@ impl WasmToMachine {
         instr
     }
 
+    fn emit_instrs(&mut self, instrs: &Vec<WasmInstr>) {
+        for instr in instrs.iter() {
+            self.emit_body(instr);
+        }
+    }
+
     fn emit_on_expr_basic_block(&mut self, expr_block: BasicBlockHandle, cont_block: BasicBlockHandle, instrs: &Vec<WasmInstr>) {
         self.current_function.get_mut_basic_blocks().push_back(expr_block);
         self.current_basic_block = expr_block;
         self.operand_stack.push(Operand::new_label(expr_block));
-        for instr in instrs.iter() {
-            self.emit_body(instr);
-        }
+        self.emit_instrs(instrs);
         self.finalize_basic_block(expr_block);
 
         let num_results = cont_block.get_result_registers()
@@ -355,10 +359,7 @@ impl WasmToMachine {
             self.result_registers = result_registers;
             self.current_function = function;
 
-            self.current_function.get_mut_basic_blocks().push_back(entry_block);
-            for instr in func.get_body().get_instr_sequences() {
-                self.emit_body(instr)
-            }
+            self.emit_on_expr_basic_block(entry_block, exit_block, func.get_body().get_instr_sequences());
             self.current_function.get_mut_basic_blocks().push_back(self.exit_block);
 
             self.current_function = dummy_func;
