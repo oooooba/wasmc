@@ -199,6 +199,10 @@ impl WasmToMachine {
         true
     }
 
+    fn emit_body2(&mut self, _wasm_instr0: &WasmInstr, _wasm_instr1: &WasmInstr) -> bool {
+        false
+    }
+
     fn emit_on_current_basic_block(&mut self, opcode: Opcode) -> InstrHandle {
         let instr = Context::create_instr(opcode, self.current_basic_block);
         self.current_basic_block.add_instr(instr);
@@ -206,11 +210,21 @@ impl WasmToMachine {
     }
 
     fn emit_instrs(&mut self, instrs: &Vec<WasmInstr>) {
-        for i in 0..instrs.len() {
+        let mut i = 0;
+        while i < instrs.len() {
+            if i + 1 < instrs.len() {
+                let wasm_instr0 = &instrs[i];
+                let wasm_instr1 = &instrs[i + 1];
+                if self.emit_body2(wasm_instr0, wasm_instr1) {
+                    i += 2;
+                    continue
+                }
+            }
             let wasm_instr0 = &instrs[i];
             if !self.emit_body1(wasm_instr0) {
                 panic!();
             }
+            i += 1;
         }
     }
 
