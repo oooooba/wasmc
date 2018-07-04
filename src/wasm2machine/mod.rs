@@ -86,7 +86,7 @@ impl WasmToMachine {
         self.emit_on_current_basic_block(opcode);
     }
 
-    fn emit_body(&mut self, wasm_instr: &WasmInstr) {
+    fn emit_body1(&mut self, wasm_instr: &WasmInstr) -> bool {
         match wasm_instr {
             &WasmInstr::Const(Const::I32(i)) => {
                 let register = Operand::new_register(Context::create_register(Type::I32));
@@ -195,7 +195,8 @@ impl WasmToMachine {
                     self.emit_on_current_basic_block(Opcode::Call(funcname, Type::I32, Some(result_reg), args));
                 }
             }
-        }
+        };
+        true
     }
 
     fn emit_on_current_basic_block(&mut self, opcode: Opcode) -> InstrHandle {
@@ -205,8 +206,11 @@ impl WasmToMachine {
     }
 
     fn emit_instrs(&mut self, instrs: &Vec<WasmInstr>) {
-        for instr in instrs.iter() {
-            self.emit_body(instr);
+        for i in 0..instrs.len() {
+            let wasm_instr0 = &instrs[i];
+            if !self.emit_body1(wasm_instr0) {
+                panic!();
+            }
         }
     }
 
