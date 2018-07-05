@@ -28,14 +28,16 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                 if instr.get_opcode().is_jump_instr() {
                     use self::JumpCondKind::*;
                     match instr.get_mut_opcode() {
-                        &mut Opcode::Jump { kind: Unconditional, .. } => (),
-                        &mut Opcode::Jump { kind: Eq0(ref mut reg), .. } => {
-                            assert!(!reg.is_physical());
-                            let preg = self.physical_registers[0];
-                            self.emit_load_instr(basic_block, instr_i + num_insertion, preg, *reg, function);
-                            num_insertion += 1;
-                            *reg = preg;
-                        }
+                        &mut Opcode::Jump { ref mut kind, .. } => match kind {
+                            &mut Unconditional => (),
+                            &mut Eq0(ref mut reg) => {
+                                assert!(!reg.is_physical());
+                                let preg = self.physical_registers[0];
+                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg, *reg, function);
+                                num_insertion += 1;
+                                *reg = preg;
+                            }
+                        },
                         _ => unimplemented!(),
                     }
                     continue;
