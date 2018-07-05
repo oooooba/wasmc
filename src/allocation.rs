@@ -37,6 +37,19 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 num_insertion += 1;
                                 *reg = preg;
                             }
+                            &mut Neq(ref mut reg1, ref mut reg2) => {
+                                assert!(!reg1.is_physical());
+                                let preg1 = self.physical_registers[0];
+                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg1, *reg1, function);
+                                num_insertion += 1;
+                                *reg1 = preg1;
+
+                                assert!(!reg2.is_physical());
+                                let preg2 = self.physical_registers[1];
+                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg2, *reg2, function);
+                                num_insertion += 1;
+                                *reg2 = preg2;
+                            }
                         },
                         _ => unimplemented!(),
                     }
@@ -322,6 +335,10 @@ impl InstrPass for EmitAssemblyPass {
                     &Eq0(preg) => {
                         self.emit_binop_reg_reg("test", preg, preg);
                         println!("jz label_{}", target);
+                    }
+                    &Neq(preg1, preg2) => {
+                        self.emit_binop_reg_reg("cmp", preg1, preg2);
+                        println!("jnz label_{}", target);
                     }
                 }
             }

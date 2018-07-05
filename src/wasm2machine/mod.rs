@@ -203,8 +203,21 @@ impl WasmToMachine {
         true
     }
 
-    fn emit_body2(&mut self, _wasm_instr0: &WasmInstr, _wasm_instr1: &WasmInstr) -> bool {
-        false
+    fn emit_body2(&mut self, wasm_instr0: &WasmInstr, wasm_instr1: &WasmInstr) -> bool {
+        match (wasm_instr0, wasm_instr1) {
+            (&WasmInstr::Binop(wasmir::Binop::Irelop(ref op)), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
+                let rhs = self.operand_stack.pop().unwrap();
+                let rhs_reg = rhs.get_as_register().unwrap();
+                let lhs = self.operand_stack.pop().unwrap();
+                let lhs_reg = lhs.get_as_register().unwrap();
+                let cond_kind = match op {
+                    &wasmir::Irelop::Eq32 => JumpCondKind::Neq(lhs_reg, rhs_reg),
+                };
+                self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
+            }
+            _ => return false,
+        }
+        true
     }
 
     fn emit_on_current_basic_block(&mut self, opcode: Opcode) -> InstrHandle {

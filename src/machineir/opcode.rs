@@ -15,6 +15,7 @@ pub enum BinaryOpKind {
 pub enum JumpCondKind {
     Unconditional,
     Eq0(RegisterHandle),
+    Neq(RegisterHandle, RegisterHandle),
 }
 
 #[derive(Debug, PartialEq, Eq)]
