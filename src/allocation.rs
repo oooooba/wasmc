@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
-use machineir::opcode::{BinaryOpKind, Opcode};
+use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode};
 use machineir::operand::{Operand, OperandKind};
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass};
@@ -26,15 +26,18 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                 let mut instr = basic_block.get_mut_instrs()[instr_i + num_insertion];
 
                 if instr.get_opcode().is_jump_instr() {
-                    let cond_reg = if let Some(cond) = instr.get_opcode().get_condition_register_operand() {
-                        cond.get_as_register().unwrap()
-                    } else {
-                        continue;
-                    };
-                    let preg = self.physical_registers[0];
-                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg, cond_reg, function);
-                    num_insertion += 1;
-                    instr.get_mut_opcode().set_condition_operand(Operand::new_physical_register(preg));
+                    use self::JumpCondKind::*;
+                    match instr.get_mut_opcode() {
+                        &mut Opcode::Jump { kind: Unconditional, .. } => (),
+                        &mut Opcode::Jump { kind: Eq0(ref mut reg), .. } => {
+                            assert!(!reg.is_physical());
+                            let preg = self.physical_registers[0];
+                            self.emit_load_instr(basic_block, instr_i + num_insertion, preg, *reg, function);
+                            num_insertion += 1;
+                            *reg = preg;
+                        }
+                        _ => unimplemented!(),
+                    }
                     continue;
                 }
 
@@ -230,12 +233,6 @@ impl InstrPass for EmitAssemblyPass {
                 let target = target.get_as_label().unwrap();
                 println!("jmp label_{}", target);
             }
-            &BrIfZero(ref cond, ref target) => {
-                let cond = cond.get_as_physical_register().unwrap();
-                let target = target.get_as_label().unwrap();
-                self.emit_binop_reg_reg("test", cond, cond);
-                println!("jz label_{}", target);
-            }
             &BrIfNonZero(ref cond, ref target) => {
                 let cond = cond.get_as_physical_register().unwrap();
                 let target = target.get_as_label().unwrap();
@@ -311,6 +308,19 @@ impl InstrPass for EmitAssemblyPass {
                 match src2.get_kind() {
                     &OperandKind::PhysicalRegister(preg) => self.emit_binop_reg_reg(op, dst, preg),
                     _ => unimplemented!(),
+                }
+            }
+            &Jump { ref kind, ref target } => {
+                let target = target.get_as_label().unwrap();
+                use self::JumpCondKind::*;
+                match kind {
+                    &Unconditional => {
+                        println!("jmp label_{}", target);
+                    }
+                    &Eq0(preg) => {
+                        self.emit_binop_reg_reg("test", preg, preg);
+                        println!("jz label_{}", target);
+                    }
                 }
             }
         }

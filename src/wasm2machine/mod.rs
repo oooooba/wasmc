@@ -2,7 +2,7 @@ use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::basicblock::BasicBlockKind;
 use machineir::opcode;
-use machineir::opcode::Opcode;
+use machineir::opcode::{JumpCondKind, Opcode};
 use machineir::typ;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
@@ -86,6 +86,19 @@ impl WasmToMachine {
         self.emit_on_current_basic_block(opcode);
     }
 
+    fn emit_if(&mut self, resulttype: &Resulttype, cond_kind: opcode::JumpCondKind, then_instrs: &Vec<WasmInstr>, else_instrs: &Vec<WasmInstr>) {
+        let result_registers = WasmToMachine::setup_result_registers(resulttype);
+        let merge_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
+        let then_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
+        let else_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
+
+        self.emit_on_current_basic_block(Opcode::Jump { kind: cond_kind, target: Operand::new_label(else_block) });
+
+        self.emit_on_expr_basic_block(then_block, merge_block, then_instrs);
+        self.emit_on_expr_basic_block(else_block, merge_block, else_instrs);
+        self.reset_for_continuation(merge_block);
+    }
+
     fn emit_body1(&mut self, wasm_instr: &WasmInstr) -> bool {
         match wasm_instr {
             &WasmInstr::Const(Const::I32(i)) => {
@@ -104,16 +117,7 @@ impl WasmToMachine {
             }
             &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs) => {
                 let cond_reg = self.pop_conditional_register();
-                let result_registers = WasmToMachine::setup_result_registers(resulttype);
-                let merge_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
-                let then_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
-                let else_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
-
-                self.emit_on_current_basic_block(Opcode::BrIfZero(Operand::new_register(cond_reg), Operand::new_label(else_block)));
-
-                self.emit_on_expr_basic_block(then_block, merge_block, then_instrs);
-                self.emit_on_expr_basic_block(else_block, merge_block, else_instrs);
-                self.reset_for_continuation(merge_block);
+                self.emit_if(resulttype, JumpCondKind::Eq0(cond_reg), then_instrs, else_instrs);
             }
             &WasmInstr::Loop(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
@@ -237,7 +241,10 @@ impl WasmToMachine {
 
         let num_results = cont_block.get_result_registers()
             .map_or(0, |r| r.len()); // 0 for loop
-        self.emit_on_current_basic_block(Opcode::Br(Operand::new_label(cont_block)));
+        self.emit_on_current_basic_block(opcode::Opcode::Jump {
+            kind: opcode::JumpCondKind::Unconditional,
+            target: Operand::new_label(cont_block),
+        });
         for _ in 0..num_results {
             self.operand_stack.pop();
         }

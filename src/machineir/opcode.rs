@@ -12,12 +12,17 @@ pub enum BinaryOpKind {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub enum JumpCondKind {
+    Unconditional,
+    Eq0(RegisterHandle),
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Opcode {
     Debug(String),
     Label(String),
     Const(Type, Operand, Operand),
     Br(Operand),
-    BrIfZero(Operand, Operand),
     BrIfNonZero(Operand, Operand),
     Copy(Type, Operand, Operand),
     Load(Type, Operand, Operand),
@@ -26,6 +31,7 @@ pub enum Opcode {
     Call(String, Type, Option<Operand>, Vec<Operand>),
     Eq(Type, Operand, Operand, Operand),
     BinaryOp { typ: Type, kind: BinaryOpKind, dst: Operand, src1: Operand, src2: Operand },
+    Jump { kind: JumpCondKind, target: Operand },
 }
 
 impl Opcode {
@@ -216,33 +222,6 @@ impl Opcode {
         registers
     }
 
-    pub fn get_condition_register_operand(&self) -> Option<&Operand> {
-        use self::Opcode::*;
-        match self {
-            &BrIfZero(ref cond, _) if cond.is_register() => Some(cond),
-            &BrIfNonZero(ref cond, _) if cond.is_register() => Some(cond),
-            _ => None,
-        }
-    }
-
-    pub fn get_mut_condition_register_operand(&mut self) -> Option<&mut Operand> {
-        use self::Opcode::*;
-        match self {
-            &mut BrIfZero(ref mut cond, _) if cond.is_register() => Some(cond),
-            &mut BrIfNonZero(ref mut cond, _) if cond.is_register() => Some(cond),
-            _ => None,
-        }
-    }
-
-    pub fn set_condition_operand(&mut self, new_operand: Operand) {
-        use self::Opcode::*;
-        match self {
-            &mut BrIfZero(ref mut cond, _) => *cond = new_operand,
-            &mut BrIfNonZero(ref mut cond, _) => *cond = new_operand,
-            _ => panic!(),
-        }
-    }
-
     pub fn get_result_register_operand(&self) -> Option<&Option<Operand>> {
         use self::Opcode::*;
         match self {
@@ -262,8 +241,8 @@ impl Opcode {
     pub fn is_jump_instr(&self) -> bool {
         use self::Opcode::*;
         match self {
+            &Jump { .. } => true,
             &Br(_) => true,
-            &BrIfZero(_, _) => true,
             &BrIfNonZero(_, _) => true,
             _ => false,
         }
@@ -340,7 +319,6 @@ impl fmt::Display for Opcode {
             &Label(ref label) => write!(f, format!(1), "label", label),
             &Const(_, ref dst, ref src) => write!(f, format!(2), "const", dst, src),
             &Br(ref target) => write!(f, format!(1), "br", target),
-            &BrIfZero(ref cond, ref target) => write!(f, format!(2), "brifzero", cond, target),
             &BrIfNonZero(ref cond, ref target) => write!(f, format!(2), "brifnonzero", cond, target),
             &Copy(_, ref dst, ref src) => write!(f, format!(2), "copy", dst, src),
             &Load(_, ref dst, ref src) => write!(f, format!(2), "load", dst, src),
@@ -351,6 +329,7 @@ impl fmt::Display for Opcode {
             &Call(ref _funcname, _, None, ref _args) => unimplemented!(),
             &Eq(_, ref _dst, ref _src1, ref _src2) => unimplemented!(),
             &BinaryOp { .. } => unimplemented!(),
+            &Jump { .. } => unimplemented!(),
         }
     }
 }
