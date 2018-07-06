@@ -25,7 +25,7 @@ pub struct Context {
     modules: Option<HashMap<ModuleHandle, Module>>,
     num_created_modules: usize,
     passes: Option<HashMap<PassHandle, PassKind>>,
-    num_created_passes3: usize,
+    num_created_passes: usize,
 }
 
 static mut CONTEXT: Context = Context {
@@ -40,7 +40,7 @@ static mut CONTEXT: Context = Context {
     modules: None,
     num_created_modules: 0,
     passes: None,
-    num_created_passes3: 0,
+    num_created_passes: 0,
 };
 
 impl Context {
@@ -112,8 +112,8 @@ impl Context {
 
     pub fn create_pass(pass: PassKind) -> PassHandle {
         unsafe {
-            let id = CONTEXT.num_created_passes3;
-            CONTEXT.num_created_passes3 += 1;
+            let id = CONTEXT.num_created_passes;
+            CONTEXT.num_created_passes += 1;
             let handle = PassHandle::new(id);
             CONTEXT.passes.as_mut().unwrap().insert(handle, pass);
             handle
