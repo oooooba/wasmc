@@ -32,6 +32,10 @@ impl Instr {
         &mut self.opcode
     }
 
+    pub fn set_opcode(&mut self, opcode: Opcode) {
+        self.opcode = opcode;
+    }
+
     pub fn get_destination_register_operand(&self) -> Option<&Operand> {
         self.opcode.get_destination_register_operand()
     }

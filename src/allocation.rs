@@ -27,32 +27,36 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                 if instr.get_opcode().is_jump_instr() {
                     use self::JumpCondKind::*;
-                    match instr.get_mut_opcode() {
-                        &mut Opcode::Jump { ref mut kind, .. } => match kind {
-                            &mut Unconditional => (),
-                            &mut Eq0(ref mut reg) => {
-                                assert!(!reg.is_physical());
-                                let preg = self.physical_registers[0];
-                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg, *reg, function);
-                                num_insertion += 1;
-                                *reg = preg;
-                            }
-                            &mut Neq(ref mut reg1, ref mut reg2) => {
-                                assert!(!reg1.is_physical());
-                                let preg1 = self.physical_registers[0];
-                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg1, *reg1, function);
-                                num_insertion += 1;
-                                *reg1 = preg1;
+                    let new_opcode = match instr.get_opcode() {
+                        &Opcode::Jump { ref kind, ref target } => {
+                            let new_cond_kind = match kind {
+                                &Unconditional => Unconditional,
+                                &Eq0(reg) => {
+                                    assert!(!reg.is_physical());
+                                    let preg = self.physical_registers[0];
+                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
+                                    num_insertion += 1;
+                                    Eq0(preg)
+                                }
+                                &Neq(reg1, reg2) => {
+                                    assert!(!reg1.is_physical());
+                                    let preg1 = self.physical_registers[0];
+                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg1, reg1, function);
+                                    num_insertion += 1;
 
-                                assert!(!reg2.is_physical());
-                                let preg2 = self.physical_registers[1];
-                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg2, *reg2, function);
-                                num_insertion += 1;
-                                *reg2 = preg2;
-                            }
-                        },
+                                    assert!(!reg2.is_physical());
+                                    let preg2 = self.physical_registers[1];
+                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg2, reg2, function);
+                                    num_insertion += 1;
+
+                                    Neq(preg1, preg2)
+                                }
+                            };
+                            Opcode::Jump { kind: new_cond_kind, target: target.clone() }
+                        }
                         _ => unimplemented!(),
-                    }
+                    };
+                    instr.set_opcode(new_opcode);
                     continue;
                 }
 
