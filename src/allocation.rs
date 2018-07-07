@@ -25,44 +25,45 @@ impl FunctionPass for SimpleRegisterAllocationPass {
             for instr_i in 0..num_instrs {
                 let mut instr = basic_block.get_mut_instrs()[instr_i + num_insertion];
 
-                if instr.get_opcode().is_jump_instr() {
-                    use self::JumpCondKind::*;
-                    let new_opcode = match instr.get_opcode() {
-                        &Opcode::Jump { ref kind, ref target } => {
-                            let new_cond_kind = match kind {
-                                &Unconditional => Unconditional,
-                                &Eq0(reg) => {
-                                    assert!(!reg.is_physical());
-                                    let preg = self.physical_registers[0];
-                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
-                                    num_insertion += 1;
-                                    Eq0(preg)
-                                }
-                                &Neq0(reg) => {
-                                    assert!(!reg.is_physical());
-                                    let preg = self.physical_registers[0];
-                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
-                                    num_insertion += 1;
-                                    Neq0(preg)
-                                }
-                                &Neq(reg1, reg2) => {
-                                    assert!(!reg1.is_physical());
-                                    let preg1 = self.physical_registers[0];
-                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg1, reg1, function);
-                                    num_insertion += 1;
+                let new_opcode = match instr.get_opcode() {
+                    &Opcode::Jump { ref kind, ref target } => {
+                        use self::JumpCondKind::*;
+                        let new_cond_kind = match kind {
+                            &Unconditional => Unconditional,
+                            &Eq0(reg) => {
+                                assert!(!reg.is_physical());
+                                let preg = self.physical_registers[0];
+                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
+                                num_insertion += 1;
+                                Eq0(preg)
+                            }
+                            &Neq0(reg) => {
+                                assert!(!reg.is_physical());
+                                let preg = self.physical_registers[0];
+                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
+                                num_insertion += 1;
+                                Neq0(preg)
+                            }
+                            &Neq(reg1, reg2) => {
+                                assert!(!reg1.is_physical());
+                                let preg1 = self.physical_registers[0];
+                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg1, reg1, function);
+                                num_insertion += 1;
 
-                                    assert!(!reg2.is_physical());
-                                    let preg2 = self.physical_registers[1];
-                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg2, reg2, function);
-                                    num_insertion += 1;
+                                assert!(!reg2.is_physical());
+                                let preg2 = self.physical_registers[1];
+                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg2, reg2, function);
+                                num_insertion += 1;
 
-                                    Neq(preg1, preg2)
-                                }
-                            };
-                            Opcode::Jump { kind: new_cond_kind, target: target.clone() }
-                        }
-                        _ => unimplemented!(),
-                    };
+                                Neq(preg1, preg2)
+                            }
+                        };
+                        Some(Opcode::Jump { kind: new_cond_kind, target: target.clone() })
+                    }
+                    _ => None,
+                };
+
+                if let Some(new_opcode) = new_opcode {
                     instr.set_opcode(new_opcode);
                     continue;
                 }

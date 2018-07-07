@@ -238,14 +238,6 @@ impl Opcode {
         }
     }
 
-    pub fn is_jump_instr(&self) -> bool {
-        use self::Opcode::*;
-        match self {
-            &Jump { .. } => true,
-            _ => false,
-        }
-    }
-
     pub fn is_copy_instr(&self) -> bool {
         use self::Opcode::*;
         match self {
