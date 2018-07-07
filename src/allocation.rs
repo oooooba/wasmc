@@ -28,6 +28,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                 let new_opcode = match instr.get_opcode() {
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
+                        let new_target = target.clone();
                         let new_cond_kind = match kind {
                             &Unconditional => Unconditional,
                             &Eq0(reg) => {
@@ -58,7 +59,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 Neq(preg1, preg2)
                             }
                         };
-                        Some(Opcode::Jump { kind: new_cond_kind, target: target.clone() })
+                        Some(Opcode::Jump { kind: new_cond_kind, target: new_target })
                     }
                     &Opcode::Return { .. } => continue,
                     _ => None,
