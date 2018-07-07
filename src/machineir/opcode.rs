@@ -15,6 +15,7 @@ pub enum BinaryOpKind {
 pub enum JumpCondKind {
     Unconditional,
     Eq0(RegisterHandle),
+    Neq0(RegisterHandle),
     Neq(RegisterHandle, RegisterHandle),
 }
 
@@ -23,7 +24,6 @@ pub enum Opcode {
     Debug(String),
     Label(String),
     Const(Type, Operand, Operand),
-    BrIfNonZero(Operand, Operand),
     Copy(Type, Operand, Operand),
     Load(Type, Operand, Operand),
     Store(Type, Operand, Operand),
@@ -242,7 +242,6 @@ impl Opcode {
         use self::Opcode::*;
         match self {
             &Jump { .. } => true,
-            &BrIfNonZero(_, _) => true,
             _ => false,
         }
     }
@@ -317,7 +316,6 @@ impl fmt::Display for Opcode {
             &Debug(ref msg) => write!(f, format!(1), "debug", msg),
             &Label(ref label) => write!(f, format!(1), "label", label),
             &Const(_, ref dst, ref src) => write!(f, format!(2), "const", dst, src),
-            &BrIfNonZero(ref cond, ref target) => write!(f, format!(2), "brifnonzero", cond, target),
             &Copy(_, ref dst, ref src) => write!(f, format!(2), "copy", dst, src),
             &Load(_, ref dst, ref src) => write!(f, format!(2), "load", dst, src),
             &Store(_, ref dst, ref src) => write!(f, format!(2), "store", dst, src),

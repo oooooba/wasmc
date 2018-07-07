@@ -38,6 +38,13 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                     num_insertion += 1;
                                     Eq0(preg)
                                 }
+                                &Neq0(reg) => {
+                                    assert!(!reg.is_physical());
+                                    let preg = self.physical_registers[0];
+                                    self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
+                                    num_insertion += 1;
+                                    Neq0(preg)
+                                }
                                 &Neq(reg1, reg2) => {
                                     assert!(!reg1.is_physical());
                                     let preg1 = self.physical_registers[0];
@@ -248,12 +255,6 @@ impl InstrPass for EmitAssemblyPass {
                 let cst = cst.get_as_const_i32().unwrap();
                 println!("mov {}, {}", dst_name, cst);
             }
-            &BrIfNonZero(ref cond, ref target) => {
-                let cond = cond.get_as_physical_register().unwrap();
-                let target = target.get_as_label().unwrap();
-                self.emit_binop_reg_reg("test", cond, cond);
-                println!("jnz label_{}", target);
-            }
             &Copy(_, ref dst, ref src) => {
                 let dst = dst.get_as_physical_register().unwrap();
                 let dst_name = self.physical_register_name_map.get(&dst).unwrap();
@@ -335,6 +336,10 @@ impl InstrPass for EmitAssemblyPass {
                     &Eq0(preg) => {
                         self.emit_binop_reg_reg("test", preg, preg);
                         println!("jz label_{}", target);
+                    }
+                    &Neq0(preg) => {
+                        self.emit_binop_reg_reg("test", preg, preg);
+                        println!("jnz label_{}", target);
                     }
                     &Neq(preg1, preg2) => {
                         self.emit_binop_reg_reg("cmp", preg1, preg2);

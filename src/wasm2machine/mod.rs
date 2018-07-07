@@ -154,7 +154,10 @@ impl WasmToMachine {
                 let target_block = self.get_label_at(index);
                 self.emit_copy_for_transition(target_block);
                 let target_cont_block = *target_block.get_continuation_block().unwrap();
-                self.emit_on_current_basic_block(Opcode::BrIfNonZero(Operand::new_register(cond_reg), Operand::new_label(target_cont_block)));
+                self.emit_on_current_basic_block(opcode::Opcode::Jump {
+                    kind: opcode::JumpCondKind::Neq0(cond_reg),
+                    target: Operand::new_label(target_cont_block),
+                });
 
                 let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
                 let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
