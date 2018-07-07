@@ -27,11 +27,11 @@ pub enum Opcode {
     Copy(Type, Operand, Operand),
     Load(Type, Operand, Operand),
     Store(Type, Operand, Operand),
-    Return(Type, Option<Operand>),
     Call(String, Type, Option<Operand>, Vec<Operand>),
     Eq(Type, Operand, Operand, Operand),
     BinaryOp { typ: Type, kind: BinaryOpKind, dst: Operand, src1: Operand, src2: Operand },
     Jump { kind: JumpCondKind, target: Operand },
+    Return { typ: Type, result: Option<Operand> },
 }
 
 impl Opcode {
@@ -222,34 +222,10 @@ impl Opcode {
         registers
     }
 
-    pub fn get_result_register_operand(&self) -> Option<&Option<Operand>> {
-        use self::Opcode::*;
-        match self {
-            &Return(_, ref result) => Some(result),
-            _ => None,
-        }
-    }
-
-    pub fn set_result_operand(&mut self, new_operand: Option<Operand>) {
-        use self::Opcode::*;
-        match self {
-            &mut Return(_, ref mut result) => *result = new_operand,
-            _ => panic!(),
-        }
-    }
-
     pub fn is_copy_instr(&self) -> bool {
         use self::Opcode::*;
         match self {
             &Copy(_, _, _) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_return_instr(&self) -> bool {
-        use self::Opcode::*;
-        match self {
-            &Return(_, _) => true,
             _ => false,
         }
     }
@@ -311,13 +287,12 @@ impl fmt::Display for Opcode {
             &Copy(_, ref dst, ref src) => write!(f, format!(2), "copy", dst, src),
             &Load(_, ref dst, ref src) => write!(f, format!(2), "load", dst, src),
             &Store(_, ref dst, ref src) => write!(f, format!(2), "store", dst, src),
-            &Return(_, None) => write!(f, format!(0), "ret"),
-            &Return(_, Some(ref result)) => write!(f, format!(1), "ret", result),
             &Call(ref _funcname, _, Some(ref _result), ref _args) => unimplemented!(),
             &Call(ref _funcname, _, None, ref _args) => unimplemented!(),
             &Eq(_, ref _dst, ref _src1, ref _src2) => unimplemented!(),
             &BinaryOp { .. } => unimplemented!(),
             &Jump { .. } => unimplemented!(),
+            &Return { .. } => unimplemented!(),
         }
     }
 }

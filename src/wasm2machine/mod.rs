@@ -169,13 +169,13 @@ impl WasmToMachine {
                 assert_eq!(self.result_registers.len(), self.operand_stack.len());
                 assert!(self.result_registers.len() == 0 || self.result_registers.len() == 1);
                 if self.result_registers.len() == 0 {
-                    self.emit_on_current_basic_block(Opcode::Return(Type::I32, None));
+                    self.emit_on_current_basic_block(Opcode::Return { typ: Type::I32, result: None });
                 } else if self.result_registers.len() == 1 {
                     let result_registers = self.result_registers.clone();
                     let result_register = result_registers[0];
                     self.emit_copy_to_store_result(result_registers, false);
                     let result = Operand::new_register(result_register);
-                    self.emit_on_current_basic_block(Opcode::Return(Type::I32, Some(result)));
+                    self.emit_on_current_basic_block(Opcode::Return { typ: Type::I32, result: Some(result) });
                 }
             }
             &WasmInstr::GetLocal(ref localidx) => {

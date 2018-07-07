@@ -60,15 +60,12 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         };
                         Some(Opcode::Jump { kind: new_cond_kind, target: target.clone() })
                     }
+                    &Opcode::Return { .. } => continue,
                     _ => None,
                 };
 
                 if let Some(new_opcode) = new_opcode {
                     instr.set_opcode(new_opcode);
-                    continue;
-                }
-
-                if instr.get_opcode().is_return_instr() {
                     continue;
                 }
 
@@ -287,11 +284,6 @@ impl InstrPass for EmitAssemblyPass {
 
                 println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
             }
-            &Return(_, _) => {
-                println!("mov rsp, rbp");
-                println!("pop rbp");
-                println!("ret");
-            }
             &Call(ref funcname, _, _, _) => {
                 println!("call {}", funcname);
             }
@@ -347,6 +339,11 @@ impl InstrPass for EmitAssemblyPass {
                         println!("jnz label_{}", target);
                     }
                 }
+            }
+            &Return { .. } => {
+                println!("mov rsp, rbp");
+                println!("pop rbp");
+                println!("ret");
             }
         }
     }
