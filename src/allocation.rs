@@ -78,7 +78,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     } else {
                         continue;
                     };
-                    let preg = if instr.get_opcode().is_call_instr() {
+                    let preg = if let &Opcode::Call { .. } = instr.get_opcode() {
                         self.physical_argument_registers[src_i - 1]
                     } else {
                         self.physical_registers[src_i - 1]
@@ -88,7 +88,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     instr.get_mut_opcode().set_source_operand(src_i, Operand::new_physical_register(preg));
                 }
 
-                if instr.get_opcode().is_call_instr() {
+                if let &Opcode::Call { .. } = instr.get_opcode() {
                     if instr.get_opcode().get_destination_register_operand().is_none() {
                         continue;
                     }
@@ -284,9 +284,6 @@ impl InstrPass for EmitAssemblyPass {
 
                 println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
             }
-            &Call(ref funcname, _, _, _) => {
-                println!("call {}", funcname);
-            }
             &Eq(_, ref dst, ref src1, ref src2) => {
                 assert_eq!(dst, src1);
                 let dst = dst.get_as_physical_register().unwrap();
@@ -339,6 +336,9 @@ impl InstrPass for EmitAssemblyPass {
                         println!("jnz label_{}", target);
                     }
                 }
+            }
+            &Call { ref func, .. } => {
+                println!("call {}", func);
             }
             &Return { .. } => {
                 println!("mov rsp, rbp");
