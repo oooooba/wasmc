@@ -2,7 +2,7 @@ pub mod handle;
 
 use std::collections::HashMap;
 
-use context::handle::{BasicBlockHandle, FunctionHandle, HandleKind, InstrHandle, ModuleHandle, PassHandle, RegisterHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, PassHandle, RegisterHandle};
 use machineir::basicblock::{BasicBlock, BasicBlockKind};
 use machineir::function::Function;
 use machineir::instruction::Instr;
@@ -13,46 +13,11 @@ use machineir::typ::Type;
 use pass::PassKind;
 
 #[derive(Debug)]
-pub enum ObjectKind {
-    Register(Register),
-    Instr(Instr),
-}
-
-impl ObjectKind {
-    pub fn as_register(&self) -> &Register {
-        match self {
-            &ObjectKind::Register(ref register) => register,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn as_mut_register(&mut self) -> &mut Register {
-        match self {
-            &mut ObjectKind::Register(ref mut register) => register,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn as_instr(&self) -> &Instr {
-        match self {
-            &ObjectKind::Instr(ref instr) => instr,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn as_mut_instr(&mut self) -> &mut Instr {
-        match self {
-            &mut ObjectKind::Instr(ref mut instr) => instr,
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct Context {
-    objects: Option<HashMap<HandleKind, ObjectKind>>,
-    num_created_registers: u32,
-    num_created_instrs: u32,
+    registers: Option<HashMap<RegisterHandle, Register>>,
+    num_created_registers: usize,
+    instrs: Option<HashMap<InstrHandle, Instr>>,
+    num_created_instrs: usize,
     basic_blocks: Option<HashMap<BasicBlockHandle, BasicBlock>>,
     num_created_basic_blocks: usize,
     functions: Option<HashMap<FunctionHandle, Function>>,
@@ -64,8 +29,9 @@ pub struct Context {
 }
 
 static mut CONTEXT: Context = Context {
-    objects: None,
+    registers: None,
     num_created_registers: 0,
+    instrs: None,
     num_created_instrs: 0,
     basic_blocks: None,
     num_created_basic_blocks: 0,
@@ -80,7 +46,8 @@ static mut CONTEXT: Context = Context {
 impl Context {
     pub fn init() {
         unsafe {
-            CONTEXT.objects = Some(HashMap::new());
+            CONTEXT.registers = Some(HashMap::new());
+            CONTEXT.instrs = Some(HashMap::new());
             CONTEXT.basic_blocks = Some(HashMap::new());
             CONTEXT.functions = Some(HashMap::new());
             CONTEXT.modules = Some(HashMap::new());
@@ -94,7 +61,7 @@ impl Context {
             CONTEXT.num_created_registers += 1;
             let handle = RegisterHandle::new(id);
             let register = Register::new(handle, typ);
-            CONTEXT.objects.as_mut().unwrap().insert(HandleKind::Register(handle), ObjectKind::Register(register));
+            CONTEXT.registers.as_mut().unwrap().insert(handle, register);
             handle
         }
     }
@@ -105,7 +72,7 @@ impl Context {
             CONTEXT.num_created_instrs += 1;
             let handle = InstrHandle::new(id);
             let instr = Instr::new(handle, opcode, basic_block);
-            CONTEXT.objects.as_mut().unwrap().insert(HandleKind::Instr(handle), ObjectKind::Instr(instr));
+            CONTEXT.instrs.as_mut().unwrap().insert(handle, instr);
             handle
         }
     }

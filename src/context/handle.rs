@@ -9,28 +9,22 @@ use machineir::register::Register;
 use pass::PassKind;
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
-pub(super) enum HandleKind {
-    Register(RegisterHandle),
-    Instr(InstrHandle),
-}
-
-#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
-pub struct RegisterHandle(u32);
+pub struct RegisterHandle(usize);
 
 impl RegisterHandle {
-    pub(super) fn new(id: u32) -> Self {
+    pub(super) fn new(id: usize) -> Self {
         RegisterHandle(id)
     }
 
     pub fn get(&self) -> &Register {
         unsafe {
-            super::CONTEXT.objects.as_ref().unwrap().get(&HandleKind::Register(*self)).unwrap().as_register()
+            super::CONTEXT.registers.as_ref().unwrap().get(self).unwrap()
         }
     }
 
     pub fn get_mut(&mut self) -> &mut Register {
         unsafe {
-            super::CONTEXT.objects.as_mut().unwrap().get_mut(&HandleKind::Register(*self)).unwrap().as_mut_register()
+            super::CONTEXT.registers.as_mut().unwrap().get_mut(self).unwrap()
         }
     }
 
@@ -59,22 +53,22 @@ impl fmt::Display for RegisterHandle {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
-pub struct InstrHandle(u32);
+pub struct InstrHandle(usize);
 
 impl InstrHandle {
-    pub(super) fn new(id: u32) -> Self {
+    pub(super) fn new(id: usize) -> Self {
         InstrHandle(id)
     }
 
     pub fn get(&self) -> &super::Instr {
         unsafe {
-            super::CONTEXT.objects.as_ref().unwrap().get(&HandleKind::Instr(*self)).unwrap().as_instr()
+            super::CONTEXT.instrs.as_ref().unwrap().get(self).unwrap()
         }
     }
 
     pub fn get_mut(&mut self) -> &mut super::Instr {
         unsafe {
-            super::CONTEXT.objects.as_mut().unwrap().get_mut(&HandleKind::Instr(*self)).unwrap().as_mut_instr()
+            super::CONTEXT.instrs.as_mut().unwrap().get_mut(self).unwrap()
         }
     }
 
