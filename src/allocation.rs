@@ -248,10 +248,6 @@ impl InstrPass for EmitAssemblyPass {
                 let cst = cst.get_as_const_i32().unwrap();
                 println!("mov {}, {}", dst_name, cst);
             }
-            &Br(ref target) => {
-                let target = target.get_as_label().unwrap();
-                println!("jmp label_{}", target);
-            }
             &BrIfNonZero(ref cond, ref target) => {
                 let cond = cond.get_as_physical_register().unwrap();
                 let target = target.get_as_label().unwrap();
