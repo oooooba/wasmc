@@ -4,7 +4,6 @@ use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode};
 use machineir::operand::{Operand, OperandKind};
-use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass};
 
 #[derive(Debug)]
@@ -193,7 +192,7 @@ impl FunctionPass for PreEmitAssemblyPass {
         println!("{}:", function.get_func_name());
         println!("push rbp");
         println!("mov rbp, rsp");
-        let len_buffer = (function.get_local_variables().len() + 1) * Type::I32.get_size();
+        let len_buffer = function.get_local_variables().iter().map(|p| p.1.get_size()).sum::<usize>();
         let word_size = 8;
         println!("sub rsp, {}", ((len_buffer + word_size - 1) / word_size) * word_size);
 
