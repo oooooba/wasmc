@@ -18,12 +18,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
     fn do_action(&mut self, mut function: FunctionHandle) {
         for basic_block_i in 0..function.get_mut_basic_blocks().len() {
             let mut basic_block = function.get_mut_basic_blocks()[basic_block_i];
-            let num_instrs = basic_block.get_instrs().len();
-            let mut num_insertion = 0;
 
-            for instr_i in 0..num_instrs {
-                let mut instr = basic_block.get_mut_instrs()[instr_i + num_insertion];
-
+            let mut iter = basic_block.iterator();
+            while let Some(mut instr) = iter.get() {
                 let new_opcode = match instr.get_opcode() {
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
@@ -33,46 +30,49 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             &Eq0(reg) => {
                                 assert!(!reg.is_physical());
                                 let preg = self.physical_registers[0];
-                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
-                                num_insertion += 1;
+                                let load_instr = self.create_load_instr(basic_block, preg, reg, function);
+                                iter.insert_before(load_instr);
                                 Eq0(preg)
                             }
                             &Neq0(reg) => {
                                 assert!(!reg.is_physical());
                                 let preg = self.physical_registers[0];
-                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg, reg, function);
-                                num_insertion += 1;
+                                let load_instr = self.create_load_instr(basic_block, preg, reg, function);
+                                iter.insert_before(load_instr);
                                 Neq0(preg)
                             }
                             &Neq(reg1, reg2) => {
                                 assert!(!reg1.is_physical());
                                 let preg1 = self.physical_registers[0];
-                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg1, reg1, function);
-                                num_insertion += 1;
+                                let load_instr1 = self.create_load_instr(basic_block, preg1, reg1, function);
+                                iter.insert_before(load_instr1);
 
                                 assert!(!reg2.is_physical());
                                 let preg2 = self.physical_registers[1];
-                                self.emit_load_instr(basic_block, instr_i + num_insertion, preg2, reg2, function);
-                                num_insertion += 1;
+                                let load_instr2 = self.create_load_instr(basic_block, preg2, reg2, function);
+                                iter.insert_before(load_instr2);
 
                                 Neq(preg1, preg2)
                             }
                         };
                         Some(Opcode::Jump { kind: new_cond_kind, target: new_target })
                     }
-                    &Opcode::Return { .. } => continue,
+                    &Opcode::Return { .. } => {
+                        iter.advance();
+                        continue
+                    }
                     _ => None,
                 };
 
                 if let Some(new_opcode) = new_opcode {
                     instr.set_opcode(new_opcode);
+                    iter.advance();
                     continue;
                 }
 
                 // load source registers
                 let num_srcs = instr.get_opcode().get_source_operands().len();
                 for src_i in 1..num_srcs + 1 {
-                    let insertion_point = instr_i + num_insertion;
                     let vreg = if let Some(vreg) = instr.get_opcode().get_source_operand(src_i).and_then(|o| o.get_as_register()) {
                         vreg
                     } else {
@@ -83,13 +83,14 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     } else {
                         self.physical_registers[src_i - 1]
                     };
-                    self.emit_load_instr(basic_block, insertion_point, preg, vreg, function);
-                    num_insertion += 1;
+                    let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                    iter.insert_before(load_instr);
                     instr.get_mut_opcode().set_source_operand(src_i, Operand::new_physical_register(preg));
                 }
 
                 if let &Opcode::Call { .. } = instr.get_opcode() {
                     if instr.get_opcode().get_destination_register_operand().is_none() {
+                        iter.advance();
                         continue;
                     }
                 }
@@ -100,9 +101,11 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                 instr.get_mut_opcode().set_destination_operand(Operand::new_physical_register(preg));
 
                 // store destination register
-                let insertion_point = instr_i + num_insertion + 1;
-                self.emit_store_instr(basic_block, insertion_point, vreg, preg, function);
-                num_insertion += 1;
+                let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
+                iter.insert_after(store_instr);
+                iter.advance();
+
+                iter.advance(); // original instr
             }
         }
     }
@@ -133,30 +136,28 @@ impl SimpleRegisterAllocationPass {
         vreg_index.unwrap()
     }
 
-    fn emit_load_instr(&mut self, mut basic_block: BasicBlockHandle, insertion_point: usize,
-                       preg: RegisterHandle, vreg: RegisterHandle, function: FunctionHandle) {
+    fn create_load_instr(&mut self, basic_block: BasicBlockHandle, preg: RegisterHandle,
+                         vreg: RegisterHandle, function: FunctionHandle) -> InstrHandle {
         assert!(preg.is_physical());
         assert!(!vreg.is_physical());
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
         let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
-        let load_instr = Context::create_instr(Opcode::Load(typ.clone(),
-                                                            Operand::new_physical_register(preg),
-                                                            Operand::new_memory(vreg_index, typ)), basic_block);
-        basic_block.get_mut_instrs().insert(insertion_point, load_instr);
+        Context::create_instr(Opcode::Load(typ.clone(),
+                                           Operand::new_physical_register(preg),
+                                           Operand::new_memory(vreg_index, typ)), basic_block)
     }
 
-    fn emit_store_instr(&mut self, mut basic_block: BasicBlockHandle, insertion_point: usize,
-                        vreg: RegisterHandle, preg: RegisterHandle, function: FunctionHandle) {
+    fn create_store_instr(&mut self, basic_block: BasicBlockHandle, vreg: RegisterHandle,
+                          preg: RegisterHandle, function: FunctionHandle) -> InstrHandle {
         assert!(!vreg.is_physical());
         assert!(preg.is_physical());
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
         let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
-        let store_instr = Context::create_instr(Opcode::Store(typ.clone(),
-                                                              Operand::new_memory(vreg_index, typ),
-                                                              Operand::new_physical_register(preg)), basic_block);
-        basic_block.get_mut_instrs().insert(insertion_point, store_instr);
+        Context::create_instr(Opcode::Store(typ.clone(),
+                                            Operand::new_memory(vreg_index, typ),
+                                            Operand::new_physical_register(preg)), basic_block)
     }
 }
 
