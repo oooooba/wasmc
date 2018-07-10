@@ -21,7 +21,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
             let mut iter = basic_block.iterator();
             while let Some(mut instr) = iter.get() {
-                let new_opcode = match instr.get_opcode() {
+                let (new_opcode, num_advance) = match instr.get_opcode() {
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
                         let new_target = target.clone();
@@ -48,18 +48,47 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 Neq(preg1, preg2)
                             }
                         };
-                        Some(Opcode::Jump { kind: new_cond_kind, target: new_target })
+                        (Some(Opcode::Jump { kind: new_cond_kind, target: new_target }), 0)
+                    }
+                    &Opcode::Call { ref func, ref typ, ref result, ref args } => {
+                        let new_typ = typ.clone();
+                        let new_func = func.clone();
+                        let result = result.clone(); // to prevent undefined behavior
+
+                        let mut new_args = vec![];
+                        for (i, arg) in args.iter().enumerate() {
+                            let vreg = arg.get_as_register().unwrap();
+                            let preg = self.physical_argument_registers[i];
+                            let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                            iter.insert_before(load_instr);
+                            new_args.push(Operand::new_physical_register(preg));
+                        }
+
+                        let new_result = if let Some(result) = result {
+                            let vreg = result.get_as_register().unwrap();
+                            let preg = self.physical_result_register;
+                            let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
+                            iter.insert_after(store_instr);
+                            Some(Operand::new_physical_register(preg))
+                        } else {
+                            None
+                        };
+
+                        (Some(Opcode::Call { func: new_func, typ: new_typ, result: new_result, args: new_args }), 1)
                     }
                     &Opcode::Return { .. } => {
                         iter.advance();
                         continue
                     }
-                    _ => None,
+                    _ => (None, 0),
                 };
 
                 if let Some(new_opcode) = new_opcode {
                     instr.set_opcode(new_opcode);
-                    iter.advance();
+                    iter.advance(); // current instr to next instr
+                    for _ in 0..num_advance { // skip inserted instrs
+                        iter.advance();
+                    }
                     continue;
                 }
 
@@ -71,21 +100,10 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     } else {
                         continue;
                     };
-                    let preg = if let &Opcode::Call { .. } = instr.get_opcode() {
-                        self.physical_argument_registers[src_i - 1]
-                    } else {
-                        self.physical_registers[src_i - 1]
-                    };
+                    let preg = self.physical_registers[src_i - 1];
                     let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                     iter.insert_before(load_instr);
                     instr.get_mut_opcode().set_source_operand(src_i, Operand::new_physical_register(preg));
-                }
-
-                if let &Opcode::Call { .. } = instr.get_opcode() {
-                    if instr.get_opcode().get_destination_register_operand().is_none() {
-                        iter.advance();
-                        continue;
-                    }
                 }
 
                 // replace destination register
