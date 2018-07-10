@@ -27,14 +27,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         let new_target = target.clone();
                         let new_cond_kind = match kind {
                             &Unconditional => Unconditional,
-                            &Eq0(reg) => {
-                                assert!(!reg.is_physical());
-                                let preg = self.physical_registers[0];
-                                let load_instr = self.create_load_instr(basic_block, preg, reg, function);
-                                iter.insert_before(load_instr);
-                                Eq0(preg)
-                            }
-                            &Neq0(reg) => {
+                            &Eq0(reg) | &Neq0(reg) => {
                                 assert!(!reg.is_physical());
                                 let preg = self.physical_registers[0];
                                 let load_instr = self.create_load_instr(basic_block, preg, reg, function);
