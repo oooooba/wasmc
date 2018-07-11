@@ -22,6 +22,44 @@ impl FunctionPass for SimpleRegisterAllocationPass {
             let mut iter = basic_block.iterator();
             while let Some(mut instr) = iter.get() {
                 let (new_opcode, num_advance) = match instr.get_opcode() {
+                    &Opcode::BinaryOp { ref typ, ref kind, ref dst, ref src1, ref src2 } => {
+                        let new_typ = typ.clone();
+                        let new_kind = kind.clone();
+                        let dst = dst.clone(); // to prevent undefined behavior
+                        let src2 = src2.clone(); // to prevent undefined behavior
+
+                        let new_src1 = match src1.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_registers[0];
+                                let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                                iter.insert_before(load_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            _ => unimplemented!(),
+                        };
+
+                        let new_src2 = match src2.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_registers[1];
+                                let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                                iter.insert_before(load_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            _ => unimplemented!(),
+                        };
+
+                        let new_dst = match dst.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_result_register;
+                                let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
+                                iter.insert_after(store_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            _ => unimplemented!(),
+                        };
+
+                        (Some(Opcode::BinaryOp { typ: new_typ, kind: new_kind, dst: new_dst, src1: new_src1, src2: new_src2 }), 1)
+                    }
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
                         let new_target = target.clone();

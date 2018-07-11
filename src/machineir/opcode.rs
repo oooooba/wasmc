@@ -4,7 +4,7 @@ use context::handle::RegisterHandle;
 use machineir::operand::Operand;
 use machineir::typ::Type;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum BinaryOpKind {
     Add,
     Sub,
