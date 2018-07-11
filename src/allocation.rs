@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
-use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode};
+use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::operand::{Operand, OperandKind};
 use pass::{BasicBlockPass, FunctionPass, InstrPass};
 
@@ -22,6 +22,34 @@ impl FunctionPass for SimpleRegisterAllocationPass {
             let mut iter = basic_block.iterator();
             while let Some(mut instr) = iter.get() {
                 let (new_opcode, num_advance) = match instr.get_opcode() {
+                    &Opcode::UnaryOp { ref typ, ref kind, ref dst, ref src } => {
+                        let new_typ = typ.clone();
+                        let new_kind = kind.clone();
+                        let dst = dst.clone(); // to prevent undefined behavior
+
+                        let new_src = match src.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_registers[0];
+                                let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                                iter.insert_before(load_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            &OperandKind::ConstI32(_) => src.clone(),
+                            _ => unimplemented!(),
+                        };
+
+                        let new_dst = match dst.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_result_register;
+                                let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
+                                iter.insert_after(store_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            _ => unimplemented!(),
+                        };
+
+                        (Some(Opcode::UnaryOp { typ: new_typ, kind: new_kind, dst: new_dst, src: new_src }), 1)
+                    }
                     &Opcode::BinaryOp { ref typ, ref kind, ref dst, ref src1, ref src2 } => {
                         let new_typ = typ.clone();
                         let new_kind = kind.clone();
@@ -297,12 +325,6 @@ impl InstrPass for EmitAssemblyPass {
             &Label(ref label) => {
                 println!("{}:", label);
             }
-            &Const(_, ref dst, ref cst) => {
-                let dst = dst.get_as_physical_register().unwrap();
-                let dst_name = self.physical_register_name_map.get(&dst).unwrap();
-                let cst = cst.get_as_const_i32().unwrap();
-                println!("mov {}, {}", dst_name, cst);
-            }
             &Copy(_, ref dst, ref src) => {
                 let dst = dst.get_as_physical_register().unwrap();
                 let dst_name = self.physical_register_name_map.get(&dst).unwrap();
@@ -351,6 +373,19 @@ impl InstrPass for EmitAssemblyPass {
                     }
                     _ => unimplemented!(),
                 }
+            }
+            &UnaryOp { ref kind, ref dst, ref src, .. } => {
+                let dst = dst.get_as_physical_register().unwrap();
+                assert!(dst.is_physical());
+                let dst_name = self.physical_register_name_map.get(&dst).unwrap();
+                match kind {
+                    &UnaryOpKind::Const => {
+                        match src.get_kind() {
+                            &OperandKind::ConstI32(cst) => println!("mov {}, {}", dst_name, cst),
+                            _ => unimplemented!(),
+                        }
+                    }
+                };
             }
             &BinaryOp { ref kind, ref dst, ref src1, ref src2, .. } => {
                 assert_eq!(dst, src1);

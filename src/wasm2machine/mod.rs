@@ -2,7 +2,7 @@ use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::basicblock::BasicBlockKind;
 use machineir::opcode;
-use machineir::opcode::{JumpCondKind, Opcode};
+use machineir::opcode::{JumpCondKind, Opcode, UnaryOpKind};
 use machineir::typ;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
@@ -104,7 +104,12 @@ impl WasmToMachine {
             &WasmInstr::Const(Const::I32(i)) => {
                 let register = Operand::new_register(Context::create_register(Type::I32));
                 self.operand_stack.push(register.clone());
-                self.emit_on_current_basic_block(Opcode::Const(Type::I32, register, Operand::new_const_i32(i)));
+                self.emit_on_current_basic_block(Opcode::UnaryOp {
+                    typ: Type::I32,
+                    kind: UnaryOpKind::Const,
+                    dst: register,
+                    src: Operand::new_const_i32(i),
+                });
             }
             &WasmInstr::Binop(ref op) => self.emit_binop(op),
             &WasmInstr::Block(ref resulttype, ref instrs) => {

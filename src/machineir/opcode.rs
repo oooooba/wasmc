@@ -5,6 +5,11 @@ use machineir::operand::Operand;
 use machineir::typ::Type;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub enum UnaryOpKind {
+    Const,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -23,11 +28,11 @@ pub enum JumpCondKind {
 pub enum Opcode {
     Debug(String),
     Label(String),
-    Const(Type, Operand, Operand),
     Copy(Type, Operand, Operand),
     Load(Type, Operand, Operand),
     Store(Type, Operand, Operand),
     Eq(Type, Operand, Operand, Operand),
+    UnaryOp { typ: Type, kind: UnaryOpKind, dst: Operand, src: Operand },
     BinaryOp { typ: Type, kind: BinaryOpKind, dst: Operand, src1: Operand, src2: Operand },
     Jump { kind: JumpCondKind, target: Operand },
     Call { func: String, typ: Type, result: Option<Operand>, args: Vec<Operand> },
@@ -38,7 +43,6 @@ impl Opcode {
     pub fn get_source_operand(&self, index: usize) -> Option<&Operand> {
         use self::Opcode::*;
         match self {
-            &Const(_, _, ref operand) if index == 1 => Some(operand),
             &Copy(_, _, ref operand) if index == 1 => Some(operand),
             &Load(_, _, ref operand) if index == 1 => Some(operand),
             &Store(_, _, ref operand) if index == 1 => Some(operand),
@@ -54,7 +58,6 @@ impl Opcode {
     pub fn get_mut_source_operand(&mut self, index: usize) -> Option<&mut Operand> {
         use self::Opcode::*;
         match self {
-            &mut Const(_, _, ref mut operand) if index == 1 => Some(operand),
             &mut Copy(_, _, ref mut operand) if index == 1 => Some(operand),
             &mut Load(_, _, ref mut operand) if index == 1 => Some(operand),
             &mut Store(_, _, ref mut operand) if index == 1 => Some(operand),
@@ -70,7 +73,6 @@ impl Opcode {
     pub fn set_source_operand(&mut self, index: usize, new_operand: Operand) {
         use self::Opcode::*;
         match self {
-            &mut Const(_, _, ref mut operand) if index == 1 => *operand = new_operand,
             &mut Copy(_, _, ref mut operand) if index == 1 => *operand = new_operand,
             &mut Load(_, _, ref mut operand) if index == 1 => *operand = new_operand,
             &mut Store(_, _, ref mut operand) if index == 1 => *operand = new_operand,
@@ -86,7 +88,6 @@ impl Opcode {
     pub fn get_source_operands(&self) -> Vec<&Operand> {
         use self::Opcode::*;
         match self {
-            &Const(_, _, ref operand) => vec![operand],
             &Copy(_, _, ref operand) => vec![operand],
             &Load(_, _, ref operand) => vec![operand],
             &Store(_, _, ref operand) => vec![operand],
@@ -100,7 +101,6 @@ impl Opcode {
     pub fn get_type(&self) -> Option<&Type> {
         use self::Opcode::*;
         match self {
-            &Const(ref typ, _, _) => Some(typ),
             &Copy(ref typ, _, _) => Some(typ),
             &Load(ref typ, _, _) => Some(typ),
             &Store(ref typ, _, _) => Some(typ),
@@ -112,7 +112,6 @@ impl Opcode {
     pub fn get_destination_register_operand(&self) -> Option<&Operand> {
         use self::Opcode::*;
         match self {
-            &Const(_, ref dst, _) if dst.is_register() => Some(dst),
             &Copy(_, ref dst, _) if dst.is_register() => Some(dst),
             &Load(_, ref dst, _) if dst.is_register() => Some(dst),
             &Store(_, ref dst, _) if dst.is_register() => Some(dst),
@@ -126,7 +125,6 @@ impl Opcode {
     pub fn get_mut_destination_register_operand(&mut self) -> Option<&mut Operand> {
         use self::Opcode::*;
         match self {
-            &mut Const(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Copy(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Load(_, ref mut dst, _) if dst.is_register() => Some(dst),
             &mut Store(_, ref mut dst, _) if dst.is_register() => Some(dst),
@@ -139,7 +137,6 @@ impl Opcode {
     pub fn set_destination_operand(&mut self, new_operand: Operand) {
         use self::Opcode::*;
         match self {
-            &mut Const(_, ref mut operand, _) => *operand = new_operand,
             &mut Copy(_, ref mut operand, _) => *operand = new_operand,
             &mut Load(_, ref mut operand, _) => *operand = new_operand,
             &mut Store(_, ref mut operand, _) => *operand = new_operand,
@@ -153,7 +150,6 @@ impl Opcode {
     pub fn get_destination_register(&self) -> Option<RegisterHandle> {
         use self::Opcode::*;
         match self {
-            &Const(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Copy(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Load(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
             &Store(_, ref dst, _) if dst.is_register() => Some(dst.get_as_register().unwrap()),
@@ -233,12 +229,6 @@ impl Opcode {
     pub fn print(&self) {
         use self::Opcode::*;
         match self {
-            &Const(_, ref dst, ref src) => {
-                print!("const ");
-                dst.print();
-                print!(", ");
-                src.print();
-            }
             &Copy(_, ref dst, ref src) => {
                 print!("copy  ");
                 dst.print();
@@ -275,11 +265,11 @@ impl fmt::Display for Opcode {
         match self {
             &Debug(ref msg) => write!(f, format!(1), "debug", msg),
             &Label(ref label) => write!(f, format!(1), "label", label),
-            &Const(_, ref dst, ref src) => write!(f, format!(2), "const", dst, src),
             &Copy(_, ref dst, ref src) => write!(f, format!(2), "copy", dst, src),
             &Load(_, ref dst, ref src) => write!(f, format!(2), "load", dst, src),
             &Store(_, ref dst, ref src) => write!(f, format!(2), "store", dst, src),
             &Eq(_, ref _dst, ref _src1, ref _src2) => unimplemented!(),
+            &UnaryOp { .. } => unimplemented!(),
             &BinaryOp { .. } => unimplemented!(),
             &Jump { .. } => unimplemented!(),
             &Call { .. } => unimplemented!(),
