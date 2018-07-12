@@ -118,7 +118,6 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         let new_typ = typ.clone();
                         let new_src = src.clone();
 
-
                         let new_dst = match dst.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let preg = self.physical_result_register;
@@ -130,6 +129,23 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         };
 
                         (Some(Opcode::Load { typ: new_typ, dst: new_dst, src: new_src }), 1)
+                    }
+                    &Opcode::Store { ref typ, ref dst, ref src } => {
+                        let new_typ = typ.clone();
+                        let new_dst = dst.clone();
+
+                        let new_src = match src.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_registers[0];
+                                let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                                iter.insert_before(load_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            &OperandKind::ConstI32(_) => src.clone(),
+                            _ => unimplemented!(),
+                        };
+
+                        (Some(Opcode::Store { typ: new_typ, dst: new_dst, src: new_src }), 0)
                     }
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
@@ -185,10 +201,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         (Some(Opcode::Call { func: new_func, typ: new_typ, result: new_result, args: new_args }), 1)
                     }
-                    &Opcode::Return { .. } => {
-                        iter.advance();
-                        continue
-                    }
+                    &Opcode::Return { .. } => (None, 0),
                     _ => (None, 0),
                 };
 
@@ -198,34 +211,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     for _ in 0..num_advance { // skip inserted instrs
                         iter.advance();
                     }
-                    continue;
                 }
-
-                // load source registers
-                let num_srcs = instr.get_opcode().get_source_operands().len();
-                for src_i in 1..num_srcs + 1 {
-                    let vreg = if let Some(vreg) = instr.get_opcode().get_source_operand(src_i).and_then(|o| o.get_as_register()) {
-                        vreg
-                    } else {
-                        continue;
-                    };
-                    let preg = self.physical_registers[src_i - 1];
-                    let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
-                    iter.insert_before(load_instr);
-                    instr.get_mut_opcode().set_source_operand(src_i, Operand::new_physical_register(preg));
-                }
-
-                // replace destination register
-                let preg = self.physical_result_register;
-                let vreg = instr.get_opcode().get_destination_register_operand().and_then(|o| o.get_as_register()).unwrap();
-                instr.get_mut_opcode().set_destination_operand(Operand::new_physical_register(preg));
-
-                // store destination register
-                let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
-                iter.insert_after(store_instr);
-                iter.advance();
-
-                iter.advance(); // original instr
             }
         }
     }
@@ -277,9 +263,11 @@ impl SimpleRegisterAllocationPass {
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
         let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
-        Context::create_instr(Opcode::Store(typ.clone(),
-                                            Operand::new_memory(vreg_index, typ),
-                                            Operand::new_physical_register(preg)), basic_block)
+        Context::create_instr(Opcode::Store {
+            typ: typ.clone(),
+            dst: Operand::new_memory(vreg_index, typ),
+            src: Operand::new_physical_register(preg),
+        }, basic_block)
     }
 }
 
@@ -370,18 +358,6 @@ impl InstrPass for EmitAssemblyPass {
             &Label(ref label) => {
                 println!("{}:", label);
             }
-            &Store(_, ref dst, ref src) => {
-                let dst_offset = match dst.get_kind() {
-                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
-                    _ => unimplemented!(),
-                };
-
-                let src = src.get_as_physical_register().unwrap();
-                assert!(src.is_physical());
-                let src_name = self.physical_register_name_map.get(&src).unwrap();
-
-                println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
-            }
             &Copy { ref dst, ref src, .. } => {
                 let dst = dst.get_as_physical_register().unwrap();
                 let dst_name = self.physical_register_name_map.get(&dst).unwrap();
@@ -427,6 +403,18 @@ impl InstrPass for EmitAssemblyPass {
                 };
 
                 println!("mov {}, dword ptr [{} - {}]", dst_name, self.base_pointer_register, src_offset);
+            }
+            &Store { ref dst, ref src, .. } => {
+                let dst_offset = match dst.get_kind() {
+                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
+                    _ => unimplemented!(),
+                };
+
+                let src = src.get_as_physical_register().unwrap();
+                assert!(src.is_physical());
+                let src_name = self.physical_register_name_map.get(&src).unwrap();
+
+                println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
             }
             &Jump { ref kind, ref target } => {
                 let target = target.get_as_label().unwrap();

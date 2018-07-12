@@ -1,8 +1,7 @@
 use std::fmt;
 
-use context::handle::{BasicBlockHandle, InstrHandle, RegisterHandle};
+use context::handle::{BasicBlockHandle, InstrHandle};
 use machineir::opcode::Opcode;
-use machineir::operand::Operand;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Instr {
@@ -34,34 +33,6 @@ impl Instr {
 
     pub fn set_opcode(&mut self, opcode: Opcode) {
         self.opcode = opcode;
-    }
-
-    pub fn get_destination_register_operand(&self) -> Option<&Operand> {
-        self.opcode.get_destination_register_operand()
-    }
-
-    pub fn get_mut_destination_register_operand(&mut self) -> Option<&mut Operand> {
-        self.opcode.get_mut_destination_register_operand()
-    }
-
-    pub fn get_destination_register(&self) -> Option<RegisterHandle> {
-        self.opcode.get_destination_register()
-    }
-
-    pub fn get_source_register_operands(&self) -> Vec<&Operand> {
-        self.opcode.get_source_register_operands()
-    }
-
-    pub fn get_mut_source_register_operands(&mut self) -> Vec<&mut Operand> {
-        self.opcode.get_mut_source_register_operands()
-    }
-
-    pub fn get_source_registers(&self) -> Vec<RegisterHandle> {
-        self.opcode.get_source_registers()
-    }
-
-    pub fn get_registers(&self) -> Vec<RegisterHandle> {
-        self.opcode.get_registers()
     }
 
     pub fn print(&self) {
