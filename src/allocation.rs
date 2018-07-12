@@ -22,6 +22,32 @@ impl FunctionPass for SimpleRegisterAllocationPass {
             let mut iter = basic_block.iterator();
             while let Some(mut instr) = iter.get() {
                 let (new_opcode, num_advance) = match instr.get_opcode() {
+                    &Opcode::Copy { ref typ, ref dst, ref src } => {
+                        let new_typ = typ.clone();
+                        let dst = dst.clone(); // to prevent undefined behavior
+
+                        let new_src = match src.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_registers[0];
+                                let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                                iter.insert_before(load_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            _ => unimplemented!(),
+                        };
+
+                        let new_dst = match dst.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_result_register;
+                                let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
+                                iter.insert_after(store_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            _ => unimplemented!(),
+                        };
+
+                        (Some(Opcode::Copy { typ: new_typ, dst: new_dst, src: new_src }), 1)
+                    }
                     &Opcode::UnaryOp { ref typ, ref kind, ref dst, ref src } => {
                         let new_typ = typ.clone();
                         let new_kind = kind.clone();
@@ -325,13 +351,6 @@ impl InstrPass for EmitAssemblyPass {
             &Label(ref label) => {
                 println!("{}:", label);
             }
-            &Copy(_, ref dst, ref src) => {
-                let dst = dst.get_as_physical_register().unwrap();
-                let dst_name = self.physical_register_name_map.get(&dst).unwrap();
-                let src = src.get_as_physical_register().unwrap();
-                let src_name = self.physical_register_name_map.get(&src).unwrap();
-                println!("mov {}, {}", dst_name, src_name);
-            }
             &Load(_, ref dst, ref src) => {
                 let dst = dst.get_as_physical_register().unwrap();
                 assert!(dst.is_physical());
@@ -373,6 +392,13 @@ impl InstrPass for EmitAssemblyPass {
                     }
                     _ => unimplemented!(),
                 }
+            }
+            &Copy { ref dst, ref src, .. } => {
+                let dst = dst.get_as_physical_register().unwrap();
+                let dst_name = self.physical_register_name_map.get(&dst).unwrap();
+                let src = src.get_as_physical_register().unwrap();
+                let src_name = self.physical_register_name_map.get(&src).unwrap();
+                println!("mov {}, {}", dst_name, src_name);
             }
             &UnaryOp { ref kind, ref dst, ref src, .. } => {
                 let dst = dst.get_as_physical_register().unwrap();
