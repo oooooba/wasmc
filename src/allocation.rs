@@ -114,6 +114,23 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         (Some(Opcode::BinaryOp { typ: new_typ, kind: new_kind, dst: new_dst, src1: new_src1, src2: new_src2 }), 1)
                     }
+                    &Opcode::Load { ref typ, ref dst, ref src } => {
+                        let new_typ = typ.clone();
+                        let new_src = src.clone();
+
+
+                        let new_dst = match dst.get_kind() {
+                            &OperandKind::Register(vreg) => {
+                                let preg = self.physical_result_register;
+                                let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
+                                iter.insert_after(store_instr);
+                                Operand::new_physical_register(preg)
+                            }
+                            _ => unimplemented!(),
+                        };
+
+                        (Some(Opcode::Load { typ: new_typ, dst: new_dst, src: new_src }), 1)
+                    }
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
                         let new_target = target.clone();
@@ -246,9 +263,11 @@ impl SimpleRegisterAllocationPass {
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
         let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
-        Context::create_instr(Opcode::Load(typ.clone(),
-                                           Operand::new_physical_register(preg),
-                                           Operand::new_memory(vreg_index, typ)), basic_block)
+        Context::create_instr(Opcode::Load {
+            typ: typ.clone(),
+            dst: Operand::new_physical_register(preg),
+            src: Operand::new_memory(vreg_index, typ),
+        }, basic_block)
     }
 
     fn create_store_instr(&mut self, basic_block: BasicBlockHandle, vreg: RegisterHandle,
@@ -351,18 +370,6 @@ impl InstrPass for EmitAssemblyPass {
             &Label(ref label) => {
                 println!("{}:", label);
             }
-            &Load(_, ref dst, ref src) => {
-                let dst = dst.get_as_physical_register().unwrap();
-                assert!(dst.is_physical());
-                let dst_name = self.physical_register_name_map.get(&dst).unwrap();
-
-                let src_offset = match src.get_kind() {
-                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
-                    _ => unimplemented!(),
-                };
-
-                println!("mov {}, dword ptr [{} - {}]", dst_name, self.base_pointer_register, src_offset);
-            }
             &Store(_, ref dst, ref src) => {
                 let dst_offset = match dst.get_kind() {
                     &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
@@ -408,6 +415,18 @@ impl InstrPass for EmitAssemblyPass {
                     &OperandKind::PhysicalRegister(preg) => self.emit_binop_reg_reg(op, dst, preg),
                     _ => unimplemented!(),
                 }
+            }
+            &Load { ref dst, ref src, .. } => {
+                let dst = dst.get_as_physical_register().unwrap();
+                assert!(dst.is_physical());
+                let dst_name = self.physical_register_name_map.get(&dst).unwrap();
+
+                let src_offset = match src.get_kind() {
+                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
+                    _ => unimplemented!(),
+                };
+
+                println!("mov {}, dword ptr [{} - {}]", dst_name, self.base_pointer_register, src_offset);
             }
             &Jump { ref kind, ref target } => {
                 let target = target.get_as_label().unwrap();
