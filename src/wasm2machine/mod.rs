@@ -401,6 +401,7 @@ impl WasmToMachine {
         use wasmir::Valtype::*;
         match valtype {
             &I32 => Type::I32,
+            &I64 => Type::I64,
         }
     }
 

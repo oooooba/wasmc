@@ -39,6 +39,7 @@ impl Localidx {
 
 pub enum Valtype {
     I32,
+    I64,
 }
 
 pub struct Resulttype(Option<Vec<Valtype>>);

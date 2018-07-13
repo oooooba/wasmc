@@ -1,6 +1,7 @@
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Type {
     I32,
+    I64,
 }
 
 impl Type {
@@ -8,6 +9,7 @@ impl Type {
         use self::Type::*;
         match self {
             &I32 => 4,
+            &I64 => 8,
         }
     }
 }
