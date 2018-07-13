@@ -82,14 +82,10 @@ pub enum Irelop {
     Eq32,
 }
 
-pub enum Binop {
-    Ibinop(Ibinop),
-    Irelop(Irelop),
-}
-
 pub enum WasmInstr {
     Const(Const),
-    Binop(Binop),
+    Ibinop(Ibinop),
+    Irelop(Irelop),
     Block(Resulttype, Vec<WasmInstr>),
     If(Resulttype, Vec<WasmInstr>, Vec<WasmInstr>),
     Loop(Resulttype, Vec<WasmInstr>),

@@ -7,7 +7,7 @@ use machineir::typ;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
-use wasmir::{Binop, Const, Functype, Resulttype, Valtype, WasmInstr};
+use wasmir::{Const, Functype, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -61,27 +61,26 @@ impl WasmToMachine {
         self.module
     }
 
-    fn emit_binop(&mut self, op: &Binop) {
+    fn emit_binop(&mut self, op: &wasmir::Ibinop) {
         let register = Operand::new_register(Context::create_register(Type::I32));
         let rhs = self.operand_stack.pop().unwrap();
         let lhs = self.operand_stack.pop().unwrap();
         self.operand_stack.push(register.clone());
         let opcode = match op {
-            &wasmir::Binop::Ibinop(wasmir::Ibinop::Add32) => opcode::Opcode::BinaryOp {
+            &Ibinop::Add32 => opcode::Opcode::BinaryOp {
                 typ: typ::Type::I32,
                 kind: opcode::BinaryOpKind::Add,
                 dst: register,
                 src1: lhs,
                 src2: rhs,
             },
-            &wasmir::Binop::Ibinop(wasmir::Ibinop::Sub32) => opcode::Opcode::BinaryOp {
+            &Ibinop::Sub32 => opcode::Opcode::BinaryOp {
                 typ: typ::Type::I32,
                 kind: opcode::BinaryOpKind::Sub,
                 dst: register,
                 src1: lhs,
                 src2: rhs,
             },
-            &wasmir::Binop::Irelop(wasmir::Irelop::Eq32) => unimplemented!(),
         };
         self.emit_on_current_basic_block(opcode);
     }
@@ -111,7 +110,8 @@ impl WasmToMachine {
                     src: Operand::new_const_i32(i),
                 });
             }
-            &WasmInstr::Binop(ref op) => self.emit_binop(op),
+            &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
+            &WasmInstr::Irelop(_) => unimplemented!(),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 let cont_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
@@ -226,13 +226,13 @@ impl WasmToMachine {
 
     fn emit_body2(&mut self, wasm_instr0: &WasmInstr, wasm_instr1: &WasmInstr) -> bool {
         match (wasm_instr0, wasm_instr1) {
-            (&WasmInstr::Binop(wasmir::Binop::Irelop(ref op)), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
+            (&WasmInstr::Irelop(ref op), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
                 let rhs = self.operand_stack.pop().unwrap();
                 let rhs_reg = rhs.get_as_register().unwrap();
                 let lhs = self.operand_stack.pop().unwrap();
                 let lhs_reg = lhs.get_as_register().unwrap();
                 let cond_kind = match op {
-                    &wasmir::Irelop::Eq32 => JumpCondKind::Neq(lhs_reg, rhs_reg),
+                    &Irelop::Eq32 => JumpCondKind::Neq(lhs_reg, rhs_reg),
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
             }
