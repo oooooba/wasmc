@@ -60,7 +60,7 @@ fn main() {
             WasmInstr::Const(Const::I32(0)),
             WasmInstr::Binop(Binop::Irelop(Irelop::Eq32)),
             WasmInstr::If(
-                Resulttype::new(Some(vec![Valtype::U32])),
+                Resulttype::new(Some(vec![Valtype::I32])),
                 vec![
                     WasmInstr::Const(Const::I32(0)),
                 ], vec![
@@ -72,7 +72,7 @@ fn main() {
                     WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)),
                 ]),
         ];
-        let functype = wasmir::Functype::new(vec![Valtype::U32], vec![Valtype::U32]);
+        let functype = wasmir::Functype::new(vec![Valtype::I32], vec![Valtype::I32]);
         let function = wasmir::Func::new(wasmir::Typeidx::new(0), vec![], wasmir::Expr::new(code));
         let module = wasmir::Module::new(vec![functype], vec![function]);
         let mut wasm_to_ir = WasmToMachine::new();

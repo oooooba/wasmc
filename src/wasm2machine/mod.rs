@@ -400,7 +400,7 @@ impl WasmToMachine {
     fn map_valtype(valtype: &Valtype) -> Type {
         use wasmir::Valtype::*;
         match valtype {
-            &U32 => Type::I32,
+            &I32 => Type::I32,
         }
     }
 
