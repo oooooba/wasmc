@@ -1,18 +1,16 @@
-use std::collections::HashMap;
-
 use context::handle::{FunctionHandle, ModuleHandle};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Module {
     handle: ModuleHandle,
-    functions: HashMap<String, FunctionHandle>,
+    functions: Vec<FunctionHandle>,
 }
 
 impl Module {
     pub fn new(handle: ModuleHandle) -> Module {
         Module {
             handle: handle,
-            functions: HashMap::new(),
+            functions: vec![],
         }
     }
 
@@ -20,11 +18,11 @@ impl Module {
         &self.handle
     }
 
-    pub fn get_functions(&self) -> &HashMap<String, FunctionHandle> {
+    pub fn get_functions(&self) -> &Vec<FunctionHandle> {
         &self.functions
     }
 
-    pub fn get_mut_functions(&mut self) -> &mut HashMap<String, FunctionHandle> {
+    pub fn get_mut_functions(&mut self) -> &mut Vec<FunctionHandle> {
         &mut self.functions
     }
 }

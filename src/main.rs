@@ -81,5 +81,7 @@ fn main() {
     };
     let mut pass_manager = PassManager::new();
     pass_manager.add_group_pass(MainPass::create());
-    pass_manager.run(*module.get_mut_functions().get(&format!("f_{}", 0)).unwrap());
+    for function in module.get_mut_functions().iter_mut() {
+        pass_manager.run(*function);
+    }
 }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use context::handle::RegisterHandle;
+use context::handle::{FunctionHandle, RegisterHandle};
 use machineir::operand::Operand;
 use machineir::typ::Type;
 
@@ -34,7 +34,7 @@ pub enum Opcode {
     Load { typ: Type, dst: Operand, src: Operand },
     Store { typ: Type, dst: Operand, src: Operand },
     Jump { kind: JumpCondKind, target: Operand },
-    Call { func: String, typ: Type, result: Option<Operand>, args: Vec<Operand> },
+    Call { func: FunctionHandle, typ: Type, result: Option<Operand>, args: Vec<Operand> },
     Return { typ: Type, result: Option<Operand> },
 }
 

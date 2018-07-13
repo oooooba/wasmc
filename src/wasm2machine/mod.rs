@@ -193,8 +193,7 @@ impl WasmToMachine {
             }
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
-                let funcname = format!("f_{}", index);
-                let function = *self.module.get_functions().get(&funcname).unwrap();
+                let function = self.module.get_functions()[index];
 
                 let mut args = vec![];
                 assert!(function.get_parameter_types().len() <= self.operand_stack.len());
@@ -215,7 +214,7 @@ impl WasmToMachine {
                     unreachable!()
                 };
                 self.emit_on_current_basic_block(Opcode::Call {
-                    func: funcname,
+                    func: function,
                     typ: Type::I32,
                     result,
                     args,
@@ -417,7 +416,8 @@ impl WasmToMachine {
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
             let func_name = format!("f_{}", funcidx);
             let function = Context::create_function(func_name.clone(), parameter_types, result_types);
-            self.module.get_mut_functions().insert(func_name, function);
+            self.module.get_mut_functions().push(function);
+            assert_eq!(self.module.get_functions().len() - 1, funcidx);
 
             self.current_basic_block = entry_block;
             self.exit_block = exit_block;

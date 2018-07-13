@@ -438,7 +438,7 @@ impl InstrPass for EmitAssemblyPass {
                 }
             }
             &Call { ref func, .. } => {
-                println!("call {}", func);
+                println!("call {}", func.get_func_name());
             }
             &Return { .. } => {
                 println!("mov rsp, rbp");
