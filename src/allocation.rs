@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use context::Context;
-use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::operand::{Operand, OperandKind};
-use pass::{BasicBlockPass, FunctionPass, InstrPass};
+use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
 
 #[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
@@ -290,16 +290,29 @@ impl InsertBasicBlockLabelPass {
 }
 
 #[derive(Debug)]
+pub struct ModuleInitPass {}
+
+impl ModulePass for ModuleInitPass {
+    fn do_action(&mut self, _module: ModuleHandle) {
+        println!(".intel_syntax noprefix");
+        println!();
+    }
+}
+
+impl ModuleInitPass {
+    pub fn create() -> Box<ModuleInitPass> {
+        Box::new(ModuleInitPass {})
+    }
+}
+
+#[derive(Debug)]
 pub struct PreEmitAssemblyPass {
     base_pointer_register: &'static str,
 }
 
 impl FunctionPass for PreEmitAssemblyPass {
     fn do_action(&mut self, function: FunctionHandle) {
-        println!(".intel_syntax noprefix");
-        println!(".global {}", "entry_point");
-        println!();
-        println!("entry_point:");
+        println!(".global {}", function.get_func_name());
         println!("{}:", function.get_func_name());
         println!("push rbp");
         println!("mov rbp, rsp");

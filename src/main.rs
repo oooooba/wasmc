@@ -2,7 +2,7 @@ extern crate wasmc;
 
 use std::collections::HashMap;
 
-use wasmc::allocation::{EmitAssemblyPass, InsertBasicBlockLabelPass,
+use wasmc::allocation::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitPass,
                         PreEmitAssemblyPass, PostEmitAssemblyPass, SimpleRegisterAllocationPass};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
@@ -39,6 +39,7 @@ impl GroupPass for MainPass {
         reg_name_map.insert(ar2, "esi");
         reg_name_map.insert(ar3, "edx");
 
+        pass_manager.add_module_pass(ModuleInitPass::create());
         pass_manager.add_function_pass(PreEmitAssemblyPass::create("rbp"));
         pass_manager.add_instr_pass(EmitAssemblyPass::create(reg_name_map, "rbp"));
         pass_manager.add_function_pass(PostEmitAssemblyPass::create());
@@ -54,7 +55,7 @@ impl MainPass {
 fn main() {
     Context::init();
 
-    let mut module = {
+    let module = {
         let code = vec![
             WasmInstr::GetLocal(wasmir::Localidx::new(0)),
             WasmInstr::Const(Const::I32(0)),
@@ -81,7 +82,5 @@ fn main() {
     };
     let mut pass_manager = PassManager::new();
     pass_manager.add_group_pass(MainPass::create());
-    for function in module.get_mut_functions().iter_mut() {
-        pass_manager.run(*function);
-    }
+    pass_manager.run(module);
 }
