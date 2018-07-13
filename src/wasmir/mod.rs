@@ -78,6 +78,10 @@ pub enum Ibinop {
     Sub32,
 }
 
+pub enum Itestop {
+    Eqz32,
+}
+
 pub enum Irelop {
     Eq32,
 }
@@ -85,6 +89,7 @@ pub enum Irelop {
 pub enum WasmInstr {
     Const(Const),
     Ibinop(Ibinop),
+    Itestop(Itestop),
     Irelop(Irelop),
     Block(Resulttype, Vec<WasmInstr>),
     If(Resulttype, Vec<WasmInstr>, Vec<WasmInstr>),

@@ -7,7 +7,7 @@ use machineir::typ;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
-use wasmir::{Const, Functype, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
+use wasmir::{Const, Functype, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -111,6 +111,7 @@ impl WasmToMachine {
                 });
             }
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
+            &WasmInstr::Itestop(_) => unimplemented!(),
             &WasmInstr::Irelop(_) => unimplemented!(),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
@@ -226,6 +227,14 @@ impl WasmToMachine {
 
     fn emit_body2(&mut self, wasm_instr0: &WasmInstr, wasm_instr1: &WasmInstr) -> bool {
         match (wasm_instr0, wasm_instr1) {
+            (&WasmInstr::Itestop(ref op), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
+                let operand = self.operand_stack.pop().unwrap();
+                let reg = operand.get_as_register().unwrap();
+                let cond_kind = match op {
+                    &Itestop::Eqz32 => JumpCondKind::Eq0(reg),
+                };
+                self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
+            }
             (&WasmInstr::Irelop(ref op), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
                 let rhs = self.operand_stack.pop().unwrap();
                 let rhs_reg = rhs.get_as_register().unwrap();
