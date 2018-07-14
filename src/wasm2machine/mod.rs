@@ -231,7 +231,7 @@ impl WasmToMachine {
                 let operand = self.operand_stack.pop().unwrap();
                 let reg = operand.get_as_register().unwrap();
                 let cond_kind = match op {
-                    &Itestop::Eqz32 => JumpCondKind::Eq0(reg),
+                    &Itestop::Eqz32 => JumpCondKind::Neq0(reg),
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
             }
