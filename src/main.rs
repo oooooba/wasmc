@@ -8,7 +8,7 @@ use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::pass::{GroupPass, PassManager};
 use wasmc::wasmir;
-use wasmc::wasmir::{Binop, Const, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
+use wasmc::wasmir::{Const, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
 
 pub struct MainPass {}
@@ -59,7 +59,7 @@ fn main() {
         let code = vec![
             WasmInstr::GetLocal(wasmir::Localidx::new(0)),
             WasmInstr::Const(Const::I32(0)),
-            WasmInstr::Binop(Binop::Irelop(Irelop::Eq32)),
+            WasmInstr::Irelop(Irelop::Eq32),
             WasmInstr::If(
                 Resulttype::new(Some(vec![Valtype::I32])),
                 vec![
@@ -68,9 +68,9 @@ fn main() {
                     WasmInstr::GetLocal(wasmir::Localidx::new(0)),
                     WasmInstr::GetLocal(wasmir::Localidx::new(0)),
                     WasmInstr::Const(Const::I32(1)),
-                    WasmInstr::Binop(Binop::Ibinop(Ibinop::Sub32)),
+                    WasmInstr::Ibinop(Ibinop::Sub32),
                     WasmInstr::Call(wasmir::Funcidx::new(0)),
-                    WasmInstr::Binop(Binop::Ibinop(Ibinop::Add32)),
+                    WasmInstr::Ibinop(Ibinop::Add32),
                 ]),
         ];
         let functype = wasmir::Functype::new(vec![Valtype::I32], vec![Valtype::I32]);
