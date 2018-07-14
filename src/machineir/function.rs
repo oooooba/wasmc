@@ -61,6 +61,7 @@ impl Function {
     }
 
     pub fn print(&self) {
+        println!("Function ({:?}) / <{}>", self.handle, self.get_func_name());
         for basic_block in self.basic_blocks.iter() {
             basic_block.get().print();
         }

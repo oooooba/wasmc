@@ -40,8 +40,80 @@ pub enum Opcode {
 
 impl Opcode {
     pub fn print(&self) {
+        use self::Opcode::*;
         match self {
-            _ => unimplemented!(),
+            &Debug(ref msg) => {
+                print!("debug");
+                print!("\t");
+                print!("{}", msg);
+            }
+            &Label(ref label) => {
+                print!("label");
+                print!("\t");
+                print!("{}", label);
+            }
+            &Copy { ref dst, ref src, .. } => {
+                dst.print();
+                print!(" = ");
+                print!("copy");
+                print!(" ");
+                src.print();
+            }
+            &UnaryOp { ref kind, ref dst, ref src, .. } => {
+                dst.print();
+                print!(" = ");
+                print!("unary<{:?}>", kind);
+                print!(" ");
+                src.print();
+            }
+            &BinaryOp { ref kind, ref dst, ref src1, ref src2, .. } => {
+                dst.print();
+                print!(" = ");
+                print!("binary<{:?}>", kind);
+                print!(" ");
+                src1.print();
+                print!(", ");
+                src2.print();
+            }
+            &Load { ref dst, ref src, .. } => {
+                dst.print();
+                print!(" = ");
+                print!("load");
+                print!(" ");
+                src.print();
+            }
+            &Store { ref dst, ref src, .. } => {
+                dst.print();
+                print!(" = ");
+                print!("store");
+                print!(" ");
+                src.print();
+            }
+            &Jump { ref kind, ref target, } => {
+                print!("jump<{:?}>", kind);
+                print!(" ");
+                target.print();
+            }
+            &Call { ref func, ref result, ref args, .. } => {
+                if let &Some(ref res) = result {
+                    res.print();
+                    print!(" = ");
+                }
+                print!("call");
+                print!(" ");
+                print!("{}", func.get_func_name());
+                args.iter().for_each(|arg| {
+                    print!(", ");
+                    arg.print();
+                });
+            }
+            &Return { ref result, .. } => {
+                print!("return");
+                if let &Some(ref res) = result {
+                    print!(" ");
+                    res.print();
+                }
+            }
         }
     }
 }
