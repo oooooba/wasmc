@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
-use machineir::basicblock::BasicBlockKind;
 use machineir::opcode;
 use machineir::opcode::{JumpCondKind, Opcode, UnaryOpKind};
 use machineir::typ;
@@ -36,22 +37,22 @@ impl OperandStack {
 pub struct WasmToMachine {
     operand_stack: OperandStack,
     current_basic_block: BasicBlockHandle,
-    exit_block: BasicBlockHandle,
-    result_registers: Vec<RegisterHandle>,
+    entry_block: BasicBlockHandle,
+    basic_block_to_continuation: HashMap<BasicBlockHandle, (BasicBlockHandle, Vec<RegisterHandle>)>,
     current_function: FunctionHandle,
     module: ModuleHandle,
 }
 
 impl WasmToMachine {
     pub fn new() -> WasmToMachine {
-        let dummy_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
+        let dummy_block = Context::create_basic_block();
         let (parameter_types, result_types) = WasmToMachine::map_functype(&wasmir::Functype::new(vec![], vec![]));
         let dummy_function = Context::create_function("".to_string(), parameter_types, result_types);
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
-            exit_block: dummy_block,
-            result_registers: vec![],
+            entry_block: dummy_block,
+            basic_block_to_continuation: HashMap::new(),
             current_function: dummy_function,
             module: Context::create_module(),
         }
@@ -87,15 +88,54 @@ impl WasmToMachine {
 
     fn emit_if(&mut self, resulttype: &Resulttype, cond_kind: opcode::JumpCondKind, then_instrs: &Vec<WasmInstr>, else_instrs: &Vec<WasmInstr>) {
         let result_registers = WasmToMachine::setup_result_registers(resulttype);
-        let merge_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
-        let then_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
-        let else_block = Context::create_basic_block(BasicBlockKind::ExprBlock(merge_block));
+        let then_block = Context::create_basic_block();
+        let else_block = Context::create_basic_block();
+        let merge_block = Context::create_basic_block();
 
         self.emit_on_current_basic_block(Opcode::Jump { kind: cond_kind, target: Operand::new_label(else_block) });
 
-        self.emit_on_expr_basic_block(then_block, merge_block, then_instrs);
-        self.emit_on_expr_basic_block(else_block, merge_block, else_instrs);
-        self.reset_for_continuation(merge_block);
+        self.emit_entering_block(then_block, merge_block, result_registers.clone(), then_instrs);
+        self.emit_exiting_block(then_block, JumpCondKind::Unconditional,
+                                true, false, false);
+
+        self.emit_entering_block(else_block, merge_block, result_registers, else_instrs);
+        self.emit_exiting_block(else_block, JumpCondKind::Unconditional,
+                                true, true, true);
+
+        self.switch_current_basic_block_to(merge_block);
+    }
+
+    fn emit_return(&mut self, result_registers: &Vec<RegisterHandle>) {
+        assert!(result_registers.len() == 0 || result_registers.len() == 1);
+        if result_registers.len() == 0 {
+            self.emit_on_current_basic_block(Opcode::Return { typ: Type::I32, result: None });
+        } else if result_registers.len() == 1 {
+            let result_register = result_registers[0];
+            let typ = result_register.get_typ().clone();
+            let result = Operand::new_register(result_register);
+            self.emit_on_current_basic_block(Opcode::Return { typ: typ, result: Some(result) });
+        }
+    }
+
+    fn emit_entering_block(&mut self, expr_block: BasicBlockHandle, cont_block: BasicBlockHandle,
+                           result_registers: Vec<RegisterHandle>, instrs: &Vec<WasmInstr>) {
+        self.basic_block_to_continuation.insert(expr_block, (cont_block, result_registers));
+        self.switch_current_basic_block_to(expr_block);
+        self.operand_stack.push(Operand::new_label(self.current_basic_block));
+        self.emit_instrs(instrs);
+    }
+
+    fn emit_exiting_block(&mut self, entering_block: BasicBlockHandle, jump_cond_kind: JumpCondKind,
+                          removes_label: bool, restores_operands: bool, replaces_registers: bool) {
+        if removes_label {
+            self.remove_label(entering_block);
+        }
+        let (cont_block, result_registers) = self.basic_block_to_continuation.get(&entering_block).unwrap().clone();
+        let opcode = Opcode::Jump {
+            kind: jump_cond_kind,
+            target: Operand::new_label(cont_block),
+        };
+        self.emit_transition_procedure(opcode, result_registers, restores_operands, replaces_registers);
     }
 
     fn emit_body1(&mut self, wasm_instr: &WasmInstr) -> bool {
@@ -115,74 +155,59 @@ impl WasmToMachine {
             &WasmInstr::Irelop(_) => unimplemented!(),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
-                let cont_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
-                let expr_block = Context::create_basic_block(BasicBlockKind::ExprBlock(cont_block));
+                let expr_block = Context::create_basic_block();
+                let cont_block = Context::create_basic_block();
 
-                self.emit_on_expr_basic_block(expr_block, cont_block, instrs);
-                self.reset_for_continuation(cont_block);
+                self.emit_on_current_basic_block(opcode::Opcode::Jump {
+                    kind: opcode::JumpCondKind::Unconditional,
+                    target: Operand::new_label(expr_block),
+                });
+
+                self.emit_entering_block(expr_block, cont_block, result_registers, instrs);
+                self.emit_exiting_block(expr_block, JumpCondKind::Unconditional,
+                                        true, true, true);
+
+                self.switch_current_basic_block_to(cont_block);
             }
-            &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs) => {
-                let cond_reg = self.pop_conditional_register();
-                self.emit_if(resulttype, JumpCondKind::Eq0(cond_reg), then_instrs, else_instrs);
-            }
+            &WasmInstr::If(_, _, _) => unimplemented!(),
             &WasmInstr::Loop(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 assert_eq!(result_registers.len(), 0);
-                let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(result_registers));
-                let body_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
+                let body_block = Context::create_basic_block();
+                let exit_block = Context::create_basic_block();
 
                 self.emit_on_current_basic_block(opcode::Opcode::Jump {
                     kind: opcode::JumpCondKind::Unconditional,
                     target: Operand::new_label(body_block),
                 });
 
-                self.emit_on_expr_basic_block(body_block, body_block, instrs);
-                self.reset_for_continuation(exit_block);
-            }
-            &WasmInstr::Br(index) => {
-                let target_block = self.get_label_at(index);
-                self.emit_copy_for_transition(target_block);
-                let target_cont_block = *target_block.get_continuation_block().unwrap();
+                self.emit_entering_block(body_block, exit_block, result_registers, instrs);
                 self.emit_on_current_basic_block(opcode::Opcode::Jump {
                     kind: opcode::JumpCondKind::Unconditional,
-                    target: Operand::new_label(target_cont_block),
+                    target: Operand::new_label(body_block),
                 });
+                self.remove_label(body_block);
 
-                let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
-                let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
+                self.switch_current_basic_block_to(exit_block);
+            }
+            &WasmInstr::Br(index) => {
+                let entering_block = self.get_label_at(index);
+                self.emit_exiting_block(entering_block, JumpCondKind::Unconditional,
+                                        false, true, false);
 
-                self.current_function.get_mut_basic_blocks().push_back(new_basic_block);
-                self.current_basic_block = new_basic_block;
+                let new_block = Context::create_basic_block();
+                self.switch_current_basic_block_to(new_block);
                 self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
             }
-            &WasmInstr::BrIf(index) => {
-                let cond_reg = self.pop_conditional_register();
-                let target_block = self.get_label_at(index);
-                self.emit_copy_for_transition(target_block);
-                let target_cont_block = *target_block.get_continuation_block().unwrap();
-                self.emit_on_current_basic_block(opcode::Opcode::Jump {
-                    kind: opcode::JumpCondKind::Neq0(cond_reg),
-                    target: Operand::new_label(target_cont_block),
-                });
-
-                let current_cont_block = *self.current_basic_block.get_continuation_block().unwrap();
-                let new_basic_block = Context::create_basic_block(BasicBlockKind::ExprBlock(current_cont_block));
-
-                self.current_function.get_mut_basic_blocks().push_back(new_basic_block);
-                self.current_basic_block = new_basic_block;
-            }
+            &WasmInstr::BrIf(_) => unimplemented!(),
             &WasmInstr::Return => {
-                assert_eq!(self.result_registers.len(), self.operand_stack.len());
-                assert!(self.result_registers.len() == 0 || self.result_registers.len() == 1);
-                if self.result_registers.len() == 0 {
-                    self.emit_on_current_basic_block(Opcode::Return { typ: Type::I32, result: None });
-                } else if self.result_registers.len() == 1 {
-                    let result_registers = self.result_registers.clone();
-                    let result_register = result_registers[0];
-                    self.emit_copy_to_store_result(result_registers, false);
-                    let result = Operand::new_register(result_register);
-                    self.emit_on_current_basic_block(Opcode::Return { typ: Type::I32, result: Some(result) });
-                }
+                let entering_block = self.entry_block;
+                self.emit_exiting_block(entering_block, JumpCondKind::Unconditional,
+                                        false, true, false);
+
+                let new_block = Context::create_basic_block();
+                self.switch_current_basic_block_to(new_block);
+                self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
             }
             &WasmInstr::GetLocal(ref localidx) => {
                 let index = localidx.as_index();
@@ -235,6 +260,18 @@ impl WasmToMachine {
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
             }
+            (&WasmInstr::Itestop(ref op), &WasmInstr::BrIf(index)) => {
+                let cond_reg = self.pop_conditional_register();
+                let jump_cond_kind = match op {
+                    &Itestop::Eqz32 => JumpCondKind::Eq0(cond_reg),
+                };
+                let entering_block = self.get_label_at(index);
+                self.emit_exiting_block(entering_block, jump_cond_kind,
+                                        false, true, false);
+
+                let new_block = Context::create_basic_block();
+                self.switch_current_basic_block_to(new_block);
+            }
             (&WasmInstr::Irelop(ref op), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
                 let rhs = self.operand_stack.pop().unwrap();
                 let rhs_reg = rhs.get_as_register().unwrap();
@@ -248,6 +285,11 @@ impl WasmToMachine {
             _ => return false,
         }
         true
+    }
+
+    fn switch_current_basic_block_to(&mut self, basic_block: BasicBlockHandle) {
+        self.current_function.get_mut_basic_blocks().push_back(basic_block);
+        self.current_basic_block = basic_block;
     }
 
     fn emit_on_current_basic_block(&mut self, opcode: Opcode) -> InstrHandle {
@@ -275,31 +317,21 @@ impl WasmToMachine {
         }
     }
 
-    fn emit_on_expr_basic_block(&mut self, expr_block: BasicBlockHandle, cont_block: BasicBlockHandle, instrs: &Vec<WasmInstr>) {
-        self.current_function.get_mut_basic_blocks().push_back(expr_block);
-        self.current_basic_block = expr_block;
-        self.operand_stack.push(Operand::new_label(expr_block));
-        self.emit_instrs(instrs);
-        self.finalize_basic_block(expr_block);
-
-        let num_results = cont_block.get_result_registers()
-            .map_or(0, |r| r.len()); // 0 for loop
-        self.emit_on_current_basic_block(opcode::Opcode::Jump {
-            kind: opcode::JumpCondKind::Unconditional,
-            target: Operand::new_label(cont_block),
-        });
-        for _ in 0..num_results {
-            self.operand_stack.pop();
+    fn remove_label(&mut self, expr_block: BasicBlockHandle) {
+        let mut tmp_stack = OperandStack::new();
+        let mut is_valid = false;
+        while let Some(operand) = self.operand_stack.pop() {
+            if operand.get_kind() == &OperandKind::Label(expr_block) {
+                is_valid = true;
+                break;
+            }
+            tmp_stack.push(operand);
         }
-    }
+        assert!(is_valid);
 
-    fn reset_for_continuation(&mut self, basic_block: BasicBlockHandle) {
-        let result_registers = basic_block.get_result_registers().unwrap();
-        for register in result_registers.iter() {
-            self.operand_stack.push(Operand::new_register(*register));
+        while let Some(operand) = tmp_stack.pop() {
+            self.operand_stack.push(operand);
         }
-        self.current_function.get_mut_basic_blocks().push_back(basic_block);
-        self.current_basic_block = basic_block;
     }
 
     fn get_label_at(&mut self, index: usize) -> BasicBlockHandle {
@@ -315,11 +347,12 @@ impl WasmToMachine {
         panic!()
     }
 
-    fn emit_copy_to_store_result(&mut self, mut registers: Vec<RegisterHandle>, restores_operands: bool) {
+    fn emit_transition_procedure(&mut self, opcode: Opcode, mut registers: Vec<RegisterHandle>,
+                                 restores_operands: bool, replaces_registers: bool) {
+        assert!(!(!restores_operands && replaces_registers));
         let mut tmp_operand_stack = OperandStack::new();
         while let Some(register) = registers.pop() {
-            let operand = self.operand_stack.pop().unwrap();
-            tmp_operand_stack.push(operand.clone());
+            let mut operand = self.operand_stack.pop().unwrap();
             let typ = register.get_typ().clone();
             if let &OperandKind::Register(src_register) = operand.get_kind() {
                 self.emit_on_current_basic_block(Opcode::Copy {
@@ -328,40 +361,21 @@ impl WasmToMachine {
                     src: Operand::new_register(src_register),
                 });
             } else {
-                unimplemented!()
+                panic!()
             }
+            if replaces_registers {
+                operand.set_kind(OperandKind::Register(register));
+            }
+            tmp_operand_stack.push(operand);
         }
+
+        self.emit_on_current_basic_block(opcode);
+
         if restores_operands {
             while let Some(operand) = tmp_operand_stack.pop() {
                 self.operand_stack.push(operand);
             }
         }
-    }
-
-    fn emit_copy_for_transition(&mut self, basic_block: BasicBlockHandle) {
-        let merge_block = *basic_block.get_continuation_block().unwrap();
-        let registers = merge_block.get_result_registers().unwrap().clone();
-        self.emit_copy_to_store_result(registers, true);
-    }
-
-    fn finalize_basic_block(&mut self, basic_block: BasicBlockHandle) {
-        let mut tmp_stack = OperandStack::new();
-        let mut is_valid = false;
-        while let Some(operand) = self.operand_stack.pop() {
-            if operand.get_kind() == &OperandKind::Label(basic_block) {
-                is_valid = true;
-                break;
-            }
-            tmp_stack.push(operand);
-        }
-
-        assert!(is_valid);
-
-        while let Some(operand) = tmp_stack.pop() {
-            self.operand_stack.push(operand);
-        }
-
-        self.emit_copy_for_transition(basic_block);
     }
 
     fn create_registers_for_types(typs: Vec<Type>) -> Vec<RegisterHandle> {
@@ -417,26 +431,33 @@ impl WasmToMachine {
         for (funcidx, func) in module.get_funcs().iter().enumerate() {
             let typeidx = func.get_type();
             let functype = &module.get_types()[typeidx.as_index()];
-            let (_in_typs, out_typs) = WasmToMachine::map_functype(&functype);
-            let result_registers = WasmToMachine::create_registers_for_types(out_typs);
-            let exit_block = Context::create_basic_block(BasicBlockKind::ContinuationBlock(vec![]));
-            let entry_block = Context::create_basic_block(BasicBlockKind::ExprBlock(exit_block));
-            let dummy_func = self.current_function;
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
             let func_name = format!("f_{}", funcidx);
-            let function = Context::create_function(func_name.clone(), parameter_types, result_types);
+            let function = Context::create_function(func_name, parameter_types, result_types.clone());
             self.module.get_mut_functions().push(function);
             assert_eq!(self.module.get_functions().len() - 1, funcidx);
 
-            self.current_basic_block = entry_block;
-            self.exit_block = exit_block;
-            self.result_registers = result_registers;
+            let entry_block = Context::create_basic_block();
+            let exit_block = Context::create_basic_block();
+
+            let dummy_func = self.current_function;
+            let dummy_block = self.current_basic_block;
+
+            self.entry_block = entry_block;
+            self.basic_block_to_continuation = HashMap::new();
             self.current_function = function;
 
-            self.emit_on_expr_basic_block(entry_block, exit_block, func.get_body().get_instr_sequences());
-            self.current_function.get_mut_basic_blocks().push_back(self.exit_block);
+            let result_registers = WasmToMachine::create_registers_for_types(result_types);
+            self.emit_entering_block(entry_block, exit_block,
+                                     result_registers.clone(), func.get_body().get_instr_sequences());
+            self.emit_exiting_block(entry_block, JumpCondKind::Unconditional,
+                                    true, true, true);
+
+            self.switch_current_basic_block_to(exit_block);
+            self.emit_return(&result_registers);
 
             self.current_function = dummy_func;
+            self.current_basic_block = dummy_block;
         }
     }
 }

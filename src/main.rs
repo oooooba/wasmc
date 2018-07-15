@@ -8,7 +8,7 @@ use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::pass::{GroupPass, PassManager};
 use wasmc::wasmir;
-use wasmc::wasmir::{Const, Ibinop, Irelop, Resulttype, Valtype, WasmInstr};
+use wasmc::wasmir::{Const, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
 
 pub struct MainPass {}
@@ -56,7 +56,46 @@ fn main() {
     Context::init();
 
     let module = {
-        let code = vec![
+        let code1 = vec![
+            WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
+                WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
+                    WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
+                        WasmInstr::Const(Const::I32(1)),
+                    ]),
+                    WasmInstr::Const(Const::I32(0)),
+                    WasmInstr::Const(Const::I32(10)),
+                    WasmInstr::Irelop(Irelop::Eq32),
+                    WasmInstr::If(
+                        Resulttype::new(Some(vec![Valtype::I32])),
+                        vec![
+                            WasmInstr::Const(Const::I32(1)),
+                        ], vec![
+                            WasmInstr::Const(Const::I32(2)),
+                        ]),
+                    WasmInstr::Ibinop(Ibinop::Add32),
+                ]),
+            ]),
+        ];
+        let code2 = vec![
+            WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
+                WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
+                    WasmInstr::Const(Const::I32(0)),
+                    WasmInstr::Itestop(Itestop::Eqz32),
+                    WasmInstr::If(
+                        Resulttype::new(Some(vec![Valtype::I32])),
+                        vec![
+                            WasmInstr::Const(Const::I32(1)),
+                        ], vec![
+                            WasmInstr::Const(Const::I32(2)),
+                        ]),
+                    WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
+                        WasmInstr::Const(Const::I32(1)),
+                    ]),
+                    WasmInstr::Ibinop(Ibinop::Add32),
+                ]),
+            ]),
+        ];
+        let code3 = vec![
             WasmInstr::GetLocal(wasmir::Localidx::new(0)),
             WasmInstr::Const(Const::I32(0)),
             WasmInstr::Irelop(Irelop::Eq32),
@@ -71,16 +110,42 @@ fn main() {
                     WasmInstr::Ibinop(Ibinop::Sub32),
                     WasmInstr::Call(wasmir::Funcidx::new(0)),
                     WasmInstr::Ibinop(Ibinop::Add32),
+                    WasmInstr::Return,
                 ]),
         ];
+        let code4 = vec![
+            WasmInstr::Block(Resulttype::new(Some(vec![])), vec![
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Itestop(Itestop::Eqz32),
+                WasmInstr::BrIf(0),
+                WasmInstr::Const(Const::I32(1)),
+                WasmInstr::Return,
+            ]),
+            WasmInstr::Const(Const::I32(0)),
+        ];
+
+        let mut functions = vec![];
         let functype = wasmir::Functype::new(vec![Valtype::I32], vec![Valtype::I32]);
-        let function = wasmir::Func::new(wasmir::Typeidx::new(0), vec![], wasmir::Expr::new(code));
-        let module = wasmir::Module::new(vec![functype], vec![function]);
+        let functype_index = wasmir::Typeidx::new(0);
+        for code in vec![code1, code2, code3, code4] {
+            let function = wasmir::Func::new(functype_index, vec![], wasmir::Expr::new(code));
+            functions.push(function);
+        }
+
+        let module = wasmir::Module::new(vec![functype], functions);
         let mut wasm_to_ir = WasmToMachine::new();
         wasm_to_ir.emit(&module);
         wasm_to_ir.finalize()
     };
+
+    for function in module.get_functions() {
+        println!("-------------------------------");
+        function.get().print();
+    }
+
+    /*
     let mut pass_manager = PassManager::new();
     pass_manager.add_group_pass(MainPass::create());
     pass_manager.run(module);
+    */
 }
