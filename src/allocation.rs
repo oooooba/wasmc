@@ -350,23 +350,6 @@ impl PreEmitAssemblyPass {
 }
 
 #[derive(Debug)]
-pub struct PostEmitAssemblyPass {}
-
-impl FunctionPass for PostEmitAssemblyPass {
-    fn do_action(&mut self, _function: FunctionHandle) {
-        println!("mov rsp, rbp");
-        println!("pop rbp");
-        println!("ret");
-    }
-}
-
-impl PostEmitAssemblyPass {
-    pub fn create() -> Box<PostEmitAssemblyPass> {
-        Box::new(PostEmitAssemblyPass {})
-    }
-}
-
-#[derive(Debug)]
 pub struct EmitAssemblyPass {
     physical_register_name_map: HashMap<RegisterHandle, &'static str>,
     base_pointer_register: &'static str,

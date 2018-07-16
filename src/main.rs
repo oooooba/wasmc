@@ -3,7 +3,7 @@ extern crate wasmc;
 use std::collections::HashMap;
 
 use wasmc::allocation::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitPass,
-                        PreEmitAssemblyPass, PostEmitAssemblyPass, SimpleRegisterAllocationPass};
+                        PreEmitAssemblyPass, SimpleRegisterAllocationPass};
 use wasmc::context::Context;
 use wasmc::context::handle::{FunctionHandle, RegisterHandle};
 use wasmc::machineir::typ::Type;
@@ -31,7 +31,6 @@ impl FunctionPass for MainPass {
     fn finalize(&mut self, pass_manager: &mut PassManager) {
         pass_manager.add_function_pass(PreEmitAssemblyPass::create("rbp"));
         pass_manager.add_instr_pass(EmitAssemblyPass::create(self.register_name_map.clone(), "rbp"));
-        pass_manager.add_function_pass(PostEmitAssemblyPass::create());
     }
 }
 
