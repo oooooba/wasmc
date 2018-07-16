@@ -377,7 +377,7 @@ impl InstrPass for EmitAssemblyPass {
         use self::Opcode::*;
         match instr.get_opcode() {
             &Debug(ref msg) => {
-                println!("; {}", msg);
+                println!("# {}", msg);
             }
             &Label(ref label) => {
                 println!("{}:", label);
