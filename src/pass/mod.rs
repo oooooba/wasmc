@@ -5,8 +5,8 @@ use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandl
 
 pub trait InstrPass {
     fn do_action(&mut self, instr: InstrHandle);
-    fn initialize(&mut self) {}
-    fn finalize(&mut self) {}
+    fn initialize(&mut self, _pass_manager: &mut PassManager) {}
+    fn finalize(&mut self, _pass_manager: &mut PassManager) {}
 }
 
 impl fmt::Debug for InstrPass {
@@ -17,8 +17,8 @@ impl fmt::Debug for InstrPass {
 
 pub trait BasicBlockPass {
     fn do_action(&mut self, basic_block: BasicBlockHandle);
-    fn initialize(&mut self) {}
-    fn finalize(&mut self) {}
+    fn initialize(&mut self, _pass_manager: &mut PassManager) {}
+    fn finalize(&mut self, _pass_manager: &mut PassManager) {}
 }
 
 impl fmt::Debug for BasicBlockPass {
@@ -29,8 +29,8 @@ impl fmt::Debug for BasicBlockPass {
 
 pub trait FunctionPass {
     fn do_action(&mut self, function: FunctionHandle);
-    fn initialize(&mut self) {}
-    fn finalize(&mut self) {}
+    fn initialize(&mut self, _pass_manager: &mut PassManager) {}
+    fn finalize(&mut self, _pass_manager: &mut PassManager) {}
 }
 
 impl fmt::Debug for FunctionPass {
@@ -41,23 +41,11 @@ impl fmt::Debug for FunctionPass {
 
 pub trait ModulePass {
     fn do_action(&mut self, module: ModuleHandle);
-    fn initialize(&mut self) {}
-    fn finalize(&mut self) {}
+    fn initialize(&mut self, _pass_manager: &mut PassManager) {}
+    fn finalize(&mut self, _pass_manager: &mut PassManager) {}
 }
 
 impl fmt::Debug for ModulePass {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        unimplemented!()
-    }
-}
-
-pub trait GroupPass {
-    fn do_action(&mut self, pass_manager: &mut PassManager);
-    fn initialize(&mut self) {}
-    fn finalize(&mut self) {}
-}
-
-impl fmt::Debug for GroupPass {
     fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         unimplemented!()
     }
@@ -69,7 +57,6 @@ pub enum PassKind {
     BasicBlockPass(Box<BasicBlockPass>),
     FunctionPass(Box<FunctionPass>),
     ModulePass(Box<ModulePass>),
-    GroupPass(Box<GroupPass>),
 }
 
 pub struct PassManager {
@@ -107,45 +94,108 @@ impl PassManager {
         handle
     }
 
-    pub fn add_group_pass(&mut self, pass: Box<GroupPass>) -> PassHandle {
-        let handle = Context::create_pass(PassKind::GroupPass(pass));
-        self.passes.push(handle);
-        handle
-    }
-
     fn run_on_instr(&mut self, instr: InstrHandle, pass: &mut Box<InstrPass>) {
-        pass.initialize();
+        let mut before_pass_manager = PassManager::new();
+        pass.initialize(&mut before_pass_manager);
+        before_pass_manager.run_with_instr(instr);
+
         pass.do_action(instr);
-        pass.finalize();
+
+        let mut after_pass_manager = PassManager::new();
+        pass.finalize(&mut after_pass_manager);
+        after_pass_manager.run_with_instr(instr);
     }
 
     fn run_on_basic_block(&mut self, basic_block: BasicBlockHandle, pass: &mut Box<BasicBlockPass>) {
-        pass.initialize();
+        let mut before_pass_manager = PassManager::new();
+        pass.initialize(&mut before_pass_manager);
+        before_pass_manager.run_with_basic_block(basic_block);
+
         pass.do_action(basic_block);
-        pass.finalize();
+
+        let mut after_pass_manager = PassManager::new();
+        pass.finalize(&mut after_pass_manager);
+        after_pass_manager.run_with_basic_block(basic_block);
     }
 
     fn run_on_function(&mut self, function: FunctionHandle, pass: &mut Box<FunctionPass>) {
-        pass.initialize();
+        let mut before_pass_manager = PassManager::new();
+        pass.initialize(&mut before_pass_manager);
+        before_pass_manager.run_with_function(function);
+
         pass.do_action(function);
-        pass.finalize();
+
+        let mut after_pass_manager = PassManager::new();
+        pass.finalize(&mut after_pass_manager);
+        after_pass_manager.run_with_function(function);
     }
 
     fn run_on_module(&mut self, module: ModuleHandle, pass: &mut Box<ModulePass>) {
-        pass.initialize();
+        let mut before_pass_manager = PassManager::new();
+        pass.initialize(&mut before_pass_manager);
+        before_pass_manager.run_with_module(module);
+
         pass.do_action(module);
-        pass.finalize();
+
+        let mut after_pass_manager = PassManager::new();
+        pass.finalize(&mut after_pass_manager);
+        after_pass_manager.run_with_module(module);
     }
 
-    fn run_on_group(&mut self, pass: &mut Box<GroupPass>, module: ModuleHandle) {
-        pass.initialize();
-        let mut pass_manager = PassManager::new();
-        pass.do_action(&mut pass_manager);
-        pass_manager.run(module);
-        pass.finalize();
+    fn run_with_instr(&mut self, instr: InstrHandle) {
+        for i in 0..self.passes.len() {
+            use self::PassKind::*;
+            let mut pass = self.passes[i];
+            match pass.get_mut() {
+                &mut InstrPass(ref mut pass) => self.run_on_instr(instr, pass),
+                &mut BasicBlockPass(_) => panic!(),
+                &mut FunctionPass(_) => panic!(),
+                &mut ModulePass(_) => panic!(),
+            }
+        }
     }
 
-    pub fn run(&mut self, module: ModuleHandle) {
+    fn run_with_basic_block(&mut self, basic_block: BasicBlockHandle) {
+        for i in 0..self.passes.len() {
+            let mut pass = self.passes[i];
+            use self::PassKind::*;
+            match pass.get_mut() {
+                &mut InstrPass(ref mut pass) => {
+                    for instr in basic_block.get_instrs().iter() {
+                        self.run_on_instr(*instr, pass);
+                    }
+                }
+                &mut BasicBlockPass(ref mut pass) => self.run_on_basic_block(basic_block, pass),
+                &mut FunctionPass(_) => panic!(),
+                &mut ModulePass(_) => panic!(),
+            }
+        }
+    }
+
+    fn run_with_function(&mut self, function: FunctionHandle) {
+        for i in 0..self.passes.len() {
+            let mut pass = self.passes[i];
+            use self::PassKind::*;
+            match pass.get_mut() {
+                &mut InstrPass(ref mut pass) => {
+                    for basic_block in function.get_basic_blocks().iter() {
+                        for instr in basic_block.get_instrs().iter() {
+                            self.run_on_instr(*instr, pass);
+                        }
+                    }
+                }
+                &mut BasicBlockPass(ref mut pass) => {
+                    for basic_block in function.get_basic_blocks().iter() {
+                        self.run_on_basic_block(*basic_block, pass);
+                    }
+                }
+                &mut FunctionPass(ref mut pass) => self.run_on_function(function, pass),
+                &mut ModulePass(_) => panic!(),
+            }
+        }
+    }
+
+    fn run_with_module(&mut self, module: ModuleHandle) {
         for i in 0..self.passes.len() {
             let mut pass = self.passes[i];
             use self::PassKind::*;
@@ -171,13 +221,12 @@ impl PassManager {
                         self.run_on_function(*function, pass);
                     }
                 }
-                &mut ModulePass(ref mut pass) => {
-                    self.run_on_module(module, pass);
-                }
-                &mut GroupPass(ref mut pass) => {
-                    self.run_on_group(pass, module);
-                }
+                &mut ModulePass(ref mut pass) => self.run_on_module(module, pass),
             }
         }
+    }
+
+    pub fn run(&mut self, module: ModuleHandle) {
+        self.run_with_module(module);
     }
 }

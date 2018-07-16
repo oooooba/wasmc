@@ -5,50 +5,70 @@ use std::collections::HashMap;
 use wasmc::allocation::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitPass,
                         PreEmitAssemblyPass, PostEmitAssemblyPass, SimpleRegisterAllocationPass};
 use wasmc::context::Context;
+use wasmc::context::handle::{FunctionHandle, RegisterHandle};
 use wasmc::machineir::typ::Type;
-use wasmc::pass::{GroupPass, PassManager};
+use wasmc::pass::{FunctionPass, PassManager};
 use wasmc::wasmir;
 use wasmc::wasmir::{Const, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
 
-pub struct MainPass {}
+pub struct MainPass {
+    registers: Vec<RegisterHandle>,
+    argument_registers: Vec<RegisterHandle>,
+    result_register: RegisterHandle,
+    register_name_map: HashMap<RegisterHandle, &'static str>,
+}
 
-impl GroupPass for MainPass {
-    fn do_action(&mut self, pass_manager: &mut PassManager) {
-        let mut r1 = Context::create_register(Type::I32);
-        r1.set_physical();
-        let mut r2 = Context::create_register(Type::I32);
-        r2.set_physical();
-        let mut r3 = Context::create_register(Type::I32);
-        r3.set_physical();
-        let mut ar1 = Context::create_register(Type::I32);
-        ar1.set_physical();
-        let mut ar2 = Context::create_register(Type::I32);
-        ar2.set_physical();
-        let mut ar3 = Context::create_register(Type::I32);
-        ar3.set_physical();
-
-        pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(vec![r1, r2, r3], vec![ar1, ar2, ar3], r1));
+impl FunctionPass for MainPass {
+    fn initialize(&mut self, pass_manager: &mut PassManager) {
+        pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(
+            self.registers.clone(), self.argument_registers.clone(), self.result_register));
         pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
+    }
 
-        let mut reg_name_map = HashMap::new();
-        reg_name_map.insert(r1, "eax");
-        reg_name_map.insert(r2, "ebx");
-        reg_name_map.insert(r3, "ecx");
-        reg_name_map.insert(ar1, "edi");
-        reg_name_map.insert(ar2, "esi");
-        reg_name_map.insert(ar3, "edx");
+    fn do_action(&mut self, _function: FunctionHandle) {}
 
-        pass_manager.add_module_pass(ModuleInitPass::create());
+    fn finalize(&mut self, pass_manager: &mut PassManager) {
         pass_manager.add_function_pass(PreEmitAssemblyPass::create("rbp"));
-        pass_manager.add_instr_pass(EmitAssemblyPass::create(reg_name_map, "rbp"));
+        pass_manager.add_instr_pass(EmitAssemblyPass::create(self.register_name_map.clone(), "rbp"));
         pass_manager.add_function_pass(PostEmitAssemblyPass::create());
     }
 }
 
 impl MainPass {
     pub fn create() -> Box<MainPass> {
-        Box::new(MainPass {})
+        let mut r1 = Context::create_register(Type::I32);
+        r1.set_physical();
+        let mut r2 = Context::create_register(Type::I32);
+        r2.set_physical();
+        let mut r3 = Context::create_register(Type::I32);
+        r3.set_physical();
+        let registers = vec![r1, r2, r3];
+
+        let mut ar1 = Context::create_register(Type::I32);
+        ar1.set_physical();
+        let mut ar2 = Context::create_register(Type::I32);
+        ar2.set_physical();
+        let mut ar3 = Context::create_register(Type::I32);
+        ar3.set_physical();
+        let argument_registers = vec![ar1, ar2, ar3];
+
+        let result_register = r1;
+
+        let mut register_name_map = HashMap::new();
+        register_name_map.insert(r1, "eax");
+        register_name_map.insert(r2, "ebx");
+        register_name_map.insert(r3, "ecx");
+        register_name_map.insert(ar1, "edi");
+        register_name_map.insert(ar2, "esi");
+        register_name_map.insert(ar3, "edx");
+
+        Box::new(MainPass {
+            registers,
+            argument_registers,
+            result_register,
+            register_name_map,
+        })
     }
 }
 
@@ -138,14 +158,8 @@ fn main() {
         wasm_to_ir.finalize()
     };
 
-    for function in module.get_functions() {
-        println!("-------------------------------");
-        function.get().print();
-    }
-
-    /*
     let mut pass_manager = PassManager::new();
-    pass_manager.add_group_pass(MainPass::create());
+    pass_manager.add_module_pass(ModuleInitPass::create());
+    pass_manager.add_function_pass(MainPass::create());
     pass_manager.run(module);
-    */
 }
