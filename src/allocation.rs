@@ -157,7 +157,11 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 let preg = self.physical_registers[0];
                                 let load_instr = self.create_load_instr(basic_block, preg, reg, function);
                                 iter.insert_before(load_instr);
-                                Neq0(preg)
+                                match kind {
+                                    &Eq0(_) => Eq0(preg),
+                                    &Neq0(_) => Neq0(preg),
+                                    _ => unreachable!(),
+                                }
                             }
                             &Neq(reg1, reg2) => {
                                 assert!(!reg1.is_physical());
