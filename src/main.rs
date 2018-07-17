@@ -127,9 +127,8 @@ fn main() {
                     WasmInstr::GetLocal(wasmir::Localidx::new(0)),
                     WasmInstr::Const(Const::I32(1)),
                     WasmInstr::Ibinop(Ibinop::Sub32),
-                    WasmInstr::Call(wasmir::Funcidx::new(0)),
+                    WasmInstr::Call(wasmir::Funcidx::new(2)),
                     WasmInstr::Ibinop(Ibinop::Add32),
-                    WasmInstr::Return,
                 ]),
         ];
         let code4 = vec![
