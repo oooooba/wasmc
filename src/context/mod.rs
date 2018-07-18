@@ -1,5 +1,7 @@
 pub mod handle;
 
+use std::collections::BTreeMap;
+
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, PassHandle, RegisterHandle};
 use machineir::basicblock::BasicBlock;
 use machineir::function::Function;
@@ -12,17 +14,17 @@ use pass::PassKind;
 
 #[derive(Debug)]
 pub struct Context {
-    registers: Option<Vec<Register>>,
+    registers: Option<BTreeMap<RegisterHandle, Register>>,
     num_created_registers: usize,
-    instrs: Option<Vec<Instr>>,
+    instrs: Option<BTreeMap<InstrHandle, Instr>>,
     num_created_instrs: usize,
-    basic_blocks: Option<Vec<BasicBlock>>,
+    basic_blocks: Option<BTreeMap<BasicBlockHandle, BasicBlock>>,
     num_created_basic_blocks: usize,
-    functions: Option<Vec<Function>>,
+    functions: Option<BTreeMap<FunctionHandle, Function>>,
     num_created_functions: usize,
-    modules: Option<Vec<Module>>,
+    modules: Option<BTreeMap<ModuleHandle, Module>>,
     num_created_modules: usize,
-    passes: Option<Vec<PassKind>>,
+    passes: Option<BTreeMap<PassHandle, PassKind>>,
     num_created_passes: usize,
 }
 
@@ -44,12 +46,12 @@ static mut CONTEXT: Context = Context {
 impl Context {
     pub fn init() {
         unsafe {
-            CONTEXT.registers = Some(Vec::with_capacity(1024));
-            CONTEXT.instrs = Some(Vec::with_capacity(1024));
-            CONTEXT.basic_blocks = Some(Vec::with_capacity(1024));
-            CONTEXT.functions = Some(Vec::with_capacity(1024));
-            CONTEXT.modules = Some(Vec::with_capacity(1024));
-            CONTEXT.passes = Some(Vec::with_capacity(1024));
+            CONTEXT.registers = Some(BTreeMap::new());
+            CONTEXT.instrs = Some(BTreeMap::new());
+            CONTEXT.basic_blocks = Some(BTreeMap::new());
+            CONTEXT.functions = Some(BTreeMap::new());
+            CONTEXT.modules = Some(BTreeMap::new());
+            CONTEXT.passes = Some(BTreeMap::new());
         }
     }
 
@@ -59,7 +61,7 @@ impl Context {
             CONTEXT.num_created_registers += 1;
             let handle = RegisterHandle::new(id);
             let register = Register::new(handle, typ);
-            CONTEXT.registers.as_mut().unwrap().push(register);
+            CONTEXT.registers.as_mut().unwrap().insert(handle, register);
             handle
         }
     }
@@ -70,7 +72,7 @@ impl Context {
             CONTEXT.num_created_instrs += 1;
             let handle = InstrHandle::new(id);
             let instr = Instr::new(handle, opcode, basic_block);
-            CONTEXT.instrs.as_mut().unwrap().push(instr);
+            CONTEXT.instrs.as_mut().unwrap().insert(handle, instr);
             handle
         }
     }
@@ -81,7 +83,7 @@ impl Context {
             CONTEXT.num_created_basic_blocks += 1;
             let handle = BasicBlockHandle::new(id);
             let basic_block = BasicBlock::new(handle);
-            CONTEXT.basic_blocks.as_mut().unwrap().push(basic_block);
+            CONTEXT.basic_blocks.as_mut().unwrap().insert(handle, basic_block);
             handle
         }
     }
@@ -92,7 +94,7 @@ impl Context {
             CONTEXT.num_created_functions += 1;
             let handle = FunctionHandle::new(id);
             let function = Function::new(handle, func_name, parameter_types, result_types);
-            CONTEXT.functions.as_mut().unwrap().push(function);
+            CONTEXT.functions.as_mut().unwrap().insert(handle, function);
             handle
         }
     }
@@ -103,7 +105,7 @@ impl Context {
             CONTEXT.num_created_modules += 1;
             let handle = ModuleHandle::new(id);
             let module = Module::new(handle);
-            CONTEXT.modules.as_mut().unwrap().push(module);
+            CONTEXT.modules.as_mut().unwrap().insert(handle, module);
             handle
         }
     }
@@ -113,7 +115,7 @@ impl Context {
             let id = CONTEXT.num_created_passes;
             CONTEXT.num_created_passes += 1;
             let handle = PassHandle::new(id);
-            CONTEXT.passes.as_mut().unwrap().push(pass);
+            CONTEXT.passes.as_mut().unwrap().insert(handle, pass);
             handle
         }
     }
