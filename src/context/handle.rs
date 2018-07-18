@@ -18,13 +18,13 @@ impl RegisterHandle {
 
     pub fn get(&self) -> &Register {
         unsafe {
-            super::CONTEXT.registers.as_ref().unwrap().get(self).unwrap()
+            &super::CONTEXT.registers.as_ref().unwrap()[self.0]
         }
     }
 
     pub fn get_mut(&mut self) -> &mut Register {
         unsafe {
-            super::CONTEXT.registers.as_mut().unwrap().get_mut(self).unwrap()
+            &mut super::CONTEXT.registers.as_mut().unwrap()[self.0]
         }
     }
 
@@ -62,13 +62,13 @@ impl InstrHandle {
 
     pub fn get(&self) -> &super::Instr {
         unsafe {
-            super::CONTEXT.instrs.as_ref().unwrap().get(self).unwrap()
+            &super::CONTEXT.instrs.as_ref().unwrap()[self.0]
         }
     }
 
     pub fn get_mut(&mut self) -> &mut super::Instr {
         unsafe {
-            super::CONTEXT.instrs.as_mut().unwrap().get_mut(self).unwrap()
+            &mut super::CONTEXT.instrs.as_mut().unwrap()[self.0]
         }
     }
 
@@ -106,13 +106,13 @@ impl BasicBlockHandle {
 
     pub fn get(&self) -> &BasicBlock {
         unsafe {
-            super::CONTEXT.basic_blocks.as_ref().unwrap().get(self).unwrap()
+            &super::CONTEXT.basic_blocks.as_mut().unwrap()[self.0]
         }
     }
 
     pub fn get_mut(&mut self) -> &mut BasicBlock {
         unsafe {
-            super::CONTEXT.basic_blocks.as_mut().unwrap().get_mut(self).unwrap()
+            &mut super::CONTEXT.basic_blocks.as_mut().unwrap()[self.0]
         }
     }
 
@@ -150,13 +150,13 @@ impl FunctionHandle {
 
     pub fn get(&self) -> &Function {
         unsafe {
-            super::CONTEXT.functions.as_ref().unwrap().get(self).unwrap()
+            &super::CONTEXT.functions.as_mut().unwrap()[self.0]
         }
     }
 
     pub fn get_mut(&mut self) -> &mut Function {
         unsafe {
-            super::CONTEXT.functions.as_mut().unwrap().get_mut(self).unwrap()
+            &mut super::CONTEXT.functions.as_mut().unwrap()[self.0]
         }
     }
 
@@ -194,13 +194,13 @@ impl ModuleHandle {
 
     pub fn get(&self) -> &Module {
         unsafe {
-            super::CONTEXT.modules.as_ref().unwrap().get(self).unwrap()
+            &super::CONTEXT.modules.as_mut().unwrap()[self.0]
         }
     }
 
     pub fn get_mut(&mut self) -> &mut Module {
         unsafe {
-            super::CONTEXT.modules.as_mut().unwrap().get_mut(self).unwrap()
+            &mut super::CONTEXT.modules.as_mut().unwrap()[self.0]
         }
     }
 
@@ -238,13 +238,13 @@ impl PassHandle {
 
     pub fn get(&self) -> &PassKind {
         unsafe {
-            super::CONTEXT.passes.as_ref().unwrap().get(self).unwrap()
+            &super::CONTEXT.passes.as_mut().unwrap()[self.0]
         }
     }
 
     pub fn get_mut(&mut self) -> &mut PassKind {
         unsafe {
-            super::CONTEXT.passes.as_mut().unwrap().get_mut(self).unwrap()
+            &mut super::CONTEXT.passes.as_mut().unwrap()[self.0]
         }
     }
 
