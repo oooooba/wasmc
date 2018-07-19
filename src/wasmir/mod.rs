@@ -98,6 +98,7 @@ pub enum WasmInstr {
     BrIf(usize),
     Return,
     GetLocal(Localidx),
+    SetLocal(Localidx),
     Call(Funcidx),
 }
 

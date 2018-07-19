@@ -217,6 +217,13 @@ impl WasmToMachine {
                 self.operand_stack.push(dst_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Load { typ, dst: dst_reg, src: src_mem });
             }
+            &WasmInstr::SetLocal(ref localidx) => {
+                let index = localidx.as_index();
+                let src_reg = self.operand_stack.pop().unwrap();
+                let typ = src_reg.get_as_register().unwrap().get_typ().clone();
+                let dst_mem = Operand::new_memory(index, typ.clone());
+                self.emit_on_current_basic_block(Opcode::Store { typ, dst: dst_mem, src: src_reg });
+            }
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
                 let function = self.module.get_functions()[index];
