@@ -205,16 +205,14 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         (Some(Opcode::Call { func: new_func, typ: new_typ, result: new_result, args: new_args }), 1)
                     }
-                    &Opcode::Return { ref typ, result: Some(ref result) } => {
-                        let new_typ = typ.clone();
-
+                    &Opcode::Return { result: Some(ref result) } => {
                         let vreg = result.get_as_register().unwrap();
                         let preg = self.physical_result_register;
                         let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                         iter.insert_before(load_instr);
                         let new_result = Operand::new_physical_register(preg);
 
-                        (Some(Opcode::Return { typ: new_typ, result: Some(new_result) }), 0)
+                        (Some(Opcode::Return { result: Some(new_result) }), 0)
                     }
                     _ => (None, 0),
                 };

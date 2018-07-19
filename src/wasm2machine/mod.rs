@@ -108,12 +108,12 @@ impl WasmToMachine {
     fn emit_return(&mut self, result_registers: &Vec<RegisterHandle>) {
         assert!(result_registers.len() == 0 || result_registers.len() == 1);
         if result_registers.len() == 0 {
-            self.emit_on_current_basic_block(Opcode::Return { typ: Type::I32, result: None });
+            self.emit_on_current_basic_block(Opcode::Return { result: None });
         } else if result_registers.len() == 1 {
             let result_register = result_registers[0];
             let typ = result_register.get_typ().clone();
             let result = Operand::new_register(result_register);
-            self.emit_on_current_basic_block(Opcode::Return { typ: typ, result: Some(result) });
+            self.emit_on_current_basic_block(Opcode::Return { result: Some(result) });
         }
     }
 
