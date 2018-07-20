@@ -65,7 +65,10 @@ impl WasmToMachine {
     }
 
     fn emit_binop(&mut self, op: &wasmir::Ibinop) {
-        let register = Operand::new_register(Context::create_register(Type::I32));
+        let typ = match op {
+            &Ibinop::Add32 | &Ibinop::Sub32 => Type::I32,
+        };
+        let register = Operand::new_register(Context::create_register(typ));
         let rhs = self.operand_stack.pop().unwrap();
         let lhs = self.operand_stack.pop().unwrap();
         self.operand_stack.push(register.clone());
