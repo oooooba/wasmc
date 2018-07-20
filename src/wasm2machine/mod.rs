@@ -111,7 +111,6 @@ impl WasmToMachine {
             self.emit_on_current_basic_block(Opcode::Return { result: None });
         } else if result_registers.len() == 1 {
             let result_register = result_registers[0];
-            let typ = result_register.get_typ().clone();
             let result = Operand::new_register(result_register);
             self.emit_on_current_basic_block(Opcode::Return { result: Some(result) });
         }
