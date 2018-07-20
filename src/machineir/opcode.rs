@@ -34,7 +34,7 @@ pub enum Opcode {
     Load { typ: Type, dst: Operand, src: Operand },
     Store { typ: Type, dst: Operand, src: Operand },
     Jump { kind: JumpCondKind, target: Operand },
-    Call { func: FunctionHandle, typ: Type, result: Option<Operand>, args: Vec<Operand> },
+    Call { func: FunctionHandle, result: Option<Operand>, args: Vec<Operand> },
     Return { result: Option<Operand> },
 }
 

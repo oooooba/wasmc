@@ -241,8 +241,8 @@ impl WasmToMachine {
                 let result = if function.get_result_types().len() == 0 {
                     None
                 } else if function.get_result_types().len() == 1 {
-                    let typ = &function.get_result_types()[0];
-                    let result_reg = Operand::new_register(Context::create_register(typ.clone()));
+                    let typ = function.get_result_types()[0].clone();
+                    let result_reg = Operand::new_register(Context::create_register(typ));
                     self.operand_stack.push(result_reg.clone());
                     Some(result_reg)
                 } else {
@@ -250,7 +250,6 @@ impl WasmToMachine {
                 };
                 self.emit_on_current_basic_block(Opcode::Call {
                     func: function,
-                    typ: Type::I32,
                     result,
                     args,
                 });

@@ -179,8 +179,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         };
                         (Some(Opcode::Jump { kind: new_cond_kind, target: new_target }), 0)
                     }
-                    &Opcode::Call { ref func, ref typ, ref result, ref args } => {
-                        let new_typ = typ.clone();
+                    &Opcode::Call { ref func, ref result, ref args } => {
                         let new_func = func.clone();
                         let result = result.clone(); // to prevent undefined behavior
 
@@ -203,7 +202,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             None
                         };
 
-                        (Some(Opcode::Call { func: new_func, typ: new_typ, result: new_result, args: new_args }), 1)
+                        (Some(Opcode::Call { func: new_func, result: new_result, args: new_args }), 1)
                     }
                     &Opcode::Return { result: Some(ref result) } => {
                         let vreg = result.get_as_register().unwrap();
