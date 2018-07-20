@@ -2,7 +2,6 @@ use std::fmt;
 
 use context::handle::{FunctionHandle, RegisterHandle};
 use machineir::operand::Operand;
-use machineir::typ::Type;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum UnaryOpKind {
@@ -28,11 +27,11 @@ pub enum JumpCondKind {
 pub enum Opcode {
     Debug(String),
     Label(String),
-    Copy { typ: Type, dst: Operand, src: Operand },
-    UnaryOp { typ: Type, kind: UnaryOpKind, dst: Operand, src: Operand },
-    BinaryOp { typ: Type, kind: BinaryOpKind, dst: Operand, src1: Operand, src2: Operand },
-    Load { typ: Type, dst: Operand, src: Operand },
-    Store { typ: Type, dst: Operand, src: Operand },
+    Copy { dst: Operand, src: Operand },
+    UnaryOp { kind: UnaryOpKind, dst: Operand, src: Operand },
+    BinaryOp { kind: BinaryOpKind, dst: Operand, src1: Operand, src2: Operand },
+    Load { dst: Operand, src: Operand },
+    Store { dst: Operand, src: Operand },
     Jump { kind: JumpCondKind, target: Operand },
     Call { func: FunctionHandle, result: Option<Operand>, args: Vec<Operand> },
     Return { result: Option<Operand> },

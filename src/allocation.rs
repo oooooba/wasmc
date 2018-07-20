@@ -22,8 +22,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
             let mut iter = basic_block.iterator();
             while let Some(mut instr) = iter.get() {
                 let (new_opcode, num_advance) = match instr.get_opcode() {
-                    &Opcode::Copy { ref typ, ref dst, ref src } => {
-                        let new_typ = typ.clone();
+                    &Opcode::Copy { ref dst, ref src } => {
                         let dst = dst.clone(); // to prevent undefined behavior
 
                         let new_src = match src.get_kind() {
@@ -46,10 +45,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::Copy { typ: new_typ, dst: new_dst, src: new_src }), 1)
+                        (Some(Opcode::Copy { dst: new_dst, src: new_src }), 1)
                     }
-                    &Opcode::UnaryOp { ref typ, ref kind, ref dst, ref src } => {
-                        let new_typ = typ.clone();
+                    &Opcode::UnaryOp { ref kind, ref dst, ref src } => {
                         let new_kind = kind.clone();
                         let dst = dst.clone(); // to prevent undefined behavior
 
@@ -74,10 +72,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::UnaryOp { typ: new_typ, kind: new_kind, dst: new_dst, src: new_src }), 1)
+                        (Some(Opcode::UnaryOp { kind: new_kind, dst: new_dst, src: new_src }), 1)
                     }
-                    &Opcode::BinaryOp { ref typ, ref kind, ref dst, ref src1, ref src2 } => {
-                        let new_typ = typ.clone();
+                    &Opcode::BinaryOp { ref kind, ref dst, ref src1, ref src2 } => {
                         let new_kind = kind.clone();
                         let dst = dst.clone(); // to prevent undefined behavior
                         let src2 = src2.clone(); // to prevent undefined behavior
@@ -112,10 +109,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::BinaryOp { typ: new_typ, kind: new_kind, dst: new_dst, src1: new_src1, src2: new_src2 }), 1)
+                        (Some(Opcode::BinaryOp { kind: new_kind, dst: new_dst, src1: new_src1, src2: new_src2 }), 1)
                     }
-                    &Opcode::Load { ref typ, ref dst, ref src } => {
-                        let new_typ = typ.clone();
+                    &Opcode::Load { ref dst, ref src } => {
                         let new_src = src.clone();
 
                         let new_dst = match dst.get_kind() {
@@ -128,10 +124,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::Load { typ: new_typ, dst: new_dst, src: new_src }), 1)
+                        (Some(Opcode::Load { dst: new_dst, src: new_src }), 1)
                     }
-                    &Opcode::Store { ref typ, ref dst, ref src } => {
-                        let new_typ = typ.clone();
+                    &Opcode::Store { ref dst, ref src } => {
                         let new_dst = dst.clone();
 
                         let new_src = match src.get_kind() {
@@ -145,7 +140,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::Store { typ: new_typ, dst: new_dst, src: new_src }), 0)
+                        (Some(Opcode::Store { dst: new_dst, src: new_src }), 0)
                     }
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
@@ -262,7 +257,6 @@ impl SimpleRegisterAllocationPass {
         assert_eq!(&typ, preg.get_typ());
         let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
         Context::create_instr(Opcode::Load {
-            typ: typ.clone(),
             dst: Operand::new_physical_register(preg),
             src: Operand::new_memory(vreg_index, typ),
         }, basic_block)
@@ -276,7 +270,6 @@ impl SimpleRegisterAllocationPass {
         assert_eq!(&typ, preg.get_typ());
         let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
         Context::create_instr(Opcode::Store {
-            typ: typ.clone(),
             dst: Operand::new_memory(vreg_index, typ),
             src: Operand::new_physical_register(preg),
         }, basic_block)

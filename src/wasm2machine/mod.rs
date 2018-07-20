@@ -4,7 +4,6 @@ use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::opcode;
 use machineir::opcode::{JumpCondKind, Opcode, UnaryOpKind};
-use machineir::typ;
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
@@ -74,14 +73,12 @@ impl WasmToMachine {
         self.operand_stack.push(register.clone());
         let opcode = match op {
             &Ibinop::Add32 => opcode::Opcode::BinaryOp {
-                typ: typ::Type::I32,
                 kind: opcode::BinaryOpKind::Add,
                 dst: register,
                 src1: lhs,
                 src2: rhs,
             },
             &Ibinop::Sub32 => opcode::Opcode::BinaryOp {
-                typ: typ::Type::I32,
                 kind: opcode::BinaryOpKind::Sub,
                 dst: register,
                 src1: lhs,
@@ -148,7 +145,6 @@ impl WasmToMachine {
                 let register = Operand::new_register(Context::create_register(Type::I32));
                 self.operand_stack.push(register.clone());
                 self.emit_on_current_basic_block(Opcode::UnaryOp {
-                    typ: Type::I32,
                     kind: UnaryOpKind::Const,
                     dst: register,
                     src: Operand::new_const_i32(i),
@@ -217,17 +213,17 @@ impl WasmToMachine {
                 let index = localidx.as_index();
                 let typ = self.local_variable_types[index].clone();
                 let dst_reg = Operand::new_register(Context::create_register(typ.clone()));
-                let src_mem = Operand::new_memory(index, typ.clone());
+                let src_mem = Operand::new_memory(index, typ);
                 self.operand_stack.push(dst_reg.clone());
-                self.emit_on_current_basic_block(Opcode::Load { typ, dst: dst_reg, src: src_mem });
+                self.emit_on_current_basic_block(Opcode::Load { dst: dst_reg, src: src_mem });
             }
             &WasmInstr::SetLocal(ref localidx) => {
                 let index = localidx.as_index();
                 let src_reg = self.operand_stack.pop().unwrap();
                 let typ = src_reg.get_as_register().unwrap().get_typ().clone();
                 assert_eq!(typ, self.local_variable_types[index]);
-                let dst_mem = Operand::new_memory(index, typ.clone());
-                self.emit_on_current_basic_block(Opcode::Store { typ, dst: dst_mem, src: src_reg });
+                let dst_mem = Operand::new_memory(index, typ);
+                self.emit_on_current_basic_block(Opcode::Store { dst: dst_mem, src: src_reg });
             }
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
@@ -364,10 +360,8 @@ impl WasmToMachine {
         let mut tmp_operand_stack = OperandStack::new();
         while let Some(register) = registers.pop() {
             let mut operand = self.operand_stack.pop().unwrap();
-            let typ = register.get_typ().clone();
             if let &OperandKind::Register(src_register) = operand.get_kind() {
                 self.emit_on_current_basic_block(Opcode::Copy {
-                    typ,
                     dst: Operand::new_register(register),
                     src: Operand::new_register(src_register),
                 });
