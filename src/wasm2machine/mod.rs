@@ -41,6 +41,7 @@ pub struct WasmToMachine {
     basic_block_to_continuation: HashMap<BasicBlockHandle, (BasicBlockHandle, Vec<RegisterHandle>)>,
     current_function: FunctionHandle,
     module: ModuleHandle,
+    local_variable_types: Vec<Type>,
 }
 
 impl WasmToMachine {
@@ -55,6 +56,7 @@ impl WasmToMachine {
             basic_block_to_continuation: HashMap::new(),
             current_function: dummy_function,
             module: Context::create_module(),
+            local_variable_types: vec![],
         }
     }
 
@@ -438,10 +440,13 @@ impl WasmToMachine {
             let typeidx = func.get_type();
             let functype = &module.get_types()[typeidx.as_index()];
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
+            let mut local_variable_types = parameter_types.clone();
             let func_name = format!("f_{}", funcidx);
             let function = Context::create_function(func_name, parameter_types, result_types.clone());
             self.module.get_mut_functions().push(function);
             assert_eq!(self.module.get_functions().len() - 1, funcidx);
+            local_variable_types.append(&mut func.get_locals().iter()
+                .map(|typ| WasmToMachine::map_valtype(typ)).collect());
 
             let entry_block = Context::create_basic_block();
             let exit_block = Context::create_basic_block();
@@ -452,6 +457,7 @@ impl WasmToMachine {
             self.entry_block = entry_block;
             self.basic_block_to_continuation = HashMap::new();
             self.current_function = function;
+            self.local_variable_types = local_variable_types;
 
             let result_registers = WasmToMachine::create_registers_for_types(result_types);
             self.emit_entering_block(entry_block, exit_block,
