@@ -212,7 +212,7 @@ impl WasmToMachine {
             }
             &WasmInstr::GetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let typ = Type::I32;
+                let typ = self.local_variable_types[index].clone();
                 let dst_reg = Operand::new_register(Context::create_register(typ.clone()));
                 let src_mem = Operand::new_memory(index, typ.clone());
                 self.operand_stack.push(dst_reg.clone());
@@ -222,6 +222,7 @@ impl WasmToMachine {
                 let index = localidx.as_index();
                 let src_reg = self.operand_stack.pop().unwrap();
                 let typ = src_reg.get_as_register().unwrap().get_typ().clone();
+                assert_eq!(typ, self.local_variable_types[index]);
                 let dst_mem = Operand::new_memory(index, typ.clone());
                 self.emit_on_current_basic_block(Opcode::Store { typ, dst: dst_mem, src: src_reg });
             }
