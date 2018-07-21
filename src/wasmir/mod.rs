@@ -99,6 +99,7 @@ pub enum WasmInstr {
     Return,
     GetLocal(Localidx),
     SetLocal(Localidx),
+    TeeLocal(Localidx),
     Call(Funcidx),
 }
 
