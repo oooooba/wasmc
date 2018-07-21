@@ -76,6 +76,7 @@ pub enum Const {
 pub enum Ibinop {
     Add32,
     Sub32,
+    ShrU32,
 }
 
 pub enum Itestop {

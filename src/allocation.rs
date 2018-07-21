@@ -371,9 +371,12 @@ impl InstrPass for EmitAssemblyPass {
                     &BinaryOpKind::Add => "add",
                     &BinaryOpKind::Sub => "sub",
                     &BinaryOpKind::Mul => "imul",
+                    &BinaryOpKind::Shr => "shr",
+                    &BinaryOpKind::And => "and",
                 };
                 match src2.get_kind() {
                     &OperandKind::PhysicalRegister(preg) => self.emit_binop_reg_reg(op, dst, preg),
+                    &OperandKind::ConstI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
                     _ => unimplemented!(),
                 }
             }
@@ -444,5 +447,9 @@ impl EmitAssemblyPass {
 
     fn emit_binop_reg_reg(&mut self, op: &'static str, dst: RegisterHandle, src: RegisterHandle) {
         println!("{} {}, {}", op, self.physical_register_name_map.get(&dst).unwrap(), self.physical_register_name_map.get(&src).unwrap());
+    }
+
+    fn emit_binop_reg_imm32(&mut self, op: &'static str, target: RegisterHandle, imm: u32) {
+        println!("{} {}, {}", op, self.physical_register_name_map.get(&target).unwrap(), imm);
     }
 }

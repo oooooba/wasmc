@@ -13,6 +13,8 @@ pub enum BinaryOpKind {
     Add,
     Sub,
     Mul,
+    And,
+    Shr,
 }
 
 #[derive(Debug, PartialEq, Eq)]
