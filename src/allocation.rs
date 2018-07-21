@@ -23,8 +23,6 @@ impl FunctionPass for SimpleRegisterAllocationPass {
             while let Some(mut instr) = iter.get() {
                 let (new_opcode, num_advance) = match instr.get_opcode() {
                     &Opcode::Copy { ref dst, ref src } => {
-                        let dst = dst.clone(); // to prevent undefined behavior
-
                         let new_src = match src.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let preg = self.physical_registers[0];
@@ -48,9 +46,6 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         (Some(Opcode::Copy { dst: new_dst, src: new_src }), 1)
                     }
                     &Opcode::UnaryOp { ref kind, ref dst, ref src } => {
-                        let new_kind = kind.clone();
-                        let dst = dst.clone(); // to prevent undefined behavior
-
                         let new_src = match src.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let preg = self.physical_registers[0];
@@ -72,13 +67,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::UnaryOp { kind: new_kind, dst: new_dst, src: new_src }), 1)
+                        (Some(Opcode::UnaryOp { kind: kind.clone(), dst: new_dst, src: new_src }), 1)
                     }
                     &Opcode::BinaryOp { ref kind, ref dst, ref src1, ref src2 } => {
-                        let new_kind = kind.clone();
-                        let dst = dst.clone(); // to prevent undefined behavior
-                        let src2 = src2.clone(); // to prevent undefined behavior
-
                         let new_src1 = match src1.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let preg = self.physical_registers[0];
@@ -109,11 +100,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::BinaryOp { kind: new_kind, dst: new_dst, src1: new_src1, src2: new_src2 }), 1)
+                        (Some(Opcode::BinaryOp { kind: kind.clone(), dst: new_dst, src1: new_src1, src2: new_src2 }), 1)
                     }
                     &Opcode::Load { ref dst, ref src } => {
-                        let new_src = src.clone();
-
                         let new_dst = match dst.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let preg = self.physical_result_register;
@@ -124,11 +113,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::Load { dst: new_dst, src: new_src }), 1)
+                        (Some(Opcode::Load { dst: new_dst, src: src.clone() }), 1)
                     }
                     &Opcode::Store { ref dst, ref src } => {
-                        let new_dst = dst.clone();
-
                         let new_src = match src.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let preg = self.physical_registers[0];
@@ -140,11 +127,10 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             _ => unimplemented!(),
                         };
 
-                        (Some(Opcode::Store { dst: new_dst, src: new_src }), 0)
+                        (Some(Opcode::Store { dst: dst.clone(), src: new_src }), 0)
                     }
                     &Opcode::Jump { ref kind, ref target } => {
                         use self::JumpCondKind::*;
-                        let new_target = target.clone();
                         let new_cond_kind = match kind {
                             &Unconditional => Unconditional,
                             &Eq0(reg) | &Neq0(reg) => {
@@ -172,12 +158,10 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 Neq(preg1, preg2)
                             }
                         };
-                        (Some(Opcode::Jump { kind: new_cond_kind, target: new_target }), 0)
+
+                        (Some(Opcode::Jump { kind: new_cond_kind, target: target.clone() }), 0)
                     }
                     &Opcode::Call { ref func, ref result, ref args } => {
-                        let new_func = func.clone();
-                        let result = result.clone(); // to prevent undefined behavior
-
                         let mut new_args = vec![];
                         for (i, arg) in args.iter().enumerate() {
                             let vreg = arg.get_as_register().unwrap();
@@ -187,7 +171,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             new_args.push(Operand::new_physical_register(preg));
                         }
 
-                        let new_result = if let Some(result) = result {
+                        let new_result = if let &Some(ref result) = result {
                             let vreg = result.get_as_register().unwrap();
                             let preg = self.physical_result_register;
                             let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
@@ -197,7 +181,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             None
                         };
 
-                        (Some(Opcode::Call { func: new_func, result: new_result, args: new_args }), 1)
+                        (Some(Opcode::Call { func: func.clone(), result: new_result, args: new_args }), 1)
                     }
                     &Opcode::Return { result: Some(ref result) } => {
                         let vreg = result.get_as_register().unwrap();
