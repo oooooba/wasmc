@@ -17,6 +17,8 @@ pub struct MainPass {
     registers: Vec<HashMap<Type, RegisterHandle>>,
     argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     result_register: RegisterHandle,
+    base_pointer_register: RegisterHandle,
+    stack_pointer_register: RegisterHandle,
     register_name_map: HashMap<RegisterHandle, &'static str>,
 }
 
@@ -30,7 +32,8 @@ impl FunctionPass for MainPass {
     fn do_action(&mut self, _function: FunctionHandle) {}
 
     fn finalize(&mut self, pass_manager: &mut PassManager) {
-        pass_manager.add_function_pass(PreEmitAssemblyPass::create("rbp"));
+        pass_manager.add_function_pass(PreEmitAssemblyPass::create(
+            self.register_name_map.clone(), self.base_pointer_register, self.stack_pointer_register));
         pass_manager.add_instr_pass(EmitAssemblyPass::create(self.register_name_map.clone(), "rbp"));
     }
 }
@@ -62,6 +65,10 @@ impl MainPass {
         ];
 
         let result_register = r1;
+        let mut base_pointer_register = Context::create_register(Type::I64);
+        base_pointer_register.set_physical();
+        let mut stack_pointer_register = Context::create_register(Type::I64);
+        stack_pointer_register.set_physical();
 
         let mut register_name_map = HashMap::new();
         register_name_map.insert(r1, "eax");
@@ -70,11 +77,15 @@ impl MainPass {
         register_name_map.insert(ar1, "edi");
         register_name_map.insert(ar2, "esi");
         register_name_map.insert(ar3, "edx");
+        register_name_map.insert(base_pointer_register, "rbp");
+        register_name_map.insert(stack_pointer_register, "rsp");
 
         Box::new(MainPass {
             registers,
             argument_registers,
             result_register,
+            base_pointer_register,
+            stack_pointer_register,
             register_name_map,
         })
     }

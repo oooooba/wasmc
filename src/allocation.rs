@@ -311,18 +311,23 @@ impl ModuleInitPass {
 
 #[derive(Debug)]
 pub struct PreEmitAssemblyPass {
-    base_pointer_register: &'static str,
+    register_name_map: HashMap<RegisterHandle, &'static str>,
+    base_pointer_register: RegisterHandle,
+    stack_pointer_register: RegisterHandle,
 }
 
 impl FunctionPass for PreEmitAssemblyPass {
     fn do_action(&mut self, function: FunctionHandle) {
+        let base_pointer_register = self.register_name_map.get(&self.base_pointer_register).unwrap();
+        let stack_pointer_register = self.register_name_map.get(&self.stack_pointer_register).unwrap();
+
         println!(".global {}", function.get_func_name());
         println!("{}:", function.get_func_name());
-        println!("push rbp");
-        println!("mov rbp, rsp");
+        println!("push {}", base_pointer_register);
+        println!("mov {}, {}", base_pointer_register, stack_pointer_register);
         let len_buffer = function.get_local_variables().iter().map(|p| p.1.get_size()).sum::<usize>();
         let word_size = 8;
-        println!("sub rsp, {}", ((len_buffer + word_size - 1) / word_size) * word_size);
+        println!("sub {}, {}", stack_pointer_register, ((len_buffer + word_size - 1) / word_size) * word_size);
 
         // store parameter registers to memory
         let param_regs = vec!["edi", "esi", "edx", "ecx"]; // treat only 32 bit integers currently
@@ -331,14 +336,17 @@ impl FunctionPass for PreEmitAssemblyPass {
         for (i, typ) in function.get_parameter_types().iter().enumerate() {
             let dst_offset = (i + 1) * typ.get_size();
             let src_name = param_regs[i];
-            println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
+            println!("mov dword ptr [{} - {}], {}", base_pointer_register, dst_offset, src_name);
         }
     }
 }
 
 impl PreEmitAssemblyPass {
-    pub fn create(base_pointer_register: &'static str) -> Box<PreEmitAssemblyPass> {
-        Box::new(PreEmitAssemblyPass { base_pointer_register })
+    pub fn create(
+        register_name_map: HashMap<RegisterHandle, &'static str>,
+        base_pointer_register: RegisterHandle,
+        stack_pointer_register: RegisterHandle) -> Box<PreEmitAssemblyPass> {
+        Box::new(PreEmitAssemblyPass { register_name_map, base_pointer_register, stack_pointer_register })
     }
 }
 
