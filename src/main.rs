@@ -33,7 +33,8 @@ impl FunctionPass for MainPass {
 
     fn finalize(&mut self, pass_manager: &mut PassManager) {
         pass_manager.add_function_pass(PreEmitAssemblyPass::create(
-            self.register_name_map.clone(), self.base_pointer_register, self.stack_pointer_register));
+            self.register_name_map.clone(), self.base_pointer_register,
+            self.stack_pointer_register, self.argument_registers.clone()));
         pass_manager.add_instr_pass(EmitAssemblyPass::create(self.register_name_map.clone(), "rbp"));
     }
 }
