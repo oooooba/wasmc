@@ -4,11 +4,12 @@ use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::operand::{Operand, OperandKind};
+use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
 
 #[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
-    physical_registers: Vec<RegisterHandle>,
+    physical_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: Vec<RegisterHandle>,
     physical_result_register: RegisterHandle,
     virtual_register_indexes: HashMap<RegisterHandle, usize>,
@@ -25,7 +26,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     &Opcode::Copy { ref dst, ref src } => {
                         let new_src = match src.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_registers[0];
+                                let preg = self.allocate_physical_register(vreg, 0);
                                 let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
                                 Operand::new_physical_register(preg)
@@ -48,7 +49,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     &Opcode::UnaryOp { ref kind, ref dst, ref src } => {
                         let new_src = match src.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_registers[0];
+                                let preg = self.allocate_physical_register(vreg, 0);
                                 let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
                                 Operand::new_physical_register(preg)
@@ -72,7 +73,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     &Opcode::BinaryOp { ref kind, ref dst, ref src1, ref src2 } => {
                         let new_src1 = match src1.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_registers[0];
+                                let preg = self.allocate_physical_register(vreg, 0);
                                 let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
                                 Operand::new_physical_register(preg)
@@ -82,7 +83,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_src2 = match src2.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_registers[1];
+                                let preg = self.allocate_physical_register(vreg, 1);
                                 let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
                                 Operand::new_physical_register(preg)
@@ -118,7 +119,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     &Opcode::Store { ref dst, ref src } => {
                         let new_src = match src.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_registers[0];
+                                let preg = self.allocate_physical_register(vreg, 0);
                                 let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
                                 Operand::new_physical_register(preg)
@@ -135,7 +136,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             &Unconditional => Unconditional,
                             &Eq0(reg) | &Neq0(reg) => {
                                 assert!(!reg.is_physical());
-                                let preg = self.physical_registers[0];
+                                let preg = self.allocate_physical_register(reg, 0);
                                 let load_instr = self.create_load_instr(basic_block, preg, reg, function);
                                 iter.insert_before(load_instr);
                                 match kind {
@@ -146,12 +147,12 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             }
                             &Neq(reg1, reg2) => {
                                 assert!(!reg1.is_physical());
-                                let preg1 = self.physical_registers[0];
+                                let preg1 = self.allocate_physical_register(reg1, 0);
                                 let load_instr1 = self.create_load_instr(basic_block, preg1, reg1, function);
                                 iter.insert_before(load_instr1);
 
                                 assert!(!reg2.is_physical());
-                                let preg2 = self.physical_registers[1];
+                                let preg2 = self.allocate_physical_register(reg2, 1);
                                 let load_instr2 = self.create_load_instr(basic_block, preg2, reg2, function);
                                 iter.insert_before(load_instr2);
 
@@ -210,7 +211,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
 impl SimpleRegisterAllocationPass {
     pub fn create(
-        physical_registers: Vec<RegisterHandle>,
+        physical_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_argument_registers: Vec<RegisterHandle>,
         physical_result_register: RegisterHandle) -> Box<SimpleRegisterAllocationPass> {
         Box::new(SimpleRegisterAllocationPass {
@@ -257,6 +258,13 @@ impl SimpleRegisterAllocationPass {
             dst: Operand::new_memory(vreg_index, typ),
             src: Operand::new_physical_register(preg),
         }, basic_block)
+    }
+
+    fn allocate_physical_register(&self, vreg: RegisterHandle, index: usize) -> RegisterHandle {
+        assert!(!vreg.is_physical());
+        let preg = *self.physical_registers[index].get(vreg.get_typ()).unwrap();
+        assert!(preg.is_physical());
+        preg
     }
 }
 

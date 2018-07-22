@@ -1,6 +1,7 @@
 extern crate wasmc;
 
 use std::collections::HashMap;
+use std::iter::FromIterator;
 
 use wasmc::allocation::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitPass,
                         PreEmitAssemblyPass, SimpleRegisterAllocationPass};
@@ -13,7 +14,7 @@ use wasmc::wasmir::{Const, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmIns
 use wasmc::wasm2machine::WasmToMachine;
 
 pub struct MainPass {
-    registers: Vec<RegisterHandle>,
+    registers: Vec<HashMap<Type, RegisterHandle>>,
     argument_registers: Vec<RegisterHandle>,
     result_register: RegisterHandle,
     register_name_map: HashMap<RegisterHandle, &'static str>,
@@ -42,7 +43,11 @@ impl MainPass {
         r2.set_physical();
         let mut r3 = Context::create_register(Type::I32);
         r3.set_physical();
-        let registers = vec![r1, r2, r3];
+        let registers = vec![
+            HashMap::from_iter(vec![(Type::I32, r1)]),
+            HashMap::from_iter(vec![(Type::I32, r2)]),
+            HashMap::from_iter(vec![(Type::I32, r3)]),
+        ];
 
         let mut ar1 = Context::create_register(Type::I32);
         ar1.set_physical();
