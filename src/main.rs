@@ -15,7 +15,7 @@ use wasmc::wasm2machine::WasmToMachine;
 
 pub struct MainPass {
     registers: Vec<HashMap<Type, RegisterHandle>>,
-    argument_registers: Vec<RegisterHandle>,
+    argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     result_register: RegisterHandle,
     register_name_map: HashMap<RegisterHandle, &'static str>,
 }
@@ -55,7 +55,11 @@ impl MainPass {
         ar2.set_physical();
         let mut ar3 = Context::create_register(Type::I32);
         ar3.set_physical();
-        let argument_registers = vec![ar1, ar2, ar3];
+        let argument_registers = vec![
+            HashMap::from_iter(vec![(Type::I32, ar1)]),
+            HashMap::from_iter(vec![(Type::I32, ar2)]),
+            HashMap::from_iter(vec![(Type::I32, ar3)]),
+        ];
 
         let result_register = r1;
 

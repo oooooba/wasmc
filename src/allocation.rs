@@ -10,7 +10,7 @@ use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
 #[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<HashMap<Type, RegisterHandle>>,
-    physical_argument_registers: Vec<RegisterHandle>,
+    physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_result_register: RegisterHandle,
     virtual_register_indexes: HashMap<RegisterHandle, usize>,
 }
@@ -166,7 +166,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         let mut new_args = vec![];
                         for (i, arg) in args.iter().enumerate() {
                             let vreg = arg.get_as_register().unwrap();
-                            let preg = self.physical_argument_registers[i];
+                            let preg = self.allocate_physical_argument_register(vreg, i);
                             let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                             iter.insert_before(load_instr);
                             new_args.push(Operand::new_physical_register(preg));
@@ -212,7 +212,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 impl SimpleRegisterAllocationPass {
     pub fn create(
         physical_registers: Vec<HashMap<Type, RegisterHandle>>,
-        physical_argument_registers: Vec<RegisterHandle>,
+        physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_result_register: RegisterHandle) -> Box<SimpleRegisterAllocationPass> {
         Box::new(SimpleRegisterAllocationPass {
             physical_registers: physical_registers,
@@ -263,6 +263,13 @@ impl SimpleRegisterAllocationPass {
     fn allocate_physical_register(&self, vreg: RegisterHandle, index: usize) -> RegisterHandle {
         assert!(!vreg.is_physical());
         let preg = *self.physical_registers[index].get(vreg.get_typ()).unwrap();
+        assert!(preg.is_physical());
+        preg
+    }
+
+    fn allocate_physical_argument_register(&self, vreg: RegisterHandle, index: usize) -> RegisterHandle {
+        assert!(!vreg.is_physical());
+        let preg = *self.physical_argument_registers[index].get(vreg.get_typ()).unwrap();
         assert!(preg.is_physical());
         preg
     }
