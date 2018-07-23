@@ -23,6 +23,8 @@ impl FunctionPass for SimpleRegisterAllocationPass {
             let mut iter = basic_block.iterator();
             while let Some(mut instr) = iter.get() {
                 let (new_opcode, num_advance) = match instr.get_opcode() {
+                    &Opcode::Debug(..) => (None, 0),
+                    &Opcode::Label(..) => (None, 0),
                     &Opcode::Copy { ref dst, ref src } => {
                         let new_src = match src.get_kind() {
                             &OperandKind::Register(vreg) => {
@@ -193,7 +195,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         (Some(Opcode::Return { result: Some(new_result) }), 0)
                     }
-                    _ => (None, 0),
+                    &Opcode::Return { .. } => (None, 0),
                 };
 
                 if let Some(new_opcode) = new_opcode {
