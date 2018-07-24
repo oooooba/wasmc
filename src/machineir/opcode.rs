@@ -6,6 +6,7 @@ use machineir::operand::Operand;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum UnaryOpKind {
     Const,
+    SignExtension,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

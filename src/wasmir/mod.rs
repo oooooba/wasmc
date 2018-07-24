@@ -1,3 +1,5 @@
+use machineir::typ::Type;
+
 #[derive(Clone, Copy)]
 pub struct Typeidx(u32);
 
@@ -87,11 +89,16 @@ pub enum Irelop {
     Eq32,
 }
 
+pub enum Cvtop {
+    ExtendS,
+}
+
 pub enum WasmInstr {
     Const(Const),
     Ibinop(Ibinop),
     Itestop(Itestop),
     Irelop(Irelop),
+    Cvtop { op: Cvtop, dst_type: Type, src_type: Type },
     Block(Resulttype, Vec<WasmInstr>),
     If(Resulttype, Vec<WasmInstr>, Vec<WasmInstr>),
     Loop(Resulttype, Vec<WasmInstr>),

@@ -7,7 +7,7 @@ use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
-use wasmir::{Const, Functype, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
+use wasmir::{Const, Cvtop, Functype, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -105,6 +105,17 @@ impl WasmToMachine {
         self.emit_on_current_basic_block(opcode);
     }
 
+    fn emit_cvtop(&mut self, op: &Cvtop, dst_type: &Type, _src_type: &Type) {
+        use self::Cvtop::*;
+        let src = self.operand_stack.pop().unwrap();
+        let dst = Operand::new_register(Context::create_register(dst_type.clone()));
+        self.operand_stack.push(dst.clone());
+        let opcode = match op {
+            &ExtendS => Opcode::UnaryOp { kind: UnaryOpKind::SignExtension, dst, src },
+        };
+        self.emit_on_current_basic_block(opcode);
+    }
+
     fn emit_if(&mut self, resulttype: &Resulttype, cond_kind: opcode::JumpCondKind, then_instrs: &Vec<WasmInstr>, else_instrs: &Vec<WasmInstr>) {
         let result_registers = WasmToMachine::setup_result_registers(resulttype);
         let then_block = Context::create_basic_block();
@@ -170,6 +181,7 @@ impl WasmToMachine {
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
             &WasmInstr::Itestop(_) => unimplemented!(),
             &WasmInstr::Irelop(_) => unimplemented!(),
+            &WasmInstr::Cvtop { ref op, ref dst_type, ref src_type } => self.emit_cvtop(op, dst_type, src_type),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 let expr_block = Context::create_basic_block();
