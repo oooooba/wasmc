@@ -111,6 +111,7 @@ impl WasmToMachine {
         let dst = Operand::new_register(Context::create_register(dst_type.clone()));
         self.operand_stack.push(dst.clone());
         let opcode = match op {
+            &ExtendU => Opcode::UnaryOp { kind: UnaryOpKind::ZeroExtension, dst, src },
             &ExtendS => Opcode::UnaryOp { kind: UnaryOpKind::SignExtension, dst, src },
         };
         self.emit_on_current_basic_block(opcode);

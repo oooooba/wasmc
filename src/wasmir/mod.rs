@@ -90,6 +90,7 @@ pub enum Irelop {
 }
 
 pub enum Cvtop {
+    ExtendU,
     ExtendS,
 }
 
