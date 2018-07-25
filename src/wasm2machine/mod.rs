@@ -178,14 +178,14 @@ impl WasmToMachine {
 
     fn emit_body1(&mut self, wasm_instr: &WasmInstr) -> bool {
         match wasm_instr {
-            &WasmInstr::Const(Const::I32(i)) => {
-                let register = Operand::new_register(Context::create_register(Type::I32));
-                self.operand_stack.push(register.clone());
-                self.emit_on_current_basic_block(Opcode::UnaryOp {
-                    kind: UnaryOpKind::Const,
-                    dst: register,
-                    src: Operand::new_const_i32(i),
-                });
+            &WasmInstr::Const(ref cst) => {
+                let (typ, src) = match cst {
+                    &Const::I32(i) => (Type::I32, Operand::new_const_i32(i)),
+                    &Const::I64(i) => (Type::I64, Operand::new_const_i64(i)),
+                };
+                let dst = Operand::new_register(Context::create_register(typ));
+                self.operand_stack.push(dst.clone());
+                self.emit_on_current_basic_block(Opcode::UnaryOp { kind: UnaryOpKind::Const, dst, src });
             }
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
             &WasmInstr::Itestop(_) => unimplemented!(),

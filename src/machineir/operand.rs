@@ -8,6 +8,7 @@ pub enum OperandKind {
     Register(RegisterHandle),
     PhysicalRegister(RegisterHandle),
     ConstI32(u32),
+    ConstI64(u64),
     Label(BasicBlockHandle),
     Memory { index: usize, typ: Type },
 }
@@ -33,6 +34,12 @@ impl Operand {
     pub fn new_const_i32(n: u32) -> Operand {
         Operand {
             kind: OperandKind::ConstI32(n),
+        }
+    }
+
+    pub fn new_const_i64(n: u64) -> Operand {
+        Operand {
+            kind: OperandKind::ConstI64(n),
         }
     }
 
@@ -101,6 +108,7 @@ impl Operand {
             Register(reg) => reg.get().print(),
             PhysicalRegister(reg) => reg.get().print(),
             ConstI32(n) => print!("{}", n),
+            ConstI64(n) => print!("{}", n),
             Label(bb) => bb.print(),
             Memory { index, .. } => print!("[{}]", index),
         }
@@ -114,6 +122,7 @@ impl fmt::Display for Operand {
             Register(reg) => write!(f, "{}", reg.get()),
             PhysicalRegister(reg) => write!(f, "{}", reg.get()),
             ConstI32(n) => write!(f, "{}", n),
+            ConstI64(n) => write!(f, "{}", n),
             Label(bb) => write!(f, "label_{}", bb),
             Memory { index, .. } => write!(f, "[{}]", index),
         }
@@ -127,6 +136,7 @@ impl fmt::Debug for OperandKind {
             &Register(ref register) => write!(f, "Register({:?})", register),
             &PhysicalRegister(ref register) => write!(f, "PhysicalRegister({:?})", register),
             &ConstI32(ref i) => write!(f, "ConstantI32({:?})", i),
+            &ConstI64(ref i) => write!(f, "ConstantI64({:?})", i),
             &Label(ref basic_block) => write!(f, "Label({:?})", basic_block),
             &Memory { index, ref typ } => write!(f, "Memory({} / {:?})", index, typ),
         }

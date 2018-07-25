@@ -73,6 +73,7 @@ impl Functype {
 
 pub enum Const {
     I32(u32),
+    I64(u64),
 }
 
 pub enum Ibinop {
