@@ -396,6 +396,7 @@ impl InstrPass for EmitAssemblyPass {
                             _ => unimplemented!(),
                         }
                     }
+                    &UnaryOpKind::Wrap => println!("# UnaryOpKind::Wrap"),
                     &UnaryOpKind::ZeroExtension | &UnaryOpKind::SignExtension => {
                         assert_eq!(dst.get_typ(), &Type::I64);
                         let src = src.get_as_physical_register().unwrap();
