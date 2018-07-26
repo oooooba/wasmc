@@ -1,5 +1,3 @@
-use machineir::typ::Type;
-
 #[derive(Clone, Copy)]
 pub struct Typeidx(u32);
 
@@ -103,7 +101,7 @@ pub enum WasmInstr {
     Ibinop(Ibinop),
     Itestop(Itestop),
     Irelop(Irelop),
-    Cvtop { op: Cvtop, dst_type: Type, src_type: Type },
+    Cvtop { op: Cvtop, dst_type: Valtype, src_type: Valtype },
     Block(Resulttype, Vec<WasmInstr>),
     If(Resulttype, Vec<WasmInstr>, Vec<WasmInstr>),
     Loop(Resulttype, Vec<WasmInstr>),

@@ -112,10 +112,14 @@ impl WasmToMachine {
         self.emit_on_current_basic_block(opcode);
     }
 
-    fn emit_cvtop(&mut self, op: &Cvtop, dst_type: &Type, _src_type: &Type) {
+    fn emit_cvtop(&mut self, op: &Cvtop, dst_type: &Valtype, _src_type: &Valtype) {
         use self::Cvtop::*;
         let src = self.operand_stack.pop().unwrap();
-        let dst = Operand::new_register(Context::create_register(dst_type.clone()));
+        let dst_typ = match dst_type {
+            &Valtype::I32 => Type::I32,
+            &Valtype::I64 => Type::I64,
+        };
+        let dst = Operand::new_register(Context::create_register(dst_typ));
         self.operand_stack.push(dst.clone());
         let opcode = match op {
             &Wrap => Opcode::UnaryOp { kind: UnaryOpKind::Wrap, dst, src },
