@@ -80,6 +80,7 @@ pub enum Ibinop {
     Mul32,
     Mul64,
     ShrU32,
+    ShrU64,
 }
 
 pub enum Itestop {

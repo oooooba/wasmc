@@ -67,7 +67,7 @@ impl WasmToMachine {
         use self::Ibinop::*;
         let typ = match op {
             &Add32 | &Sub32 | &Mul32 | &ShrU32 => Type::I32,
-            &Mul64 => Type::I64,
+            &Mul64 | &ShrU64 => Type::I64,
         };
         let register = Operand::new_register(Context::create_register(typ));
         let rhs = self.operand_stack.pop().unwrap();
@@ -95,6 +95,22 @@ impl WasmToMachine {
             &ShrU32 => {
                 let mask = Operand::new_const_i32(32 - 1);
                 let num_shift_reg = Operand::new_register(Context::create_register(Type::I32));
+                self.emit_on_current_basic_block(Opcode::BinaryOp {
+                    kind: BinaryOpKind::And,
+                    dst: num_shift_reg.clone(),
+                    src1: rhs,
+                    src2: mask,
+                });
+                Opcode::BinaryOp {
+                    kind: BinaryOpKind::Shr,
+                    dst: register,
+                    src1: lhs,
+                    src2: num_shift_reg,
+                }
+            }
+            &ShrU64 => {
+                let mask = Operand::new_const_i64(64 - 1);
+                let num_shift_reg = Operand::new_register(Context::create_register(Type::I64));
                 self.emit_on_current_basic_block(Opcode::BinaryOp {
                     kind: BinaryOpKind::And,
                     dst: num_shift_reg.clone(),
