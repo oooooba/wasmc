@@ -11,7 +11,7 @@ use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
 pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    physical_result_register: RegisterHandle,
+    physical_result_register: HashMap<Type, RegisterHandle>,
     virtual_register_indexes: HashMap<RegisterHandle, usize>,
 }
 
@@ -38,7 +38,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_dst = match dst.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_result_register;
+                                let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
                                 let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
                                 iter.insert_after(store_instr);
                                 Operand::new_physical_register(preg)
@@ -62,7 +62,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_dst = match dst.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_result_register;
+                                let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
                                 let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
                                 iter.insert_after(store_instr);
                                 Operand::new_physical_register(preg)
@@ -95,7 +95,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_dst = match dst.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_result_register;
+                                let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
                                 let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
                                 iter.insert_after(store_instr);
                                 Operand::new_physical_register(preg)
@@ -108,7 +108,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     &Opcode::Load { ref dst, ref src } => {
                         let new_dst = match dst.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.physical_result_register;
+                                let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
                                 let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
                                 iter.insert_after(store_instr);
                                 Operand::new_physical_register(preg)
@@ -176,7 +176,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_result = if let &Some(ref result) = result {
                             let vreg = result.get_as_register().unwrap();
-                            let preg = self.physical_result_register;
+                            let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
                             let store_instr = self.create_store_instr(basic_block, vreg, preg, function);
                             iter.insert_after(store_instr);
                             Some(Operand::new_physical_register(preg))
@@ -188,7 +188,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     }
                     &Opcode::Return { result: Some(ref result) } => {
                         let vreg = result.get_as_register().unwrap();
-                        let preg = self.physical_result_register;
+                        let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
                         let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                         iter.insert_before(load_instr);
                         let new_result = Operand::new_physical_register(preg);
@@ -215,7 +215,7 @@ impl SimpleRegisterAllocationPass {
     pub fn create(
         physical_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-        physical_result_register: RegisterHandle) -> Box<SimpleRegisterAllocationPass> {
+        physical_result_register: HashMap<Type, RegisterHandle>) -> Box<SimpleRegisterAllocationPass> {
         Box::new(SimpleRegisterAllocationPass {
             physical_registers: physical_registers,
             physical_argument_registers: physical_argument_registers,

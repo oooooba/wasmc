@@ -16,7 +16,7 @@ use wasmc::wasm2machine::WasmToMachine;
 pub struct MainPass {
     registers: Vec<HashMap<Type, RegisterHandle>>,
     argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    result_register: RegisterHandle,
+    result_register: HashMap<Type, RegisterHandle>,
     base_pointer_register: RegisterHandle,
     stack_pointer_register: RegisterHandle,
     register_name_map: HashMap<RegisterHandle, &'static str>,
@@ -25,7 +25,7 @@ pub struct MainPass {
 impl FunctionPass for MainPass {
     fn initialize(&mut self, pass_manager: &mut PassManager) {
         pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(
-            self.registers.clone(), self.argument_registers.clone(), self.result_register));
+            self.registers.clone(), self.argument_registers.clone(), self.result_register.clone()));
         pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
     }
 
@@ -65,7 +65,10 @@ impl MainPass {
             HashMap::from_iter(vec![(Type::I32, ar3)]),
         ];
 
-        let result_register = r1;
+        let result_register = HashMap::from_iter(vec![
+            (Type::I32, r1),
+        ]);
+
         let mut base_pointer_register = Context::create_register(Type::I64);
         base_pointer_register.set_physical();
         let mut stack_pointer_register = Context::create_register(Type::I64);
