@@ -43,40 +43,56 @@ impl MainPass {
     pub fn create() -> Box<MainPass> {
         let mut reg_eax = Context::create_register(Type::I32);
         reg_eax.set_physical();
+        let mut reg_rax = Context::create_register(Type::I64);
+        reg_rax.set_physical();
         let mut reg_ebx = Context::create_register(Type::I32);
         reg_ebx.set_physical();
+        let mut reg_rbx = Context::create_register(Type::I64);
+        reg_rbx.set_physical();
         let mut reg_edx = Context::create_register(Type::I32);
         reg_edx.set_physical();
+        let mut reg_rdx = Context::create_register(Type::I64);
+        reg_rdx.set_physical();
         let mut reg_edi = Context::create_register(Type::I32);
         reg_edi.set_physical();
+        let mut reg_rdi = Context::create_register(Type::I64);
+        reg_rdi.set_physical();
         let mut reg_esi = Context::create_register(Type::I32);
         reg_esi.set_physical();
+        let mut reg_rsi = Context::create_register(Type::I64);
+        reg_rsi.set_physical();
         let mut reg_rbp = Context::create_register(Type::I64);
         reg_rbp.set_physical();
         let mut reg_rsp = Context::create_register(Type::I64);
         reg_rsp.set_physical();
 
         let registers = vec![
-            HashMap::from_iter(vec![(Type::I32, reg_eax)]),
-            HashMap::from_iter(vec![(Type::I32, reg_ebx)]),
+            HashMap::from_iter(vec![(Type::I32, reg_eax), (Type::I64, reg_rax)]),
+            HashMap::from_iter(vec![(Type::I32, reg_ebx), (Type::I64, reg_rbx)]),
         ];
 
         let argument_registers = vec![
-            HashMap::from_iter(vec![(Type::I32, reg_edi)]),
-            HashMap::from_iter(vec![(Type::I32, reg_esi)]),
-            HashMap::from_iter(vec![(Type::I32, reg_edx)]),
+            HashMap::from_iter(vec![(Type::I32, reg_edi), (Type::I64, reg_rdi)]),
+            HashMap::from_iter(vec![(Type::I32, reg_esi), (Type::I64, reg_rsi)]),
+            HashMap::from_iter(vec![(Type::I32, reg_edx), (Type::I64, reg_rdx)]),
         ];
 
         let result_register = HashMap::from_iter(vec![
             (Type::I32, reg_eax),
+            (Type::I64, reg_rax),
         ]);
 
         let register_name_map = HashMap::from_iter(vec![
             (reg_eax, "eax"),
+            (reg_rax, "rax"),
             (reg_ebx, "ebx"),
+            (reg_rbx, "rbx"),
             (reg_edx, "edx"),
+            (reg_rdx, "rdx"),
             (reg_edi, "edi"),
+            (reg_rdi, "rdi"),
             (reg_esi, "esi"),
+            (reg_rsi, "rsi"),
             (reg_rbp, "rbp"),
             (reg_rsp, "rsp"),
         ]);
