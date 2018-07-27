@@ -41,55 +41,52 @@ impl FunctionPass for MainPass {
 
 impl MainPass {
     pub fn create() -> Box<MainPass> {
-        let mut r1 = Context::create_register(Type::I32);
-        r1.set_physical();
-        let mut r2 = Context::create_register(Type::I32);
-        r2.set_physical();
-        let mut r3 = Context::create_register(Type::I32);
-        r3.set_physical();
+        let mut reg_eax = Context::create_register(Type::I32);
+        reg_eax.set_physical();
+        let mut reg_ebx = Context::create_register(Type::I32);
+        reg_ebx.set_physical();
+        let mut reg_edx = Context::create_register(Type::I32);
+        reg_edx.set_physical();
+        let mut reg_edi = Context::create_register(Type::I32);
+        reg_edi.set_physical();
+        let mut reg_esi = Context::create_register(Type::I32);
+        reg_esi.set_physical();
+        let mut reg_rbp = Context::create_register(Type::I64);
+        reg_rbp.set_physical();
+        let mut reg_rsp = Context::create_register(Type::I64);
+        reg_rsp.set_physical();
+
         let registers = vec![
-            HashMap::from_iter(vec![(Type::I32, r1)]),
-            HashMap::from_iter(vec![(Type::I32, r2)]),
-            HashMap::from_iter(vec![(Type::I32, r3)]),
+            HashMap::from_iter(vec![(Type::I32, reg_eax)]),
+            HashMap::from_iter(vec![(Type::I32, reg_ebx)]),
         ];
 
-        let mut ar1 = Context::create_register(Type::I32);
-        ar1.set_physical();
-        let mut ar2 = Context::create_register(Type::I32);
-        ar2.set_physical();
-        let mut ar3 = Context::create_register(Type::I32);
-        ar3.set_physical();
         let argument_registers = vec![
-            HashMap::from_iter(vec![(Type::I32, ar1)]),
-            HashMap::from_iter(vec![(Type::I32, ar2)]),
-            HashMap::from_iter(vec![(Type::I32, ar3)]),
+            HashMap::from_iter(vec![(Type::I32, reg_edi)]),
+            HashMap::from_iter(vec![(Type::I32, reg_esi)]),
+            HashMap::from_iter(vec![(Type::I32, reg_edx)]),
         ];
 
         let result_register = HashMap::from_iter(vec![
-            (Type::I32, r1),
+            (Type::I32, reg_eax),
         ]);
 
-        let mut base_pointer_register = Context::create_register(Type::I64);
-        base_pointer_register.set_physical();
-        let mut stack_pointer_register = Context::create_register(Type::I64);
-        stack_pointer_register.set_physical();
-
-        let mut register_name_map = HashMap::new();
-        register_name_map.insert(r1, "eax");
-        register_name_map.insert(r2, "ebx");
-        register_name_map.insert(r3, "ecx");
-        register_name_map.insert(ar1, "edi");
-        register_name_map.insert(ar2, "esi");
-        register_name_map.insert(ar3, "edx");
-        register_name_map.insert(base_pointer_register, "rbp");
-        register_name_map.insert(stack_pointer_register, "rsp");
+        let register_name_map = HashMap::from_iter(vec![
+            (reg_eax, "eax"),
+            (reg_ebx, "ebx"),
+            (reg_edx, "edx"),
+            (reg_edi, "edi"),
+            (reg_esi, "esi"),
+            (reg_rbp, "rbp"),
+            (reg_rsp, "rsp"),
+        ]);
 
         Box::new(MainPass {
             registers,
             argument_registers,
             result_register,
-            base_pointer_register,
-            stack_pointer_register,
+            base_pointer_register: reg_rbp,
+            stack_pointer_register: reg_rsp,
             register_name_map,
         })
     }
