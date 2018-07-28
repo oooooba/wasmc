@@ -57,6 +57,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 Operand::new_physical_register(preg)
                             }
                             &OperandKind::ConstI32(_) => src.clone(),
+                            &OperandKind::ConstI64(_) => src.clone(),
                             _ => unimplemented!(),
                         };
 
@@ -90,6 +91,8 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 iter.insert_before(load_instr);
                                 Operand::new_physical_register(preg)
                             }
+                            &OperandKind::ConstI32(_) => src2.clone(),
+                            &OperandKind::ConstI64(_) => src2.clone(),
                             _ => unimplemented!(),
                         };
 
@@ -393,6 +396,7 @@ impl InstrPass for EmitAssemblyPass {
                     &UnaryOpKind::Const => {
                         match src.get_kind() {
                             &OperandKind::ConstI32(cst) => println!("mov {}, {}", dst_name, cst),
+                            &OperandKind::ConstI64(cst) => println!("mov {}, {}", dst_name, cst),
                             _ => unimplemented!(),
                         }
                     }
@@ -424,6 +428,7 @@ impl InstrPass for EmitAssemblyPass {
                 match src2.get_kind() {
                     &OperandKind::PhysicalRegister(preg) => self.emit_binop_reg_reg(op, dst, preg),
                     &OperandKind::ConstI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
+                    &OperandKind::ConstI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
                     _ => unimplemented!(),
                 }
             }
@@ -497,6 +502,10 @@ impl EmitAssemblyPass {
     }
 
     fn emit_binop_reg_imm32(&mut self, op: &'static str, target: RegisterHandle, imm: u32) {
+        println!("{} {}, {}", op, self.physical_register_name_map.get(&target).unwrap(), imm);
+    }
+
+    fn emit_binop_reg_imm64(&mut self, op: &'static str, target: RegisterHandle, imm: u64) {
         println!("{} {}, {}", op, self.physical_register_name_map.get(&target).unwrap(), imm);
     }
 }
