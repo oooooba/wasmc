@@ -437,16 +437,21 @@ impl InstrPass for EmitAssemblyPass {
                 assert!(dst.is_physical());
                 let dst_name = self.physical_register_name_map.get(&dst).unwrap();
 
-                let src_offset = match src.get_kind() {
-                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
+                let (src_offset, typ) = match src.get_kind() {
+                    &OperandKind::Memory { index, ref typ } => ((index + 1) * typ.get_size(), typ),
                     _ => unimplemented!(),
                 };
 
-                println!("mov {}, dword ptr [{} - {}]", dst_name, self.base_pointer_register, src_offset);
+                let ptr_notation = match typ {
+                    &Type::I32 => "dword",
+                    &Type::I64 => "qword",
+                };
+
+                println!("mov {}, {} ptr [{} - {}]", dst_name, ptr_notation, self.base_pointer_register, src_offset);
             }
             &Store { ref dst, ref src, .. } => {
-                let dst_offset = match dst.get_kind() {
-                    &OperandKind::Memory { index, ref typ } => (index + 1) * typ.get_size(),
+                let (dst_offset, typ) = match dst.get_kind() {
+                    &OperandKind::Memory { index, ref typ } => ((index + 1) * typ.get_size(), typ),
                     _ => unimplemented!(),
                 };
 
@@ -454,7 +459,12 @@ impl InstrPass for EmitAssemblyPass {
                 assert!(src.is_physical());
                 let src_name = self.physical_register_name_map.get(&src).unwrap();
 
-                println!("mov dword ptr [{} - {}], {}", self.base_pointer_register, dst_offset, src_name);
+                let ptr_notation = match typ {
+                    &Type::I32 => "dword",
+                    &Type::I64 => "qword",
+                };
+
+                println!("mov {} ptr [{} - {}], {}", ptr_notation, self.base_pointer_register, dst_offset, src_name);
             }
             &Jump { ref kind, ref target } => {
                 let target = target.get_as_label().unwrap();
