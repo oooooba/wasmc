@@ -94,34 +94,46 @@ impl WasmToMachine {
             },
             &ShrU32 => {
                 let mask = Operand::new_const_i32(32 - 1);
-                let num_shift_reg = Operand::new_register(Context::create_register(Type::I32));
+                let num_shift_reg_32 = Operand::new_register(Context::create_register(Type::I32));
                 self.emit_on_current_basic_block(Opcode::BinaryOp {
                     kind: BinaryOpKind::And,
-                    dst: num_shift_reg.clone(),
+                    dst: num_shift_reg_32.clone(),
                     src1: rhs,
                     src2: mask,
+                });
+                let num_shift_reg_8 = Operand::new_register(Context::create_register(Type::I8));
+                self.emit_on_current_basic_block(Opcode::UnaryOp {
+                    kind: UnaryOpKind::Wrap,
+                    dst: num_shift_reg_8.clone(),
+                    src: num_shift_reg_32,
                 });
                 Opcode::BinaryOp {
                     kind: BinaryOpKind::Shr,
                     dst: register,
                     src1: lhs,
-                    src2: num_shift_reg,
+                    src2: num_shift_reg_8,
                 }
             }
             &ShrU64 => {
                 let mask = Operand::new_const_i64(64 - 1);
-                let num_shift_reg = Operand::new_register(Context::create_register(Type::I64));
+                let num_shift_reg_64 = Operand::new_register(Context::create_register(Type::I64));
                 self.emit_on_current_basic_block(Opcode::BinaryOp {
                     kind: BinaryOpKind::And,
-                    dst: num_shift_reg.clone(),
+                    dst: num_shift_reg_64.clone(),
                     src1: rhs,
                     src2: mask,
+                });
+                let num_shift_reg_8 = Operand::new_register(Context::create_register(Type::I8));
+                self.emit_on_current_basic_block(Opcode::UnaryOp {
+                    kind: UnaryOpKind::Wrap,
+                    dst: num_shift_reg_8.clone(),
+                    src: num_shift_reg_64,
                 });
                 Opcode::BinaryOp {
                     kind: BinaryOpKind::Shr,
                     dst: register,
                     src1: lhs,
-                    src2: num_shift_reg,
+                    src2: num_shift_reg_8,
                 }
             }
         };

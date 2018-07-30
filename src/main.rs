@@ -41,6 +41,8 @@ impl FunctionPass for MainPass {
 
 impl MainPass {
     pub fn create() -> Box<MainPass> {
+        let mut reg_al = Context::create_register(Type::I8);
+        reg_al.set_physical();
         let mut reg_eax = Context::create_register(Type::I32);
         reg_eax.set_physical();
         let mut reg_rax = Context::create_register(Type::I64);
@@ -49,6 +51,8 @@ impl MainPass {
         reg_ebx.set_physical();
         let mut reg_rbx = Context::create_register(Type::I64);
         reg_rbx.set_physical();
+        let mut reg_cl = Context::create_register(Type::I8);
+        reg_cl.set_physical();
         let mut reg_edx = Context::create_register(Type::I32);
         reg_edx.set_physical();
         let mut reg_rdx = Context::create_register(Type::I64);
@@ -69,6 +73,7 @@ impl MainPass {
         let registers = vec![
             HashMap::from_iter(vec![(Type::I32, reg_eax), (Type::I64, reg_rax)]),
             HashMap::from_iter(vec![(Type::I32, reg_ebx), (Type::I64, reg_rbx)]),
+            HashMap::from_iter(vec![(Type::I8, reg_cl)]),
         ];
 
         let argument_registers = vec![
@@ -78,15 +83,18 @@ impl MainPass {
         ];
 
         let result_register = HashMap::from_iter(vec![
+            (Type::I8, reg_al),
             (Type::I32, reg_eax),
             (Type::I64, reg_rax),
         ]);
 
         let register_name_map = HashMap::from_iter(vec![
+            (reg_al, "al"),
             (reg_eax, "eax"),
             (reg_rax, "rax"),
             (reg_ebx, "ebx"),
             (reg_rbx, "rbx"),
+            (reg_cl, "cl"),
             (reg_edx, "edx"),
             (reg_rdx, "rdx"),
             (reg_edi, "edi"),

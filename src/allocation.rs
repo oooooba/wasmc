@@ -86,7 +86,11 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_src2 = match src2.get_kind() {
                             &OperandKind::Register(vreg) => {
-                                let preg = self.allocate_physical_register(vreg, 1);
+                                let index = match kind {
+                                    &BinaryOpKind::Shr => 2,
+                                    _ => 1,
+                                };
+                                let preg = self.allocate_physical_register(vreg, index);
                                 let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
                                 Operand::new_physical_register(preg)
@@ -341,10 +345,7 @@ impl FunctionPass for PreEmitAssemblyPass {
             let dst_offset = (i + 1) * typ.get_size();
             let src_reg = self.argument_registers[i].get(typ).unwrap();
             let src_name = self.register_name_map.get(src_reg).unwrap();
-            let ptr_notation = match typ {
-                &Type::I32 => "dword",
-                &Type::I64 => "qword",
-            };
+            let ptr_notation = typ.get_ptr_notation();
             println!("mov {} ptr [{} - {}], {}", ptr_notation, base_pointer_register, dst_offset, src_name);
         }
     }
@@ -442,10 +443,7 @@ impl InstrPass for EmitAssemblyPass {
                     _ => unimplemented!(),
                 };
 
-                let ptr_notation = match typ {
-                    &Type::I32 => "dword",
-                    &Type::I64 => "qword",
-                };
+                let ptr_notation = typ.get_ptr_notation();
 
                 println!("mov {}, {} ptr [{} - {}]", dst_name, ptr_notation, self.base_pointer_register, src_offset);
             }
@@ -459,10 +457,7 @@ impl InstrPass for EmitAssemblyPass {
                 assert!(src.is_physical());
                 let src_name = self.physical_register_name_map.get(&src).unwrap();
 
-                let ptr_notation = match typ {
-                    &Type::I32 => "dword",
-                    &Type::I64 => "qword",
-                };
+                let ptr_notation = typ.get_ptr_notation();
 
                 println!("mov {} ptr [{} - {}], {}", ptr_notation, self.base_pointer_register, dst_offset, src_name);
             }
