@@ -369,7 +369,7 @@ impl PreEmitAssemblyPass {
 #[derive(Debug)]
 pub struct EmitAssemblyPass {
     physical_register_name_map: HashMap<RegisterHandle, &'static str>,
-    base_pointer_register: &'static str,
+    base_pointer_register: RegisterHandle,
 }
 
 impl InstrPass for EmitAssemblyPass {
@@ -443,8 +443,9 @@ impl InstrPass for EmitAssemblyPass {
                 };
 
                 let ptr_notation = typ.get_ptr_notation();
+                let bpr_name = self.physical_register_name_map.get(&self.base_pointer_register).unwrap();
 
-                println!("mov {}, {} ptr [{} - {}]", dst_name, ptr_notation, self.base_pointer_register, src_offset);
+                println!("mov {}, {} ptr [{} - {}]", dst_name, ptr_notation, bpr_name, src_offset);
             }
             &Store { ref dst, ref src, .. } => {
                 let (dst_offset, typ) = match dst.get_kind() {
@@ -457,8 +458,9 @@ impl InstrPass for EmitAssemblyPass {
                 let src_name = self.physical_register_name_map.get(&src).unwrap();
 
                 let ptr_notation = typ.get_ptr_notation();
+                let bpr_name = self.physical_register_name_map.get(&self.base_pointer_register).unwrap();
 
-                println!("mov {} ptr [{} - {}], {}", ptr_notation, self.base_pointer_register, dst_offset, src_name);
+                println!("mov {} ptr [{} - {}], {}", ptr_notation, bpr_name, dst_offset, src_name);
             }
             &Jump { ref kind, ref target } => {
                 let target = target.get_as_label().unwrap();
@@ -494,10 +496,10 @@ impl InstrPass for EmitAssemblyPass {
 }
 
 impl EmitAssemblyPass {
-    pub fn create(physical_register_name_map: HashMap<RegisterHandle, &'static str>, base_pointer_register: &'static str) -> Box<EmitAssemblyPass> {
+    pub fn create(physical_register_name_map: HashMap<RegisterHandle, &'static str>, base_pointer_register: RegisterHandle) -> Box<EmitAssemblyPass> {
         Box::new(EmitAssemblyPass {
             physical_register_name_map: physical_register_name_map,
-            base_pointer_register: base_pointer_register,
+            base_pointer_register,
         })
     }
 

@@ -35,7 +35,8 @@ impl FunctionPass for MainPass {
         pass_manager.add_function_pass(PreEmitAssemblyPass::create(
             self.register_name_map.clone(), self.base_pointer_register,
             self.stack_pointer_register, self.argument_registers.clone()));
-        pass_manager.add_instr_pass(EmitAssemblyPass::create(self.register_name_map.clone(), "rbp"));
+        pass_manager.add_instr_pass(EmitAssemblyPass::create(
+            self.register_name_map.clone(), self.base_pointer_register));
     }
 }
 
