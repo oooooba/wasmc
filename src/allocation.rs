@@ -406,10 +406,9 @@ impl InstrPass for EmitAssemblyPass {
                         assert_eq!(dst.get_typ(), &Type::I64);
                         let src = src.get_as_physical_register().unwrap();
                         assert_eq!(src.get_typ(), &Type::I32);
-                        let src_name = self.physical_register_name_map.get(&src).unwrap();
                         match kind {
-                            &UnaryOpKind::ZeroExtension => println!("movzx {}, {}", dst_name, src_name),
-                            &UnaryOpKind::SignExtension => println!("movsx {}, {}", dst_name, src_name),
+                            &UnaryOpKind::ZeroExtension => println!("# UnaryOpKind::ZeroExtension"),
+                            &UnaryOpKind::SignExtension => println!("cdqe"),
                             _ => panic!(),
                         }
                     }
