@@ -87,6 +87,9 @@ impl FunctionPass for EmitAssemblyPass {
             let mut iter = basic_block.iterator();
             while let Some(mut instr) = iter.get() {
                 use self::Opcode::*;
+                print!("# ");
+                instr.get().print();
+                println!();
                 match instr.get_opcode() {
                     &Debug(ref msg) => {
                         println!("# {}", msg);
