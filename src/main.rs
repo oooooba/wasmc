@@ -10,7 +10,7 @@ use wasmc::context::handle::{FunctionHandle, RegisterHandle};
 use wasmc::machineir::typ::Type;
 use wasmc::pass::{FunctionPass, PassManager};
 use wasmc::wasmir;
-use wasmc::wasmir::{Const, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
+use wasmc::wasmir::{Const, Cvtop, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
 
 pub struct MainPass {
@@ -185,11 +185,38 @@ fn main() {
             ]),
             WasmInstr::Const(Const::I32(0)),
         ];
+        let code5 = vec![
+            WasmInstr::Block(Resulttype::new(Some(vec![])), vec![
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Itestop(Itestop::Eqz32),
+                WasmInstr::BrIf(0),
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Const(Const::I32(1)),
+                WasmInstr::Ibinop(Ibinop::Shl32),
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Const(Const::I32(-1i32 as u32)),
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Cvtop { op: Cvtop::ExtendU, dst_type: Valtype::I64, src_type: Valtype::I32 },
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Const(Const::I32(-2i32 as u32)),
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Cvtop { op: Cvtop::ExtendU, dst_type: Valtype::I64, src_type: Valtype::I32 },
+                WasmInstr::Ibinop(Ibinop::Mul64),
+                WasmInstr::Const(Const::I64(1)),
+                WasmInstr::Ibinop(Ibinop::ShrU64),
+                WasmInstr::Cvtop { op: Cvtop::Wrap, dst_type: Valtype::I32, src_type: Valtype::I64 },
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Const(Const::I32(-1i32 as u32)),
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Return,
+            ]),
+            WasmInstr::Const(Const::I32(0)),
+        ];
 
         let mut functions = vec![];
         let functype = wasmir::Functype::new(vec![Valtype::I32], vec![Valtype::I32]);
         let functype_index = wasmir::Typeidx::new(0);
-        for code in vec![code1, code2, code3, code4] {
+        for code in vec![code1, code2, code3, code4, code5] {
             let function = wasmir::Func::new(functype_index, vec![], wasmir::Expr::new(code));
             functions.push(function);
         }
