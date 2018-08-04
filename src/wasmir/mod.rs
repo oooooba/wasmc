@@ -79,6 +79,7 @@ pub enum Ibinop {
     Sub32,
     Mul32,
     Mul64,
+    Shl32,
     ShrU32,
     ShrU64,
 }

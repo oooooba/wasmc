@@ -17,6 +17,7 @@ pub enum BinaryOpKind {
     Sub,
     Mul,
     And,
+    Shl,
     Shr,
 }
 
