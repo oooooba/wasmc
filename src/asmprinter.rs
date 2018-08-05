@@ -69,6 +69,7 @@ impl FunctionPass for EmitAssemblyPass {
             println!("push {}", base_pointer_register);
             println!("mov {}, {}", base_pointer_register, stack_pointer_register);
             println!("sub {}, {}", stack_pointer_register, len_buffer);
+            println!("push rbx");
 
             // store parameter registers to memory
             assert!(function.get_parameter_types().len() < self.argument_registers.len());
@@ -203,6 +204,7 @@ impl FunctionPass for EmitAssemblyPass {
                         println!("call {}", func.get_func_name());
                     }
                     &Return { .. } => {
+                        println!("pop rbx");
                         println!("mov rsp, rbp");
                         println!("pop rbp");
                         println!("ret");
