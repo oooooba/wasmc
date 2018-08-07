@@ -10,16 +10,20 @@ pub enum ParserErrorKind {
     InvalidFormat(String),
 }
 
+fn read_one_byte(reader: &mut Read) -> Option<u8> {
+    let mut buf = [0];
+    match reader.read(&mut buf) {
+        Ok(1) => Some(buf[0]),
+        _ => None,
+    }
+}
+
 fn decode_by_unsigned_leb128(reader: &mut Read, mut nbits: usize) -> Result<usize, ParserErrorKind> {
     assert!(nbits == 32 || nbits == 64);
     let num_iters = (nbits as f64 / 7.0).ceil() as usize;
     let mut result: usize = 0;
     for i in 0..num_iters {
-        let mut buf = [0];
-        let n = match reader.read(&mut buf) {
-            Ok(1) => buf[0],
-            _ => return Err(ParserErrorKind::FileTerminated),
-        };
+        let n = read_one_byte(reader).ok_or(ParserErrorKind::FileTerminated)?;
         result |= (n as usize & 0x7f) << (i * 7);
         if n & 0x80 == 0 {
             break
