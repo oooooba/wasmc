@@ -1,13 +1,15 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::Module;
+use wasmir::{Functype, Module, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
     FileNotFound(String),
     FileTerminated,
     InvalidFormat(String),
+    IllegalFunctypeFormat,
+    IllegalValtypeFormat(u8),
 }
 
 fn read_one_byte(reader: &mut Read) -> Option<u8> {
@@ -51,6 +53,53 @@ fn test_integer_decoder() {
     assert_eq!(decode_by_unsigned_leb128(buf.by_ref(), 32), Ok((12857, 2)));
 }
 
+fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind> {
+    match read_one_byte(reader) {
+        Some(0x7F) => Ok((Valtype::I32, 1)),
+        Some(0x7E) => Ok((Valtype::I64, 1)),
+        Some(n) => Err(ParserErrorKind::IllegalValtypeFormat(n)),
+        None => Err(ParserErrorKind::FileTerminated),
+    }
+}
+
+fn parse_valtypes(reader: &mut Read) -> Result<(Vec<Valtype>, usize), ParserErrorKind> {
+    let (size, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    let mut valtypes = vec![];
+    for _ in 0..size {
+        let (valtype, c) = parse_valtype(reader)?;
+        valtypes.push(valtype);
+        consumed += c;
+    }
+    Ok((valtypes, consumed))
+}
+
+fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
+    let (num_functypes, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    let mut functypes = vec![];
+    for _ in 0..num_functypes {
+        match read_one_byte(reader) {
+            Some(0x60) => consumed += 1,
+            _ => return Err(ParserErrorKind::IllegalFunctypeFormat),
+        }
+        let (input_type, c) = parse_valtypes(reader)?;
+        consumed += c;
+        let (output_type, c) = parse_valtypes(reader)?;
+        consumed += c;
+        functypes.push(Functype::new(input_type, output_type));
+    }
+    assert_eq!(size, consumed);
+    Ok((functypes, consumed))
+}
+
+fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
+    let section_id = match read_one_byte(reader) {
+        Some(n) => n,
+        None => return Ok(None),
+    };
+    let (size, consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    Ok(Some((section_id, size, consumed)))
+}
+
 pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let file = File::open(&file_name).map_err(|_| ParserErrorKind::FileNotFound(file_name))?;
     let mut reader = BufReader::new(file);
@@ -68,5 +117,10 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
             _ => return Err(ParserErrorKind::InvalidFormat("field 'version' is broken".to_string())),
         };
     }
+    let _type_section = match parse_section_header(&mut reader)? {
+        Some((1, section_size, _)) => parse_type_section(&mut reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected type section".to_string())),
+        None => return Err(ParserErrorKind::FileTerminated),
+    };
     unimplemented!()
 }
