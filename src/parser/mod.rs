@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Functype, Module, Valtype};
+use wasmir::{Functype, Module, Typeidx, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
@@ -91,6 +91,18 @@ fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, 
     Ok((functypes, consumed))
 }
 
+fn parse_function_section(reader: &mut Read, size: usize) -> Result<(Vec<Typeidx>, usize), ParserErrorKind> {
+    let (num_typeidxes, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    let mut typeidxes = vec![];
+    for _ in 0..num_typeidxes {
+        let (idx, c) = decode_by_unsigned_leb128(reader, 32)?;
+        consumed += c;
+        typeidxes.push(Typeidx::new(idx as u32));
+    }
+    assert_eq!(size, consumed);
+    Ok((typeidxes, consumed))
+}
+
 fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
     let section_id = match read_one_byte(reader) {
         Some(n) => n,
@@ -120,6 +132,11 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let _type_section = match parse_section_header(&mut reader)? {
         Some((1, section_size, _)) => parse_type_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected type section".to_string())),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
+    let _function_section = match parse_section_header(&mut reader)? {
+        Some((3, section_size, _)) => parse_function_section(&mut reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected function section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     unimplemented!()
