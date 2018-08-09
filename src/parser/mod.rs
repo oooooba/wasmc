@@ -6,7 +6,7 @@ use wasmir::{Functype, Module, Valtype};
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
     FileNotFound(String),
-    FileTerminated,
+    UnexpectedFileTermination,
     InvalidFormat(String),
     IllegalFunctypeFormat,
     IllegalValtypeFormat(u8),
@@ -26,7 +26,7 @@ fn decode_by_unsigned_leb128(reader: &mut Read, mut nbits: usize) -> Result<(usi
     let mut result: usize = 0;
     let mut consumed = 0;
     for i in 0..num_iters {
-        let n = read_one_byte(reader).ok_or(ParserErrorKind::FileTerminated)?;
+        let n = read_one_byte(reader).ok_or(ParserErrorKind::UnexpectedFileTermination)?;
         consumed += 1;
         result |= (n as usize & 0x7f) << (i * 7);
         if n & 0x80 == 0 {
@@ -58,7 +58,7 @@ fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind>
         Some(0x7F) => Ok((Valtype::I32, 1)),
         Some(0x7E) => Ok((Valtype::I64, 1)),
         Some(n) => Err(ParserErrorKind::IllegalValtypeFormat(n)),
-        None => Err(ParserErrorKind::FileTerminated),
+        None => Err(ParserErrorKind::UnexpectedFileTermination),
     }
 }
 
@@ -120,7 +120,7 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let _type_section = match parse_section_header(&mut reader)? {
         Some((1, section_size, _)) => parse_type_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected type section".to_string())),
-        None => return Err(ParserErrorKind::FileTerminated),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     unimplemented!()
 }
