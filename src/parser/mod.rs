@@ -53,6 +53,18 @@ fn test_integer_decoder() {
     assert_eq!(decode_by_unsigned_leb128(buf.by_ref(), 32), Ok((12857, 2)));
 }
 
+fn parse_vector<T, F>(reader: &mut Read, f: F) -> Result<(Vec<T>, usize), ParserErrorKind>
+    where F: Fn(&mut Read) -> Result<(T, usize), ParserErrorKind> {
+    let (num_items, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    let mut items = vec![];
+    for _ in 0..num_items {
+        let (item, c) = f(reader)?;
+        items.push(item);
+        consumed += c;
+    }
+    Ok((items, consumed))
+}
+
 fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind> {
     match read_one_byte(reader) {
         Some(0x7F) => Ok((Valtype::I32, 1)),
@@ -62,43 +74,28 @@ fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind>
     }
 }
 
-fn parse_valtypes(reader: &mut Read) -> Result<(Vec<Valtype>, usize), ParserErrorKind> {
-    let (size, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
-    let mut valtypes = vec![];
-    for _ in 0..size {
-        let (valtype, c) = parse_valtype(reader)?;
-        valtypes.push(valtype);
-        consumed += c;
+fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKind> {
+    if read_one_byte(reader) != Some(0x60) {
+        return Err(ParserErrorKind::IllegalFunctypeFormat);
     }
-    Ok((valtypes, consumed))
+    let (input_type, c_i) = parse_vector(reader, parse_valtype)?;
+    let (output_type, c_o) = parse_vector(reader, parse_valtype)?;
+    Ok((Functype::new(input_type, output_type), 1 + c_i + c_o))
 }
 
 fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
-    let (num_functypes, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
-    let mut functypes = vec![];
-    for _ in 0..num_functypes {
-        match read_one_byte(reader) {
-            Some(0x60) => consumed += 1,
-            _ => return Err(ParserErrorKind::IllegalFunctypeFormat),
-        }
-        let (input_type, c) = parse_valtypes(reader)?;
-        consumed += c;
-        let (output_type, c) = parse_valtypes(reader)?;
-        consumed += c;
-        functypes.push(Functype::new(input_type, output_type));
-    }
+    let (functypes, consumed) = parse_vector(reader, parse_functype)?;
     assert_eq!(size, consumed);
     Ok((functypes, consumed))
 }
 
+fn parse_typeidx(reader: &mut Read) -> Result<(Typeidx, usize), ParserErrorKind> {
+    let (idx, consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    Ok((Typeidx::new(idx as u32), consumed))
+}
+
 fn parse_function_section(reader: &mut Read, size: usize) -> Result<(Vec<Typeidx>, usize), ParserErrorKind> {
-    let (num_typeidxes, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
-    let mut typeidxes = vec![];
-    for _ in 0..num_typeidxes {
-        let (idx, c) = decode_by_unsigned_leb128(reader, 32)?;
-        consumed += c;
-        typeidxes.push(Typeidx::new(idx as u32));
-    }
+    let (typeidxes, consumed) = parse_vector(reader, parse_typeidx)?;
     assert_eq!(size, consumed);
     Ok((typeidxes, consumed))
 }
