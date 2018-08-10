@@ -37,6 +37,7 @@ impl Localidx {
     }
 }
 
+#[derive(Debug)]
 pub enum Valtype {
     I32,
     I64,
@@ -53,6 +54,7 @@ impl Resulttype {
     }
 }
 
+#[derive(Debug)]
 pub struct Functype(Vec<Valtype>, Vec<Valtype>);
 
 impl Functype {
