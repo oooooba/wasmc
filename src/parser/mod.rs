@@ -106,7 +106,7 @@ fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>,
         None => return Ok(None),
     };
     let (size, consumed) = decode_by_unsigned_leb128(reader, 32)?;
-    Ok(Some((section_id, size, consumed)))
+    Ok(Some((section_id, size, consumed + 1)))
 }
 
 pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
