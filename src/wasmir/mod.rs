@@ -71,6 +71,35 @@ impl Functype {
     }
 }
 
+#[derive(Debug)]
+pub struct Limits {
+    min: u32,
+    max: Option<u32>,
+}
+
+impl Limits {
+    pub fn new(min: u32, max: Option<u32>) -> Limits {
+        Limits { min, max }
+    }
+}
+
+#[derive(Debug)]
+pub enum Elemtype {
+    Anyfunc,
+}
+
+#[derive(Debug)]
+pub struct Tabletype {
+    limits: Limits,
+    elemtype: Elemtype,
+}
+
+impl Tabletype {
+    pub fn new(limits: Limits, elemtype: Elemtype) -> Tabletype {
+        Tabletype { limits, elemtype }
+    }
+}
+
 pub enum Const {
     I32(u32),
     I64(u64),

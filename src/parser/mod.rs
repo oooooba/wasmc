@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Functype, Module, Typeidx, Valtype};
+use wasmir::{Elemtype, Functype, Limits, Module, Tabletype, Typeidx, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
@@ -83,21 +83,58 @@ fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKin
     Ok((Functype::new(input_type, output_type), 1 + c_i + c_o))
 }
 
+fn parse_typeidx(reader: &mut Read) -> Result<(Typeidx, usize), ParserErrorKind> {
+    let (idx, consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    Ok((Typeidx::new(idx as u32), consumed))
+}
+
+fn parse_elemtype(reader: &mut Read) -> Result<(Elemtype, usize), ParserErrorKind> {
+    match read_one_byte(reader) {
+        Some(0x70) => Ok((Elemtype::Anyfunc, 1)),
+        Some(_) => unimplemented!(),
+        None => Err(ParserErrorKind::UnexpectedFileTermination),
+    }
+}
+
+fn parse_limits(reader: &mut Read) -> Result<(Limits, usize), ParserErrorKind> {
+    let (min, max, consumed) = match read_one_byte(reader) {
+        Some(0x00) => {
+            let (min, c) = decode_by_unsigned_leb128(reader, 32)?;
+            (min as u32, None, c + 1)
+        }
+        Some(0x01) => {
+            let (min, c_min) = decode_by_unsigned_leb128(reader, 32)?;
+            let (max, c_max) = decode_by_unsigned_leb128(reader, 32)?;
+            (min as u32, Some(max as u32), c_min + c_max)
+        }
+        Some(_) => unimplemented!(),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
+    Ok((Limits::new(min, max), consumed + 1))
+}
+
+fn parse_tabletype(reader: &mut Read) -> Result<(Tabletype, usize), ParserErrorKind> {
+    let (elemtype, c_e) = parse_elemtype(reader)?;
+    let (limits, c_l) = parse_limits(reader)?;
+    Ok((Tabletype::new(limits, elemtype), c_e + c_l))
+}
+
 fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
     let (functypes, consumed) = parse_vector(reader, parse_functype)?;
     assert_eq!(size, consumed);
     Ok((functypes, consumed))
 }
 
-fn parse_typeidx(reader: &mut Read) -> Result<(Typeidx, usize), ParserErrorKind> {
-    let (idx, consumed) = decode_by_unsigned_leb128(reader, 32)?;
-    Ok((Typeidx::new(idx as u32), consumed))
-}
-
 fn parse_function_section(reader: &mut Read, size: usize) -> Result<(Vec<Typeidx>, usize), ParserErrorKind> {
     let (typeidxes, consumed) = parse_vector(reader, parse_typeidx)?;
     assert_eq!(size, consumed);
     Ok((typeidxes, consumed))
+}
+
+fn parse_table_section(reader: &mut Read, size: usize) -> Result<(Vec<Tabletype>, usize), ParserErrorKind> {
+    let (tabletypes, consumed) = parse_vector(reader, parse_tabletype)?;
+    assert_eq!(size, consumed);
+    Ok((tabletypes, consumed))
 }
 
 fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
@@ -134,6 +171,11 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let _function_section = match parse_section_header(&mut reader)? {
         Some((3, section_size, _)) => parse_function_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected function section".to_string())),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
+    let _table_section = match parse_section_header(&mut reader)? {
+        Some((4, section_size, _)) => parse_table_section(&mut reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected table section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     unimplemented!()
