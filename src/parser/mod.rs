@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Elemtype, Functype, Limits, Module, Tabletype, Typeidx, Valtype};
+use wasmir::{Elemtype, Functype, Limits, Memtype, Module, Tabletype, Typeidx, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
@@ -114,6 +114,11 @@ fn parse_limits(reader: &mut Read) -> Result<(Limits, usize), ParserErrorKind> {
     Ok((Limits::new(min, max), c_b + c_r))
 }
 
+fn parse_memtype(reader: &mut Read) -> Result<(Memtype, usize), ParserErrorKind> {
+    let (lim, c) = parse_limits(reader)?;
+    Ok((Memtype::new(lim), c))
+}
+
 fn parse_tabletype(reader: &mut Read) -> Result<(Tabletype, usize), ParserErrorKind> {
     let (elemtype, c_e) = parse_elemtype(reader)?;
     let (limits, c_l) = parse_limits(reader)?;
@@ -136,6 +141,12 @@ fn parse_table_section(reader: &mut Read, size: usize) -> Result<(Vec<Tabletype>
     let (tabletypes, consumed) = parse_vector(reader, parse_tabletype)?;
     assert_eq!(size, consumed);
     Ok((tabletypes, consumed))
+}
+
+fn parse_memory_section(reader: &mut Read, size: usize) -> Result<(Vec<Memtype>, usize), ParserErrorKind> {
+    let (memtypes, consumed) = parse_vector(reader, parse_memtype)?;
+    assert_eq!(size, consumed);
+    Ok((memtypes, consumed))
 }
 
 fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
@@ -178,6 +189,11 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let _table_section = match parse_section_header(&mut reader)? {
         Some((4, section_size, _)) => parse_table_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected table section".to_string())),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
+    let _memory_section = match parse_section_header(&mut reader)? {
+        Some((5, section_size, _)) => parse_memory_section(&mut reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected memory section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     unimplemented!()

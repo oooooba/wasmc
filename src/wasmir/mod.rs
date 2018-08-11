@@ -84,6 +84,17 @@ impl Limits {
 }
 
 #[derive(Debug)]
+pub struct Memtype {
+    lim: Limits,
+}
+
+impl Memtype {
+    pub fn new(lim: Limits) -> Memtype {
+        Memtype { lim }
+    }
+}
+
+#[derive(Debug)]
 pub enum Elemtype {
     Anyfunc,
 }
