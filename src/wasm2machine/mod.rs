@@ -7,7 +7,8 @@ use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
-use wasmir::{Const, Cvtop, Functype, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
+use wasmir::{Functype, Resulttype, Valtype};
+use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, WasmInstr};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -63,7 +64,7 @@ impl WasmToMachine {
         self.module
     }
 
-    fn emit_binop(&mut self, op: &wasmir::Ibinop) {
+    fn emit_binop(&mut self, op: &Ibinop) {
         use self::Ibinop::*;
         let typ = match op {
             &Add32 | &Sub32 | &Mul32 | &Shl32 | &ShrU32 => Type::I32,

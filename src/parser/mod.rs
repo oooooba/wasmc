@@ -1,7 +1,8 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Const, Elemtype, Expr, Functype, Global, Globaltype, Limits, Memtype, Module, Mut, Tabletype, Typeidx, Valtype, WasmInstr};
+use wasmir::{Elemtype, Functype, Global, Globaltype, Limits, Memtype, Module, Mut, Tabletype, Typeidx, Valtype};
+use wasmir::instructions::{Const, Expr, WasmInstr};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
