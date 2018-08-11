@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Elemtype, Functype, Limits, Memtype, Module, Tabletype, Typeidx, Valtype};
+use wasmir::{Const, Elemtype, Expr, Functype, Global, Globaltype, Limits, Memtype, Module, Mut, Tabletype, Typeidx, Valtype, WasmInstr};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
@@ -12,6 +12,7 @@ pub enum ParserErrorKind {
     IllegalValtypeFormat(u8),
     IllegalLimits(u8),
     IllegalElemtypeFormat(u8),
+    IllegalMutFormat(u8),
 }
 
 fn read_one_byte(reader: &mut Read) -> Result<(u8, usize), ParserErrorKind> {
@@ -125,6 +126,48 @@ fn parse_tabletype(reader: &mut Read) -> Result<(Tabletype, usize), ParserErrorK
     Ok((Tabletype::new(limits, elemtype), c_e + c_l))
 }
 
+fn parse_mut(reader: &mut Read) -> Result<(Mut, usize), ParserErrorKind> {
+    read_one_byte(reader).and_then(|(b, c)| match b {
+        0x00 => Ok((Mut::Const, c)),
+        0x01 => Ok((Mut::Var, c)),
+        b => Err(ParserErrorKind::IllegalMutFormat(b)),
+    })
+}
+
+fn parse_globaltype(reader: &mut Read) -> Result<(Globaltype, usize), ParserErrorKind> {
+    let (valtype, c_v) = parse_valtype(reader)?;
+    let (mutability, c_m) = parse_mut(reader)?;
+    Ok((Globaltype::new(mutability, valtype), c_v + c_m))
+}
+
+fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
+    let mut instrs = vec![];
+    let mut consumed = 0;
+    loop {
+        let (b, c) = read_one_byte(reader)?;
+        consumed += c;
+        if b == 0x0B {
+            break;
+        }
+        let (instr, c) = match b {
+            0x41 => {
+                let (n, c) = decode_by_unsigned_leb128(reader, 32)?;
+                (WasmInstr::Const(Const::I32(n as u32)), c)
+            }
+            _ => unimplemented!(),
+        };
+        instrs.push(instr);
+        consumed += c;
+    }
+    Ok((Expr::new(instrs), consumed))
+}
+
+fn parse_global(reader: &mut Read) -> Result<(Global, usize), ParserErrorKind> {
+    let (typ, c_g) = parse_globaltype(reader)?;
+    let (init, c_e) = parse_expr(reader)?;
+    Ok((Global::new(typ, init), c_g + c_e))
+}
+
 fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
     let (functypes, consumed) = parse_vector(reader, parse_functype)?;
     assert_eq!(size, consumed);
@@ -147,6 +190,12 @@ fn parse_memory_section(reader: &mut Read, size: usize) -> Result<(Vec<Memtype>,
     let (memtypes, consumed) = parse_vector(reader, parse_memtype)?;
     assert_eq!(size, consumed);
     Ok((memtypes, consumed))
+}
+
+fn parse_global_section(reader: &mut Read, size: usize) -> Result<(Vec<Global>, usize), ParserErrorKind> {
+    let (globals, consumed) = parse_vector(reader, parse_global)?;
+    assert_eq!(size, consumed);
+    Ok((globals, consumed))
 }
 
 fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
@@ -194,6 +243,11 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let _memory_section = match parse_section_header(&mut reader)? {
         Some((5, section_size, _)) => parse_memory_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected memory section".to_string())),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
+    let _global_section = match parse_section_header(&mut reader)? {
+        Some((6, section_size, _)) => parse_global_section(&mut reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected global section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     unimplemented!()

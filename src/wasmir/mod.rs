@@ -11,7 +11,7 @@ impl Typeidx {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Funcidx(u32);
 
 impl Funcidx {
@@ -24,7 +24,7 @@ impl Funcidx {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Localidx(u32);
 
 impl Localidx {
@@ -43,6 +43,7 @@ pub enum Valtype {
     I64,
 }
 
+#[derive(Debug)]
 pub struct Resulttype(Option<Vec<Valtype>>);
 
 impl Resulttype {
@@ -111,11 +112,43 @@ impl Tabletype {
     }
 }
 
+#[derive(Debug)]
+pub enum Mut {
+    Const,
+    Var,
+}
+
+#[derive(Debug)]
+pub struct Globaltype {
+    mutability: Mut,
+    valtype: Valtype,
+}
+
+impl Globaltype {
+    pub fn new(mutability: Mut, valtype: Valtype) -> Globaltype {
+        Globaltype { mutability, valtype }
+    }
+}
+
+#[derive(Debug)]
+pub struct Global {
+    typ: Globaltype,
+    init: Expr,
+}
+
+impl Global {
+    pub fn new(typ: Globaltype, init: Expr) -> Global {
+        Global { typ, init }
+    }
+}
+
+#[derive(Debug)]
 pub enum Const {
     I32(u32),
     I64(u64),
 }
 
+#[derive(Debug)]
 pub enum Ibinop {
     Add32,
     Sub32,
@@ -126,20 +159,24 @@ pub enum Ibinop {
     ShrU64,
 }
 
+#[derive(Debug)]
 pub enum Itestop {
     Eqz32,
 }
 
+#[derive(Debug)]
 pub enum Irelop {
     Eq32,
 }
 
+#[derive(Debug)]
 pub enum Cvtop {
     Wrap,
     ExtendU,
     ExtendS,
 }
 
+#[derive(Debug)]
 pub enum WasmInstr {
     Const(Const),
     Ibinop(Ibinop),
@@ -158,6 +195,7 @@ pub enum WasmInstr {
     Call(Funcidx),
 }
 
+#[derive(Debug)]
 pub struct Expr(Vec<WasmInstr>);
 
 impl Expr {
