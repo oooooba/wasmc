@@ -7,8 +7,8 @@ use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
 use wasmir;
-use wasmir::{Functype, Resulttype, Valtype};
 use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, WasmInstr};
+use wasmir::types::{Functype, Resulttype, Valtype};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -47,7 +47,7 @@ pub struct WasmToMachine {
 impl WasmToMachine {
     pub fn new() -> WasmToMachine {
         let dummy_block = Context::create_basic_block();
-        let (parameter_types, result_types) = WasmToMachine::map_functype(&wasmir::Functype::new(vec![], vec![]));
+        let (parameter_types, result_types) = WasmToMachine::map_functype(&Functype::new(vec![], vec![]));
         let dummy_function = Context::create_function("".to_string(), parameter_types, result_types);
         WasmToMachine {
             operand_stack: OperandStack::new(),
@@ -527,7 +527,7 @@ impl WasmToMachine {
     }
 
     fn map_valtype(valtype: &Valtype) -> Type {
-        use wasmir::Valtype::*;
+        use self::Valtype::*;
         match valtype {
             &I32 => Type::I32,
             &I64 => Type::I64,

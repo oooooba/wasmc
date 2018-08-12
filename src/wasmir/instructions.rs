@@ -1,4 +1,5 @@
-use wasmir::{Funcidx, Localidx, Resulttype, Valtype};
+use wasmir::{Funcidx, Localidx};
+use wasmir::types::{Resulttype, Valtype};
 
 #[derive(Debug)]
 pub enum Const {
