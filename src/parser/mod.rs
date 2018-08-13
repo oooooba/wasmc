@@ -1,7 +1,8 @@
+use std::str;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Global, Module, Typeidx};
+use wasmir::{Export, Exportdesc, Funcidx, Global, Globalidx, Memidx, Module, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tabletype, Valtype};
 
@@ -15,6 +16,8 @@ pub enum ParserErrorKind {
     IllegalLimits(u8),
     IllegalElemtypeFormat(u8),
     IllegalMutFormat(u8),
+    IllegalExportdescFormat(u8),
+    InvalidUTF8Encode,
 }
 
 fn read_one_byte(reader: &mut Read) -> Result<(u8, usize), ParserErrorKind> {
@@ -170,6 +173,50 @@ fn parse_global(reader: &mut Read) -> Result<(Global, usize), ParserErrorKind> {
     Ok((Global::new(typ, init), c_g + c_e))
 }
 
+fn parse_index(reader: &mut Read) -> Result<(u32, usize), ParserErrorKind> {
+    let (index, c) = decode_by_unsigned_leb128(reader, 32)?;
+    Ok((index as u32, c))
+}
+
+fn parse_exportdesc(reader: &mut Read) -> Result<(Exportdesc, usize), ParserErrorKind> {
+    read_one_byte(reader).and_then(|(b, c)| match b {
+        0x00 => {
+            let (index, c_i) = parse_index(reader)?;
+            Ok((Exportdesc::Func(Funcidx::new(index)), c + c_i))
+        }
+        0x01 => {
+            let (index, c_i) = parse_index(reader)?;
+            Ok((Exportdesc::Table(Tableidx::new(index)), c + c_i))
+        }
+        0x02 => {
+            let (index, c_i) = parse_index(reader)?;
+            Ok((Exportdesc::Mem(Memidx::new(index)), c + c_i))
+        }
+        0x03 => {
+            let (index, c_i) = parse_index(reader)?;
+            Ok((Exportdesc::Global(Globalidx::new(index)), c + c_i))
+        }
+        b => Err(ParserErrorKind::IllegalExportdescFormat(b)),
+    })
+}
+
+fn parse_name(reader: &mut Read) -> Result<(String, usize), ParserErrorKind> {
+    let (size, c_s) = decode_by_unsigned_leb128(reader, 32)?;
+    let mut buf = Vec::with_capacity(size);
+    unsafe {
+        buf.set_len(size);
+    }
+    reader.read_exact(&mut buf).map_err(|_| ParserErrorKind::UnexpectedFileTermination)?;
+    let s = str::from_utf8(&buf).map_err(|_| ParserErrorKind::InvalidUTF8Encode)?;
+    Ok((s.to_string(), c_s + size))
+}
+
+fn parse_export(reader: &mut Read) -> Result<(Export, usize), ParserErrorKind> {
+    let (name, c_n) = parse_name(reader)?;
+    let (desc, c_d) = parse_exportdesc(reader)?;
+    Ok((Export::new(name, desc), c_n + c_d))
+}
+
 fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
     let (functypes, consumed) = parse_vector(reader, parse_functype)?;
     assert_eq!(size, consumed);
@@ -198,6 +245,12 @@ fn parse_global_section(reader: &mut Read, size: usize) -> Result<(Vec<Global>, 
     let (globals, consumed) = parse_vector(reader, parse_global)?;
     assert_eq!(size, consumed);
     Ok((globals, consumed))
+}
+
+fn parse_export_section(reader: &mut Read, size: usize) -> Result<(Vec<Export>, usize), ParserErrorKind> {
+    let (exports, consumed) = parse_vector(reader, parse_export)?;
+    assert_eq!(size, consumed);
+    Ok((exports, consumed))
 }
 
 fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
@@ -250,6 +303,11 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let _global_section = match parse_section_header(&mut reader)? {
         Some((6, section_size, _)) => parse_global_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected global section".to_string())),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
+    let _export_section = match parse_section_header(&mut reader)? {
+        Some((7, section_size, _)) => parse_export_section(&mut reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected export section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     unimplemented!()

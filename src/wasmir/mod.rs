@@ -31,6 +31,45 @@ impl Funcidx {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct Tableidx(u32);
+
+impl Tableidx {
+    pub fn new(idx: u32) -> Tableidx {
+        Tableidx(idx)
+    }
+
+    pub fn as_index(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Memidx(u32);
+
+impl Memidx {
+    pub fn new(idx: u32) -> Memidx {
+        Memidx(idx)
+    }
+
+    pub fn as_index(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Globalidx(u32);
+
+impl Globalidx {
+    pub fn new(idx: u32) -> Globalidx {
+        Globalidx(idx)
+    }
+
+    pub fn as_index(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Localidx(u32);
 
 impl Localidx {
@@ -76,6 +115,26 @@ impl Func {
 
     pub fn get_body(&self) -> &Expr {
         &self.body
+    }
+}
+
+#[derive(Debug)]
+pub enum Exportdesc {
+    Func(Funcidx),
+    Table(Tableidx),
+    Mem(Memidx),
+    Global(Globalidx),
+}
+
+#[derive(Debug)]
+pub struct Export {
+    name: String,
+    desc: Exportdesc,
+}
+
+impl Export {
+    pub fn new(name: String, desc: Exportdesc) -> Export {
+        Export { name, desc }
     }
 }
 
