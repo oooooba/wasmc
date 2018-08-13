@@ -61,11 +61,17 @@ fn test_integer_decoder() {
     assert_eq!(decode_by_unsigned_leb128(buf.by_ref(), 32), Ok((12857, 2)));
 }
 
+fn parse_u32(reader: &mut Read) -> Result<(u32, usize), ParserErrorKind> {
+    let (n, c) = decode_by_unsigned_leb128(reader, 32)?;
+    assert!(n < 2 << 32);
+    Ok((n as u32, c))
+}
+
 fn parse_vector<T, F>(reader: &mut Read, f: F) -> Result<(Vec<T>, usize), ParserErrorKind>
     where F: Fn(&mut Read) -> Result<(T, usize), ParserErrorKind> {
-    let (num_items, mut consumed) = decode_by_unsigned_leb128(reader, 32)?;
+    let (num_items, mut consumed) = parse_u32(reader)?;
     let mut items = vec![];
-    for _ in 0..num_items {
+    for _ in 0..num_items as usize {
         let (item, c) = f(reader)?;
         items.push(item);
         consumed += c;
@@ -92,8 +98,7 @@ fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKin
 }
 
 fn parse_typeidx(reader: &mut Read) -> Result<(Typeidx, usize), ParserErrorKind> {
-    let (idx, consumed) = decode_by_unsigned_leb128(reader, 32)?;
-    Ok((Typeidx::new(idx as u32), consumed))
+    parse_index(reader).map(|p| (Typeidx::new(p.0), p.1))
 }
 
 fn parse_elemtype(reader: &mut Read) -> Result<(Elemtype, usize), ParserErrorKind> {
@@ -107,13 +112,13 @@ fn parse_limits(reader: &mut Read) -> Result<(Limits, usize), ParserErrorKind> {
     let (b, c_b) = read_one_byte(reader)?;
     let (min, max, c_r) = match b {
         0x00 => {
-            let (min, c) = decode_by_unsigned_leb128(reader, 32)?;
-            (min as u32, None, c)
+            let (min, c) = parse_u32(reader)?;
+            (min, None, c)
         }
         0x01 => {
-            let (min, c_min) = decode_by_unsigned_leb128(reader, 32)?;
-            let (max, c_max) = decode_by_unsigned_leb128(reader, 32)?;
-            (min as u32, Some(max as u32), c_min + c_max)
+            let (min, c_min) = parse_u32(reader)?;
+            let (max, c_max) = parse_u32(reader)?;
+            (min, Some(max), c_min + c_max)
         }
         b => return Err(ParserErrorKind::IllegalLimits(b)),
     };
@@ -155,10 +160,7 @@ fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
             break;
         }
         let (instr, c) = match b {
-            0x41 => {
-                let (n, c) = decode_by_unsigned_leb128(reader, 32)?;
-                (WasmInstr::Const(Const::I32(n as u32)), c)
-            }
+            0x41 => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
             _ => unimplemented!(),
         };
         instrs.push(instr);
@@ -174,8 +176,7 @@ fn parse_global(reader: &mut Read) -> Result<(Global, usize), ParserErrorKind> {
 }
 
 fn parse_index(reader: &mut Read) -> Result<(u32, usize), ParserErrorKind> {
-    let (index, c) = decode_by_unsigned_leb128(reader, 32)?;
-    Ok((index as u32, c))
+    parse_u32(reader)
 }
 
 fn parse_exportdesc(reader: &mut Read) -> Result<(Exportdesc, usize), ParserErrorKind> {
@@ -201,7 +202,8 @@ fn parse_exportdesc(reader: &mut Read) -> Result<(Exportdesc, usize), ParserErro
 }
 
 fn parse_name(reader: &mut Read) -> Result<(String, usize), ParserErrorKind> {
-    let (size, c_s) = decode_by_unsigned_leb128(reader, 32)?;
+    let (size, c_s) = parse_u32(reader)?;
+    let size = size as usize;
     let mut buf = Vec::with_capacity(size);
     unsafe {
         buf.set_len(size);
@@ -225,13 +227,13 @@ struct Code {
 }
 
 fn parse_locals(reader: &mut Read) -> Result<((u32, Valtype), usize), ParserErrorKind> {
-    let (n, c_n) = decode_by_unsigned_leb128(reader, 32)?;
+    let (n, c_n) = parse_u32(reader)?;
     let (t, c_t) = parse_valtype(reader)?;
-    Ok(((n as u32, t), c_n + c_t))
+    Ok(((n, t), c_n + c_t))
 }
 
 fn parse_code(reader: &mut Read) -> Result<(Code, usize), ParserErrorKind> {
-    let (size, c_s) = decode_by_unsigned_leb128(reader, 32)?;
+    let (size, c_s) = parse_u32(reader)?;
     let (local_pairs, c_l) = parse_vector(reader, parse_locals)?;
     let (expr, c_e) = parse_expr(reader)?;
     let mut locals = vec![];
@@ -241,9 +243,9 @@ fn parse_code(reader: &mut Read) -> Result<(Code, usize), ParserErrorKind> {
         ts.resize(n, t);
         locals.append(&mut ts);
     }
-    assert_eq!(size, c_l + c_e);
+    assert_eq!(size as usize, c_l + c_e);
     assert!(locals.len() < 2 << 32);
-    Ok((Code { size: size as u32, locals, expr }, c_s + c_l + c_e))
+    Ok((Code { size, locals, expr }, c_s + c_l + c_e))
 }
 
 fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
@@ -294,8 +296,8 @@ fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>,
         Err(ParserErrorKind::UnexpectedFileTermination) => return Ok(None),
         Err(e) => return Err(e),
     };
-    let (size, c_s) = decode_by_unsigned_leb128(reader, 32)?;
-    Ok(Some((section_id, size, c_s + c_i)))
+    let (size, c_s) = parse_u32(reader)?;
+    Ok(Some((section_id, size as usize, c_s + c_i)))
 }
 
 pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
