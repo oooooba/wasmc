@@ -217,6 +217,35 @@ fn parse_export(reader: &mut Read) -> Result<(Export, usize), ParserErrorKind> {
     Ok((Export::new(name, desc), c_n + c_d))
 }
 
+#[derive(Debug)]
+struct Code {
+    size: u32,
+    locals: Vec<Valtype>,
+    expr: Expr,
+}
+
+fn parse_locals(reader: &mut Read) -> Result<((u32, Valtype), usize), ParserErrorKind> {
+    let (n, c_n) = decode_by_unsigned_leb128(reader, 32)?;
+    let (t, c_t) = parse_valtype(reader)?;
+    Ok(((n as u32, t), c_n + c_t))
+}
+
+fn parse_code(reader: &mut Read) -> Result<(Code, usize), ParserErrorKind> {
+    let (size, c_s) = decode_by_unsigned_leb128(reader, 32)?;
+    let (local_pairs, c_l) = parse_vector(reader, parse_locals)?;
+    let (expr, c_e) = parse_expr(reader)?;
+    let mut locals = vec![];
+    for (n, t) in local_pairs.into_iter() {
+        let n = n as usize;
+        let mut ts = Vec::with_capacity(n);
+        ts.resize(n, t);
+        locals.append(&mut ts);
+    }
+    assert_eq!(size, c_l + c_e);
+    assert!(locals.len() < 2 << 32);
+    Ok((Code { size: size as u32, locals, expr }, c_s + c_l + c_e))
+}
+
 fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
     let (functypes, consumed) = parse_vector(reader, parse_functype)?;
     assert_eq!(size, consumed);
@@ -251,6 +280,12 @@ fn parse_export_section(reader: &mut Read, size: usize) -> Result<(Vec<Export>, 
     let (exports, consumed) = parse_vector(reader, parse_export)?;
     assert_eq!(size, consumed);
     Ok((exports, consumed))
+}
+
+fn parse_code_section(reader: &mut Read, size: usize) -> Result<(Vec<Code>, usize), ParserErrorKind> {
+    let (code, consumed) = parse_vector(reader, parse_code)?;
+    assert_eq!(size, consumed);
+    Ok((code, consumed))
 }
 
 fn parse_section_header(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
@@ -308,6 +343,11 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
     let _export_section = match parse_section_header(&mut reader)? {
         Some((7, section_size, _)) => parse_export_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected export section".to_string())),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
+    let _code_section = match parse_section_header(&mut reader)? {
+        Some((10, section_size, _)) => parse_code_section(&mut reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected code section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     unimplemented!()
