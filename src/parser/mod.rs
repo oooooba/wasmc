@@ -2,7 +2,7 @@ use std::str;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Export, Exportdesc, Funcidx, Global, Globalidx, Memidx, Module, Table, Tableidx, Typeidx};
+use wasmir::{Export, Exportdesc, Funcidx, Global, Globalidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tabletype, Valtype};
 
@@ -126,8 +126,11 @@ fn parse_limits(reader: &mut Read) -> Result<(Limits, usize), ParserErrorKind> {
 }
 
 fn parse_memtype(reader: &mut Read) -> Result<(Memtype, usize), ParserErrorKind> {
-    let (lim, c) = parse_limits(reader)?;
-    Ok((Memtype::new(lim), c))
+    parse_limits(reader).map(|p| (Memtype::new(p.0), p.1))
+}
+
+fn parse_mem(reader: &mut Read) -> Result<(Mem, usize), ParserErrorKind> {
+    parse_memtype(reader).map(|p| (Mem::new(p.0), p.1))
 }
 
 fn parse_tabletype(reader: &mut Read) -> Result<(Tabletype, usize), ParserErrorKind> {
@@ -265,15 +268,15 @@ fn parse_function_section(reader: &mut Read, size: usize) -> Result<(Vec<Typeidx
 }
 
 fn parse_table_section(reader: &mut Read, size: usize) -> Result<(Vec<Table>, usize), ParserErrorKind> {
-    let (tabletypes, consumed) = parse_vector(reader, parse_table)?;
+    let (tables, consumed) = parse_vector(reader, parse_table)?;
     assert_eq!(size, consumed);
-    Ok((tabletypes, consumed))
+    Ok((tables, consumed))
 }
 
-fn parse_memory_section(reader: &mut Read, size: usize) -> Result<(Vec<Memtype>, usize), ParserErrorKind> {
-    let (memtypes, consumed) = parse_vector(reader, parse_memtype)?;
+fn parse_memory_section(reader: &mut Read, size: usize) -> Result<(Vec<Mem>, usize), ParserErrorKind> {
+    let (mems, consumed) = parse_vector(reader, parse_mem)?;
     assert_eq!(size, consumed);
-    Ok((memtypes, consumed))
+    Ok((mems, consumed))
 }
 
 fn parse_global_section(reader: &mut Read, size: usize) -> Result<(Vec<Global>, usize), ParserErrorKind> {

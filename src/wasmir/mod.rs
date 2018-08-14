@@ -2,7 +2,7 @@ pub mod instructions;
 pub mod types;
 
 use wasmir::instructions::Expr;
-use wasmir::types::{Functype, Globaltype, Tabletype, Valtype};
+use wasmir::types::{Functype, Globaltype, Memtype, Tabletype, Valtype};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Typeidx(u32);
@@ -94,6 +94,7 @@ impl Global {
     }
 }
 
+#[derive(Debug)]
 pub struct Func {
     typ: Typeidx,
     locals: Vec<Valtype>,
@@ -118,6 +119,7 @@ impl Func {
     }
 }
 
+#[derive(Debug)]
 pub struct Table {
     typ: Tabletype,
 }
@@ -125,6 +127,17 @@ pub struct Table {
 impl Table {
     pub fn new(typ: Tabletype) -> Table {
         Table { typ }
+    }
+}
+
+#[derive(Debug)]
+pub struct Mem {
+    typ: Memtype,
+}
+
+impl Mem {
+    pub fn new(typ: Memtype) -> Mem {
+        Mem { typ }
     }
 }
 
