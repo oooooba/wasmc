@@ -2,7 +2,7 @@ pub mod instructions;
 pub mod types;
 
 use wasmir::instructions::Expr;
-use wasmir::types::{Functype, Globaltype, Valtype};
+use wasmir::types::{Functype, Globaltype, Tabletype, Valtype};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Typeidx(u32);
@@ -115,6 +115,16 @@ impl Func {
 
     pub fn get_body(&self) -> &Expr {
         &self.body
+    }
+}
+
+pub struct Table {
+    typ: Tabletype,
+}
+
+impl Table {
+    pub fn new(typ: Tabletype) -> Table {
+        Table { typ }
     }
 }
 

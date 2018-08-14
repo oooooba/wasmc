@@ -2,7 +2,7 @@ use std::str;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Export, Exportdesc, Funcidx, Global, Globalidx, Memidx, Module, Tableidx, Typeidx};
+use wasmir::{Export, Exportdesc, Funcidx, Global, Globalidx, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tabletype, Valtype};
 
@@ -136,6 +136,10 @@ fn parse_tabletype(reader: &mut Read) -> Result<(Tabletype, usize), ParserErrorK
     Ok((Tabletype::new(limits, elemtype), c_e + c_l))
 }
 
+fn parse_table(reader: &mut Read) -> Result<(Table, usize), ParserErrorKind> {
+    parse_tabletype(reader).map(|p| (Table::new(p.0), p.1))
+}
+
 fn parse_mut(reader: &mut Read) -> Result<(Mut, usize), ParserErrorKind> {
     read_one_byte(reader).and_then(|(b, c)| match b {
         0x00 => Ok((Mut::Const, c)),
@@ -260,8 +264,8 @@ fn parse_function_section(reader: &mut Read, size: usize) -> Result<(Vec<Typeidx
     Ok((typeidxes, consumed))
 }
 
-fn parse_table_section(reader: &mut Read, size: usize) -> Result<(Vec<Tabletype>, usize), ParserErrorKind> {
-    let (tabletypes, consumed) = parse_vector(reader, parse_tabletype)?;
+fn parse_table_section(reader: &mut Read, size: usize) -> Result<(Vec<Table>, usize), ParserErrorKind> {
+    let (tabletypes, consumed) = parse_vector(reader, parse_table)?;
     assert_eq!(size, consumed);
     Ok((tabletypes, consumed))
 }
