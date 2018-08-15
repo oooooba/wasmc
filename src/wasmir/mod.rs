@@ -161,16 +161,26 @@ impl Export {
     }
 }
 
+#[derive(Debug)]
 pub struct Module {
     types: Vec<Functype>,
     funcs: Vec<Func>,
+    tables: Vec<Table>,
+    mems: Vec<Mem>,
+    globals: Vec<Global>,
+    exports: Vec<Export>,
 }
 
 impl Module {
-    pub fn new(types: Vec<Functype>, funcs: Vec<Func>) -> Module {
+    pub fn new(types: Vec<Functype>, funcs: Vec<Func>, tables: Vec<Table>,
+               mems: Vec<Mem>, globals: Vec<Global>, exports: Vec<Export>) -> Module {
         Module {
-            types: types,
+            types,
             funcs,
+            tables,
+            mems,
+            globals,
+            exports,
         }
     }
 
@@ -180,5 +190,21 @@ impl Module {
 
     pub fn get_funcs(&self) -> &Vec<Func> {
         &self.funcs
+    }
+
+    pub fn get_tables(&self) -> &Vec<Table> {
+        &self.tables
+    }
+
+    pub fn get_mems(&self) -> &Vec<Mem> {
+        &self.mems
+    }
+
+    pub fn get_globals(&self) -> &Vec<Global> {
+        &self.globals
+    }
+
+    pub fn get_exports(&self) -> &Vec<Export> {
+        &self.exports
     }
 }

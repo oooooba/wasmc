@@ -10,7 +10,8 @@ use wasmc::context::handle::{FunctionHandle, RegisterHandle};
 use wasmc::machineir::typ::Type;
 use wasmc::pass::{FunctionPass, PassManager};
 use wasmc::wasmir;
-use wasmc::wasmir::{Const, Cvtop, Ibinop, Irelop, Itestop, Resulttype, Valtype, WasmInstr};
+use wasmc::wasmir::types::{Functype, Resulttype, Valtype};
+use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
 
 pub struct MainPass {
@@ -214,14 +215,14 @@ fn main() {
         ];
 
         let mut functions = vec![];
-        let functype = wasmir::Functype::new(vec![Valtype::I32], vec![Valtype::I32]);
+        let functype = Functype::new(vec![Valtype::I32], vec![Valtype::I32]);
         let functype_index = wasmir::Typeidx::new(0);
         for code in vec![code1, code2, code3, code4, code5] {
-            let function = wasmir::Func::new(functype_index, vec![], wasmir::Expr::new(code));
+            let function = wasmir::Func::new(functype_index, vec![], Expr::new(code));
             functions.push(function);
         }
 
-        let module = wasmir::Module::new(vec![functype], functions);
+        let module = wasmir::Module::new(vec![functype], functions, vec![], vec![], vec![], vec![]);
         let mut wasm_to_ir = WasmToMachine::new();
         wasm_to_ir.emit(&module);
         wasm_to_ir.finalize()

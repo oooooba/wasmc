@@ -2,7 +2,7 @@ use std::str;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use wasmir::{Export, Exportdesc, Funcidx, Global, Globalidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
+use wasmir::{Export, Exportdesc, Func, Funcidx, Global, Globalidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tabletype, Valtype};
 
@@ -336,41 +336,54 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
             _ => return Err(ParserErrorKind::InvalidFormat("field 'version' is broken".to_string())),
         };
     }
-    let _type_section = match discard_until_next_semantic_section(&mut reader)? {
+    let type_section = match discard_until_next_semantic_section(&mut reader)? {
         Some((1, section_size, _)) => parse_type_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected type section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let _function_section = match discard_until_next_semantic_section(&mut reader)? {
+    let function_section = match discard_until_next_semantic_section(&mut reader)? {
         Some((3, section_size, _)) => parse_function_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected function section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let _table_section = match discard_until_next_semantic_section(&mut reader)? {
+    let table_section = match discard_until_next_semantic_section(&mut reader)? {
         Some((4, section_size, _)) => parse_table_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected table section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let _memory_section = match discard_until_next_semantic_section(&mut reader)? {
+    let memory_section = match discard_until_next_semantic_section(&mut reader)? {
         Some((5, section_size, _)) => parse_memory_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected memory section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let _global_section = match discard_until_next_semantic_section(&mut reader)? {
+    let global_section = match discard_until_next_semantic_section(&mut reader)? {
         Some((6, section_size, _)) => parse_global_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected global section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let _export_section = match discard_until_next_semantic_section(&mut reader)? {
+    let export_section = match discard_until_next_semantic_section(&mut reader)? {
         Some((7, section_size, _)) => parse_export_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected export section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let _code_section = match discard_until_next_semantic_section(&mut reader)? {
+    let code_section = match discard_until_next_semantic_section(&mut reader)? {
         Some((10, section_size, _)) => parse_code_section(&mut reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected code section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
+    assert_eq!(function_section.len(), code_section.len());
     assert_eq!(discard_until_next_semantic_section(&mut reader), Ok(None));
-    unimplemented!()
+    let funcs = function_section
+        .into_iter()
+        .zip(code_section.into_iter())
+        .map(|(f, c)| Func::new(f, c.locals, c.expr))
+        .collect();
+    Ok(Module::new(
+        type_section,
+        funcs,
+        table_section,
+        memory_section,
+        global_section,
+        export_section,
+    ))
 }
