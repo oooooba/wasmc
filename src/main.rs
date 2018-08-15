@@ -1,6 +1,7 @@
 extern crate wasmc;
 
 use std::collections::HashMap;
+use std::env;
 use std::iter::FromIterator;
 
 use wasmc::allocation::SimpleRegisterAllocationPass;
@@ -8,6 +9,7 @@ use wasmc::asmprinter::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitP
 use wasmc::context::Context;
 use wasmc::context::handle::{FunctionHandle, ModuleHandle, RegisterHandle};
 use wasmc::machineir::typ::Type;
+use wasmc::parser;
 use wasmc::pass::{FunctionPass, PassManager};
 use wasmc::wasmir;
 use wasmc::wasmir::Module;
@@ -117,6 +119,7 @@ impl MainPass {
     }
 }
 
+#[allow(dead_code)]
 fn create_test_wasm_ir() -> Module {
     let code1 = vec![
         WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
@@ -237,7 +240,8 @@ fn emit_x86_assembly(module: ModuleHandle) {
 
 fn main() {
     Context::init();
-    let wasm_module = create_test_wasm_ir();
+    let binary_module_filename = env::args().skip(1).next().unwrap();
+    let wasm_module = parser::parse(binary_module_filename).unwrap();
     let machine_module = lower_wasm_ir_to_machine_ir(&wasm_module);
     emit_x86_assembly(machine_module);
 }
