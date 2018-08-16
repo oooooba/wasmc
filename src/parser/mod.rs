@@ -353,6 +353,67 @@ fn discard_until_next_semantic_section(reader: &mut Read) -> Result<Option<(u8, 
     }
 }
 
+fn section_parser_driver<T, P>(reader: &mut Read, parser: P, section_size: usize, storage: &mut Vec<T>) -> Result<usize, ParserErrorKind>
+    where P: Fn(&mut Read, usize) -> Result<(Vec<T>, usize), ParserErrorKind> {
+    assert_eq!(storage.len(), 0);
+    let (mut result, consumed) = parser(reader, section_size)?;
+    storage.append(&mut result);
+    Ok(consumed)
+}
+
+fn parse_module(reader: &mut Read) -> Result<Module, ParserErrorKind> {
+    let mut type_section = vec![];
+    let mut import_section = vec![];
+    let mut function_section = vec![];
+    let mut table_section = vec![];
+    let mut memory_section = vec![];
+    let mut global_section = vec![];
+    let mut export_section = vec![];
+    let mut code_section = vec![];
+
+    let mut last_parsed_section_id = 0;
+    while let Some((section_id, section_size, _)) = discard_until_next_semantic_section(reader)? {
+        if section_id <= last_parsed_section_id {
+            return Err(ParserErrorKind::InvalidFormat(
+                format!("invalid section order, {} after {}", section_id, last_parsed_section_id)));
+        }
+        let consumed = match section_id {
+            0 => unreachable!(),
+            1 => section_parser_driver(reader, parse_type_section, section_size, &mut type_section)?,
+            2 => section_parser_driver(reader, parse_import_section, section_size, &mut import_section)?,
+            3 => section_parser_driver(reader, parse_function_section, section_size, &mut function_section)?,
+            4 => section_parser_driver(reader, parse_table_section, section_size, &mut table_section)?,
+            5 => section_parser_driver(reader, parse_memory_section, section_size, &mut memory_section)?,
+            6 => section_parser_driver(reader, parse_global_section, section_size, &mut global_section)?,
+            7 => section_parser_driver(reader, parse_export_section, section_size, &mut export_section)?,
+            8 => unimplemented!(),
+            9 => unimplemented!(),
+            10 => section_parser_driver(reader, parse_code_section, section_size, &mut code_section)?,
+            11 => unimplemented!(),
+            _ => return Err(ParserErrorKind::InvalidFormat(format!("invalid section id {}", section_id))),
+        };
+        assert_eq!(section_size, consumed);
+        last_parsed_section_id = section_id;
+    }
+    assert_eq!(function_section.len(), code_section.len());
+    assert_eq!(discard_until_next_semantic_section(reader), Ok(None));
+
+    let funcs = function_section
+        .into_iter()
+        .zip(code_section.into_iter())
+        .map(|(f, c)| Func::new(f, c.locals, c.expr))
+        .collect();
+    Ok(Module::new(
+        type_section,
+        funcs,
+        table_section,
+        memory_section,
+        global_section,
+        export_section,
+        import_section,
+    ))
+}
+
 pub fn parse(reader: &mut Read) -> Result<Module, ParserErrorKind> {
     {
         let mut buf = [0; 4];
@@ -368,60 +429,5 @@ pub fn parse(reader: &mut Read) -> Result<Module, ParserErrorKind> {
             _ => return Err(ParserErrorKind::InvalidFormat("field 'version' is broken".to_string())),
         };
     }
-    let type_section = match discard_until_next_semantic_section(reader)? {
-        Some((1, section_size, _)) => parse_type_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected type section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    let import_section = match discard_until_next_semantic_section(reader)? {
-        Some((2, section_size, _)) => parse_import_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected import section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    let function_section = match discard_until_next_semantic_section(reader)? {
-        Some((3, section_size, _)) => parse_function_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected function section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    let table_section = match discard_until_next_semantic_section(reader)? {
-        Some((4, section_size, _)) => parse_table_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected table section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    let memory_section = match discard_until_next_semantic_section(reader)? {
-        Some((5, section_size, _)) => parse_memory_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected memory section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    let global_section = match discard_until_next_semantic_section(reader)? {
-        Some((6, section_size, _)) => parse_global_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected global section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    let export_section = match discard_until_next_semantic_section(reader)? {
-        Some((7, section_size, _)) => parse_export_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected export section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    let code_section = match discard_until_next_semantic_section(reader)? {
-        Some((10, section_size, _)) => parse_code_section(reader, section_size)?.0,
-        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected code section".to_string())),
-        None => return Err(ParserErrorKind::UnexpectedFileTermination),
-    };
-    assert_eq!(function_section.len(), code_section.len());
-    assert_eq!(discard_until_next_semantic_section(reader), Ok(None));
-    let funcs = function_section
-        .into_iter()
-        .zip(code_section.into_iter())
-        .map(|(f, c)| Func::new(f, c.locals, c.expr))
-        .collect();
-    Ok(Module::new(
-        type_section,
-        funcs,
-        table_section,
-        memory_section,
-        global_section,
-        export_section,
-        import_section,
-    ))
+    parse_module(reader)
 }
