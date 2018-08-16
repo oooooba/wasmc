@@ -1,7 +1,7 @@
 use std::str;
 use std::io::Read;
 
-use wasmir::{Export, Exportdesc, Func, Funcidx, Global, Globalidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
+use wasmir::{Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tabletype, Valtype};
 
@@ -207,6 +207,28 @@ fn parse_exportdesc(reader: &mut Read) -> Result<(Exportdesc, usize), ParserErro
     })
 }
 
+fn parse_importdesc(reader: &mut Read) -> Result<(Importdesc, usize), ParserErrorKind> {
+    read_one_byte(reader).and_then(|(b, c)| match b {
+        0x00 => {
+            let (typeidx, c_t) = parse_typeidx(reader)?;
+            Ok((Importdesc::Func(typeidx), c + c_t))
+        }
+        0x01 => {
+            let (tabletype, c_t) = parse_tabletype(reader)?;
+            Ok((Importdesc::Table(tabletype), c + c_t))
+        }
+        0x02 => {
+            let (memtype, c_m) = parse_memtype(reader)?;
+            Ok((Importdesc::Mem(memtype), c + c_m))
+        }
+        0x03 => {
+            let (globaltype, c_g) = parse_globaltype(reader)?;
+            Ok((Importdesc::Global(globaltype), c + c_g))
+        }
+        b => Err(ParserErrorKind::IllegalExportdescFormat(b)),
+    })
+}
+
 fn parse_name(reader: &mut Read) -> Result<(String, usize), ParserErrorKind> {
     let (size, c_s) = parse_u32(reader)?;
     let size = size as usize;
@@ -217,6 +239,13 @@ fn parse_name(reader: &mut Read) -> Result<(String, usize), ParserErrorKind> {
     reader.read_exact(&mut buf).map_err(|_| ParserErrorKind::UnexpectedFileTermination)?;
     let s = str::from_utf8(&buf).map_err(|_| ParserErrorKind::InvalidUTF8Encode)?;
     Ok((s.to_string(), c_s + size))
+}
+
+fn parse_import(reader: &mut Read) -> Result<(Import, usize), ParserErrorKind> {
+    let (module, c_m) = parse_name(reader)?;
+    let (name, c_n) = parse_name(reader)?;
+    let (desc, c_d) = parse_importdesc(reader)?;
+    Ok((Import::new(module, name, desc), c_m + c_n + c_d))
 }
 
 fn parse_export(reader: &mut Read) -> Result<(Export, usize), ParserErrorKind> {
@@ -258,6 +287,12 @@ fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, 
     let (functypes, consumed) = parse_vector(reader, parse_functype)?;
     assert_eq!(size, consumed);
     Ok((functypes, consumed))
+}
+
+fn parse_import_section(reader: &mut Read, size: usize) -> Result<(Vec<Import>, usize), ParserErrorKind> {
+    let (imports, consumed) = parse_vector(reader, parse_import)?;
+    assert_eq!(size, consumed);
+    Ok((imports, consumed))
 }
 
 fn parse_function_section(reader: &mut Read, size: usize) -> Result<(Vec<Typeidx>, usize), ParserErrorKind> {
@@ -338,6 +373,11 @@ pub fn parse(reader: &mut Read) -> Result<Module, ParserErrorKind> {
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected type section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
+    let import_section = match discard_until_next_semantic_section(reader)? {
+        Some((2, section_size, _)) => parse_import_section(reader, section_size)?.0,
+        Some(_) => return Err(ParserErrorKind::InvalidFormat("expected import section".to_string())),
+        None => return Err(ParserErrorKind::UnexpectedFileTermination),
+    };
     let function_section = match discard_until_next_semantic_section(reader)? {
         Some((3, section_size, _)) => parse_function_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected function section".to_string())),
@@ -382,5 +422,6 @@ pub fn parse(reader: &mut Read) -> Result<Module, ParserErrorKind> {
         memory_section,
         global_section,
         export_section,
+        import_section,
     ))
 }

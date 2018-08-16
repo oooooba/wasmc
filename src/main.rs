@@ -224,7 +224,7 @@ fn create_test_wasm_ir() -> Module {
         let function = wasmir::Func::new(functype_index, vec![], Expr::new(code));
         functions.push(function);
     }
-    Module::new(vec![functype], functions, vec![], vec![], vec![], vec![])
+    Module::new(vec![functype], functions, vec![], vec![], vec![], vec![], vec![])
 }
 
 fn lower_wasm_ir_to_machine_ir(module: &Module) -> ModuleHandle {
@@ -244,7 +244,10 @@ fn main() {
     Context::init();
     let binary_module_filename = env::args().skip(1).next().unwrap();
     let mut reader = BufReader::new(File::open(&binary_module_filename).unwrap());
-    let wasm_module = parser::parse(&mut reader).unwrap();
+    let wasm_module = match parser::parse(&mut reader) {
+        Ok(m) => m,
+        Err(e) => panic!("{:?}", e),
+    };
     let machine_module = lower_wasm_ir_to_machine_ir(&wasm_module);
     emit_x86_assembly(machine_module);
 }

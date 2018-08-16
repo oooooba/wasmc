@@ -162,6 +162,27 @@ impl Export {
 }
 
 #[derive(Debug)]
+pub enum Importdesc {
+    Func(Typeidx),
+    Table(Tabletype),
+    Mem(Memtype),
+    Global(Globaltype),
+}
+
+#[derive(Debug)]
+pub struct Import {
+    module: String,
+    name: String,
+    desc: Importdesc,
+}
+
+impl Import {
+    pub fn new(module: String, name: String, desc: Importdesc) -> Import {
+        Import { module, name, desc }
+    }
+}
+
+#[derive(Debug)]
 pub struct Module {
     types: Vec<Functype>,
     funcs: Vec<Func>,
@@ -169,11 +190,12 @@ pub struct Module {
     mems: Vec<Mem>,
     globals: Vec<Global>,
     exports: Vec<Export>,
+    imports: Vec<Import>,
 }
 
 impl Module {
     pub fn new(types: Vec<Functype>, funcs: Vec<Func>, tables: Vec<Table>,
-               mems: Vec<Mem>, globals: Vec<Global>, exports: Vec<Export>) -> Module {
+               mems: Vec<Mem>, globals: Vec<Global>, exports: Vec<Export>, imports: Vec<Import>) -> Module {
         Module {
             types,
             funcs,
@@ -181,6 +203,7 @@ impl Module {
             mems,
             globals,
             exports,
+            imports,
         }
     }
 
@@ -206,5 +229,9 @@ impl Module {
 
     pub fn get_exports(&self) -> &Vec<Export> {
         &self.exports
+    }
+
+    pub fn get_imports(&self) -> &Vec<Import> {
+        &self.imports
     }
 }
