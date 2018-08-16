@@ -2,6 +2,8 @@ extern crate wasmc;
 
 use std::collections::HashMap;
 use std::env;
+use std::fs::File;
+use std::io::BufReader;
 use std::iter::FromIterator;
 
 use wasmc::allocation::SimpleRegisterAllocationPass;
@@ -241,7 +243,8 @@ fn emit_x86_assembly(module: ModuleHandle) {
 fn main() {
     Context::init();
     let binary_module_filename = env::args().skip(1).next().unwrap();
-    let wasm_module = parser::parse(binary_module_filename).unwrap();
+    let mut reader = BufReader::new(File::open(&binary_module_filename).unwrap());
+    let wasm_module = parser::parse(&mut reader).unwrap();
     let machine_module = lower_wasm_ir_to_machine_ir(&wasm_module);
     emit_x86_assembly(machine_module);
 }

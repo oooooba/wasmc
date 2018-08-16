@@ -1,6 +1,5 @@
 use std::str;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::Read;
 
 use wasmir::{Export, Exportdesc, Func, Funcidx, Global, Globalidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
@@ -319,9 +318,7 @@ fn discard_until_next_semantic_section(reader: &mut Read) -> Result<Option<(u8, 
     }
 }
 
-pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
-    let file = File::open(&file_name).map_err(|_| ParserErrorKind::FileNotFound(file_name))?;
-    let mut reader = BufReader::new(file);
+pub fn parse(reader: &mut Read) -> Result<Module, ParserErrorKind> {
     {
         let mut buf = [0; 4];
         match reader.read(&mut buf) {
@@ -336,43 +333,43 @@ pub fn parse(file_name: String) -> Result<Module, ParserErrorKind> {
             _ => return Err(ParserErrorKind::InvalidFormat("field 'version' is broken".to_string())),
         };
     }
-    let type_section = match discard_until_next_semantic_section(&mut reader)? {
-        Some((1, section_size, _)) => parse_type_section(&mut reader, section_size)?.0,
+    let type_section = match discard_until_next_semantic_section(reader)? {
+        Some((1, section_size, _)) => parse_type_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected type section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let function_section = match discard_until_next_semantic_section(&mut reader)? {
-        Some((3, section_size, _)) => parse_function_section(&mut reader, section_size)?.0,
+    let function_section = match discard_until_next_semantic_section(reader)? {
+        Some((3, section_size, _)) => parse_function_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected function section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let table_section = match discard_until_next_semantic_section(&mut reader)? {
-        Some((4, section_size, _)) => parse_table_section(&mut reader, section_size)?.0,
+    let table_section = match discard_until_next_semantic_section(reader)? {
+        Some((4, section_size, _)) => parse_table_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected table section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let memory_section = match discard_until_next_semantic_section(&mut reader)? {
-        Some((5, section_size, _)) => parse_memory_section(&mut reader, section_size)?.0,
+    let memory_section = match discard_until_next_semantic_section(reader)? {
+        Some((5, section_size, _)) => parse_memory_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected memory section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let global_section = match discard_until_next_semantic_section(&mut reader)? {
-        Some((6, section_size, _)) => parse_global_section(&mut reader, section_size)?.0,
+    let global_section = match discard_until_next_semantic_section(reader)? {
+        Some((6, section_size, _)) => parse_global_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected global section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let export_section = match discard_until_next_semantic_section(&mut reader)? {
-        Some((7, section_size, _)) => parse_export_section(&mut reader, section_size)?.0,
+    let export_section = match discard_until_next_semantic_section(reader)? {
+        Some((7, section_size, _)) => parse_export_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected export section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
-    let code_section = match discard_until_next_semantic_section(&mut reader)? {
-        Some((10, section_size, _)) => parse_code_section(&mut reader, section_size)?.0,
+    let code_section = match discard_until_next_semantic_section(reader)? {
+        Some((10, section_size, _)) => parse_code_section(reader, section_size)?.0,
         Some(_) => return Err(ParserErrorKind::InvalidFormat("expected code section".to_string())),
         None => return Err(ParserErrorKind::UnexpectedFileTermination),
     };
     assert_eq!(function_section.len(), code_section.len());
-    assert_eq!(discard_until_next_semantic_section(&mut reader), Ok(None));
+    assert_eq!(discard_until_next_semantic_section(reader), Ok(None));
     let funcs = function_section
         .into_iter()
         .zip(code_section.into_iter())
