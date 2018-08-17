@@ -7,7 +7,6 @@ use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tablet
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
-    FileNotFound(String),
     UnexpectedFileTermination,
     InvalidFormat(String),
     IllegalFunctypeFormat,
@@ -283,52 +282,36 @@ fn parse_code(reader: &mut Read) -> Result<(Code, usize), ParserErrorKind> {
     Ok((Code { size, locals, expr }, c_s + c_l + c_e))
 }
 
-fn parse_type_section(reader: &mut Read, size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
-    let (functypes, consumed) = parse_vector(reader, parse_functype)?;
-    assert_eq!(size, consumed);
-    Ok((functypes, consumed))
+fn parse_type_section(reader: &mut Read, _size: usize) -> Result<(Vec<Functype>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_functype)
 }
 
-fn parse_import_section(reader: &mut Read, size: usize) -> Result<(Vec<Import>, usize), ParserErrorKind> {
-    let (imports, consumed) = parse_vector(reader, parse_import)?;
-    assert_eq!(size, consumed);
-    Ok((imports, consumed))
+fn parse_import_section(reader: &mut Read, _size: usize) -> Result<(Vec<Import>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_import)
 }
 
-fn parse_function_section(reader: &mut Read, size: usize) -> Result<(Vec<Typeidx>, usize), ParserErrorKind> {
-    let (typeidxes, consumed) = parse_vector(reader, parse_typeidx)?;
-    assert_eq!(size, consumed);
-    Ok((typeidxes, consumed))
+fn parse_function_section(reader: &mut Read, _size: usize) -> Result<(Vec<Typeidx>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_typeidx)
 }
 
-fn parse_table_section(reader: &mut Read, size: usize) -> Result<(Vec<Table>, usize), ParserErrorKind> {
-    let (tables, consumed) = parse_vector(reader, parse_table)?;
-    assert_eq!(size, consumed);
-    Ok((tables, consumed))
+fn parse_table_section(reader: &mut Read, _size: usize) -> Result<(Vec<Table>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_table)
 }
 
-fn parse_memory_section(reader: &mut Read, size: usize) -> Result<(Vec<Mem>, usize), ParserErrorKind> {
-    let (mems, consumed) = parse_vector(reader, parse_mem)?;
-    assert_eq!(size, consumed);
-    Ok((mems, consumed))
+fn parse_memory_section(reader: &mut Read, _size: usize) -> Result<(Vec<Mem>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_mem)
 }
 
-fn parse_global_section(reader: &mut Read, size: usize) -> Result<(Vec<Global>, usize), ParserErrorKind> {
-    let (globals, consumed) = parse_vector(reader, parse_global)?;
-    assert_eq!(size, consumed);
-    Ok((globals, consumed))
+fn parse_global_section(reader: &mut Read, _size: usize) -> Result<(Vec<Global>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_global)
 }
 
-fn parse_export_section(reader: &mut Read, size: usize) -> Result<(Vec<Export>, usize), ParserErrorKind> {
-    let (exports, consumed) = parse_vector(reader, parse_export)?;
-    assert_eq!(size, consumed);
-    Ok((exports, consumed))
+fn parse_export_section(reader: &mut Read, _size: usize) -> Result<(Vec<Export>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_export)
 }
 
-fn parse_code_section(reader: &mut Read, size: usize) -> Result<(Vec<Code>, usize), ParserErrorKind> {
-    let (code, consumed) = parse_vector(reader, parse_code)?;
-    assert_eq!(size, consumed);
-    Ok((code, consumed))
+fn parse_code_section(reader: &mut Read, _size: usize) -> Result<(Vec<Code>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_code)
 }
 
 fn discard_until_next_semantic_section(reader: &mut Read) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
