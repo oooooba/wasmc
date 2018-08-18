@@ -182,6 +182,7 @@ fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
             break;
         }
         let (instr, c) = match b {
+            0x10 => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
             0x41 => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
             _ => unimplemented!("opcode: 0x{:X}", b),
         };
