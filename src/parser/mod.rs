@@ -1,7 +1,7 @@
 use std::str;
 use std::io::Read;
 
-use wasmir::{Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Mem, Memidx, Module, Table, Tableidx, Typeidx};
+use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tabletype, Valtype};
 
@@ -97,6 +97,14 @@ fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKin
 
 fn parse_typeidx(reader: &mut Read) -> Result<(Typeidx, usize), ParserErrorKind> {
     parse_index(reader).map(|p| (Typeidx::new(p.0), p.1))
+}
+
+fn parse_funcidx(reader: &mut Read) -> Result<(Funcidx, usize), ParserErrorKind> {
+    parse_index(reader).map(|p| (Funcidx::new(p.0), p.1))
+}
+
+fn parse_tableidx(reader: &mut Read) -> Result<(Tableidx, usize), ParserErrorKind> {
+    parse_index(reader).map(|p| (Tableidx::new(p.0), p.1))
 }
 
 fn parse_elemtype(reader: &mut Read) -> Result<(Elemtype, usize), ParserErrorKind> {
@@ -253,6 +261,13 @@ fn parse_export(reader: &mut Read) -> Result<(Export, usize), ParserErrorKind> {
     Ok((Export::new(name, desc), c_n + c_d))
 }
 
+fn parse_elem(reader: &mut Read) -> Result<(Elem, usize), ParserErrorKind> {
+    let (table, c_t) = parse_tableidx(reader)?;
+    let (offset, c_o) = parse_expr(reader)?;
+    let (init, c_i) = parse_vector(reader, parse_funcidx)?;
+    Ok((Elem::new(table, offset, init), c_t + c_o + c_i))
+}
+
 #[derive(Debug)]
 struct Code {
     size: u32,
@@ -310,6 +325,10 @@ fn parse_export_section(reader: &mut Read, _size: usize) -> Result<(Vec<Export>,
     parse_vector(reader, parse_export)
 }
 
+fn parse_element_section(reader: &mut Read, _size: usize) -> Result<(Vec<Elem>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_elem)
+}
+
 fn parse_code_section(reader: &mut Read, _size: usize) -> Result<(Vec<Code>, usize), ParserErrorKind> {
     parse_vector(reader, parse_code)
 }
@@ -352,6 +371,7 @@ fn parse_module(reader: &mut Read) -> Result<Module, ParserErrorKind> {
     let mut memory_section = vec![];
     let mut global_section = vec![];
     let mut export_section = vec![];
+    let mut element_section = vec![];
     let mut code_section = vec![];
 
     let mut last_parsed_section_id = 0;
@@ -370,7 +390,7 @@ fn parse_module(reader: &mut Read) -> Result<Module, ParserErrorKind> {
             6 => section_parser_driver(reader, parse_global_section, section_size, &mut global_section)?,
             7 => section_parser_driver(reader, parse_export_section, section_size, &mut export_section)?,
             8 => unimplemented!(),
-            9 => unimplemented!(),
+            9 => section_parser_driver(reader, parse_element_section, section_size, &mut element_section)?,
             10 => section_parser_driver(reader, parse_code_section, section_size, &mut code_section)?,
             11 => unimplemented!(),
             _ => return Err(ParserErrorKind::InvalidFormat(format!("invalid section id {}", section_id))),

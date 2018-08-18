@@ -95,6 +95,19 @@ impl Global {
 }
 
 #[derive(Debug)]
+pub struct Elem {
+    table: Tableidx,
+    offset: Expr,
+    init: Vec<Funcidx>,
+}
+
+impl Elem {
+    pub fn new(table: Tableidx, offset: Expr, init: Vec<Funcidx>) -> Elem {
+        Elem { table, offset, init }
+    }
+}
+
+#[derive(Debug)]
 pub struct Func {
     typ: Typeidx,
     locals: Vec<Valtype>,
