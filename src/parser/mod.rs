@@ -14,6 +14,7 @@ pub enum ParserErrorKind {
     IllegalLimits(u8),
     IllegalElemtypeFormat(u8),
     IllegalMutFormat(u8),
+    IllegalImportdescFormat(u8),
     IllegalExportdescFormat(u8),
     InvalidUTF8Encode,
 }
@@ -77,6 +78,26 @@ fn parse_vector<T, F>(reader: &mut Read, f: F) -> Result<(Vec<T>, usize), Parser
     Ok((items, consumed))
 }
 
+fn parse_typeidx(reader: &mut Read) -> Result<(Typeidx, usize), ParserErrorKind> {
+    parse_u32(reader).map(|p| (Typeidx::new(p.0), p.1))
+}
+
+fn parse_funcidx(reader: &mut Read) -> Result<(Funcidx, usize), ParserErrorKind> {
+    parse_u32(reader).map(|p| (Funcidx::new(p.0), p.1))
+}
+
+fn parse_tableidx(reader: &mut Read) -> Result<(Tableidx, usize), ParserErrorKind> {
+    parse_u32(reader).map(|p| (Tableidx::new(p.0), p.1))
+}
+
+fn parse_memidx(reader: &mut Read) -> Result<(Memidx, usize), ParserErrorKind> {
+    parse_u32(reader).map(|p| (Memidx::new(p.0), p.1))
+}
+
+fn parse_globalidx(reader: &mut Read) -> Result<(Globalidx, usize), ParserErrorKind> {
+    parse_u32(reader).map(|p| (Globalidx::new(p.0), p.1))
+}
+
 fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind> {
     read_one_byte(reader).and_then(|(b, c)| match b {
         0x7F => Ok((Valtype::I32, c)),
@@ -93,18 +114,6 @@ fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKin
     let (input_type, c_i) = parse_vector(reader, parse_valtype)?;
     let (output_type, c_o) = parse_vector(reader, parse_valtype)?;
     Ok((Functype::new(input_type, output_type), c + c_i + c_o))
-}
-
-fn parse_typeidx(reader: &mut Read) -> Result<(Typeidx, usize), ParserErrorKind> {
-    parse_index(reader).map(|p| (Typeidx::new(p.0), p.1))
-}
-
-fn parse_funcidx(reader: &mut Read) -> Result<(Funcidx, usize), ParserErrorKind> {
-    parse_index(reader).map(|p| (Funcidx::new(p.0), p.1))
-}
-
-fn parse_tableidx(reader: &mut Read) -> Result<(Tableidx, usize), ParserErrorKind> {
-    parse_index(reader).map(|p| (Tableidx::new(p.0), p.1))
 }
 
 fn parse_elemtype(reader: &mut Read) -> Result<(Elemtype, usize), ParserErrorKind> {
@@ -174,7 +183,7 @@ fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
         }
         let (instr, c) = match b {
             0x41 => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
-            _ => unimplemented!(),
+            _ => unimplemented!("opcode: 0x{:X}", b),
         };
         instrs.push(instr);
         consumed += c;
@@ -188,51 +197,23 @@ fn parse_global(reader: &mut Read) -> Result<(Global, usize), ParserErrorKind> {
     Ok((Global::new(typ, init), c_g + c_e))
 }
 
-fn parse_index(reader: &mut Read) -> Result<(u32, usize), ParserErrorKind> {
-    parse_u32(reader)
-}
-
 fn parse_exportdesc(reader: &mut Read) -> Result<(Exportdesc, usize), ParserErrorKind> {
     read_one_byte(reader).and_then(|(b, c)| match b {
-        0x00 => {
-            let (index, c_i) = parse_index(reader)?;
-            Ok((Exportdesc::Func(Funcidx::new(index)), c + c_i))
-        }
-        0x01 => {
-            let (index, c_i) = parse_index(reader)?;
-            Ok((Exportdesc::Table(Tableidx::new(index)), c + c_i))
-        }
-        0x02 => {
-            let (index, c_i) = parse_index(reader)?;
-            Ok((Exportdesc::Mem(Memidx::new(index)), c + c_i))
-        }
-        0x03 => {
-            let (index, c_i) = parse_index(reader)?;
-            Ok((Exportdesc::Global(Globalidx::new(index)), c + c_i))
-        }
+        0x00 => parse_funcidx(reader).map(|p| (Exportdesc::Func(p.0), c + p.1)),
+        0x01 => parse_tableidx(reader).map(|p| (Exportdesc::Table(p.0), c + p.1)),
+        0x02 => parse_memidx(reader).map(|p| (Exportdesc::Mem(p.0), c + p.1)),
+        0x03 => parse_globalidx(reader).map(|p| (Exportdesc::Global(p.0), c + p.1)),
         b => Err(ParserErrorKind::IllegalExportdescFormat(b)),
     })
 }
 
 fn parse_importdesc(reader: &mut Read) -> Result<(Importdesc, usize), ParserErrorKind> {
     read_one_byte(reader).and_then(|(b, c)| match b {
-        0x00 => {
-            let (typeidx, c_t) = parse_typeidx(reader)?;
-            Ok((Importdesc::Func(typeidx), c + c_t))
-        }
-        0x01 => {
-            let (tabletype, c_t) = parse_tabletype(reader)?;
-            Ok((Importdesc::Table(tabletype), c + c_t))
-        }
-        0x02 => {
-            let (memtype, c_m) = parse_memtype(reader)?;
-            Ok((Importdesc::Mem(memtype), c + c_m))
-        }
-        0x03 => {
-            let (globaltype, c_g) = parse_globaltype(reader)?;
-            Ok((Importdesc::Global(globaltype), c + c_g))
-        }
-        b => Err(ParserErrorKind::IllegalExportdescFormat(b)),
+        0x00 => parse_typeidx(reader).map(|p| (Importdesc::Func(p.0), c + p.1)),
+        0x01 => parse_tabletype(reader).map(|p| (Importdesc::Table(p.0), c + p.1)),
+        0x02 => parse_memtype(reader).map(|p| (Importdesc::Mem(p.0), c + p.1)),
+        0x03 => parse_globaltype(reader).map(|p| (Importdesc::Global(p.0), c + p.1)),
+        b => Err(ParserErrorKind::IllegalImportdescFormat(b)),
     })
 }
 
