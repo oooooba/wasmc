@@ -3,7 +3,7 @@ use std::io::Read;
 
 use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
-use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Tabletype, Valtype};
+use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ParserErrorKind {
@@ -106,6 +106,16 @@ fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind>
     })
 }
 
+fn parse_blocktype(reader: &mut Read) -> Result<(Resulttype, usize), ParserErrorKind> {
+    let (b, c) = read_one_byte(reader)?;
+    if b == 0x40 {
+        Ok((Resulttype::new(None), c))
+    } else {
+        let mut buf: &[u8] = &[b];
+        parse_valtype(buf.by_ref()).map(|p| (Resulttype::new(Some(vec![p.0])), p.1))
+    }
+}
+
 fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKind> {
     let c = read_one_byte(reader).and_then(|(b, c)| match b {
         0x60 => Ok(c),
@@ -172,16 +182,21 @@ fn parse_globaltype(reader: &mut Read) -> Result<(Globaltype, usize), ParserErro
     Ok((Globaltype::new(mutability, valtype), c_v + c_m))
 }
 
-fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
+fn parse_instrs(reader: &mut Read, terminal_symbol: u8) -> Result<(Vec<WasmInstr>, usize), ParserErrorKind> {
     let mut instrs = vec![];
     let mut consumed = 0;
     loop {
         let (b, c) = read_one_byte(reader)?;
         consumed += c;
-        if b == 0x0B {
+        if b == terminal_symbol {
             break;
         }
         let (instr, c) = match b {
+            0x02 => {
+                let (resulttype, c_r) = parse_blocktype(reader)?;
+                let (instrs, c_i) = parse_instrs(reader, 0x0B)?;
+                (WasmInstr::Block(resulttype, instrs), c_r + c_i)
+            }
             0x10 => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
             0x1A => (WasmInstr::Drop, 0),
             0x41 => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
@@ -190,7 +205,11 @@ fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
         instrs.push(instr);
         consumed += c;
     }
-    Ok((Expr::new(instrs), consumed))
+    Ok((instrs, consumed))
+}
+
+fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
+    parse_instrs(reader, 0x0B).map(|p| (Expr::new(p.0), p.1))
 }
 
 fn parse_global(reader: &mut Read) -> Result<(Global, usize), ParserErrorKind> {
