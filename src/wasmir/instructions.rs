@@ -52,6 +52,7 @@ pub enum WasmInstr {
     SetLocal(Localidx),
     TeeLocal(Localidx),
     Call(Funcidx),
+    Drop,
 }
 
 #[derive(Debug)]

@@ -31,6 +31,10 @@ impl OperandStack {
     fn len(&self) -> usize {
         self.stack.len()
     }
+
+    fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
 }
 
 #[derive(Debug)]
@@ -354,6 +358,10 @@ impl WasmToMachine {
                     result,
                     args,
                 });
+            }
+            &WasmInstr::Drop => {
+                assert!(!self.operand_stack.is_empty());
+                self.operand_stack.pop();
             }
         };
         true
