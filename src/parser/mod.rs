@@ -19,6 +19,103 @@ pub enum ParserErrorKind {
     InvalidUTF8Encode,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+enum BinaryOpcode {
+    Block = 0x02,
+    End = 0x0B,
+    Call = 0x10,
+    Drop = 0x1A,
+    I32Const = 0x41,
+}
+
+struct InstructionEntry {
+    opcode: BinaryOpcode,
+}
+
+static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
+    // 0x00 - 0x07
+    None,
+    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::Block }),
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x08 - 0x0F
+    None,
+    None,
+    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::End }),
+    None,
+    None,
+    None,
+    None,
+    // 0x10 - 0x17
+    Some(InstructionEntry { opcode: BinaryOpcode::Call }),
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x18 - 0x1F
+    None,
+    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::Drop }),
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x20 - 0x27
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x28 - 0x2F
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x30 - 0x37
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x38 - 0x3F
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x40 - 0x47
+    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::I32Const }),
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+];
+
 fn read_one_byte(reader: &mut Read) -> Result<(u8, usize), ParserErrorKind> {
     let mut buf = [0];
     match reader.read(&mut buf) {
@@ -182,25 +279,27 @@ fn parse_globaltype(reader: &mut Read) -> Result<(Globaltype, usize), ParserErro
     Ok((Globaltype::new(mutability, valtype), c_v + c_m))
 }
 
-fn parse_instrs(reader: &mut Read, terminal_symbol: u8) -> Result<(Vec<WasmInstr>, usize), ParserErrorKind> {
+fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec<WasmInstr>, usize), ParserErrorKind> {
     let mut instrs = vec![];
     let mut consumed = 0;
     loop {
+        use self::BinaryOpcode::*;
         let (b, c) = read_one_byte(reader)?;
         consumed += c;
-        if b == terminal_symbol {
-            break;
-        }
-        let (instr, c) = match b {
-            0x02 => {
+        let opcode = match INSTRUCTION_TABLE[b as usize].as_ref() {
+            Some(entry) => entry.opcode,
+            None => unimplemented!("opcode: 0x{:02X}", b),
+        };
+        let (instr, c) = match opcode {
+            Block => {
                 let (resulttype, c_r) = parse_blocktype(reader)?;
-                let (instrs, c_i) = parse_instrs(reader, 0x0B)?;
+                let (instrs, c_i) = parse_instrs(reader, BinaryOpcode::End)?;
                 (WasmInstr::Block(resulttype, instrs), c_r + c_i)
             }
-            0x10 => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
-            0x1A => (WasmInstr::Drop, 0),
-            0x41 => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
-            _ => unimplemented!("opcode: 0x{:X}", b),
+            End => if terminal_opcode == End { break; } else { panic!("unexpected terminal opcode") },
+            Call => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
+            Drop => (WasmInstr::Drop, 0),
+            I32Const => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
         };
         instrs.push(instr);
         consumed += c;
@@ -209,7 +308,7 @@ fn parse_instrs(reader: &mut Read, terminal_symbol: u8) -> Result<(Vec<WasmInstr
 }
 
 fn parse_expr(reader: &mut Read) -> Result<(Expr, usize), ParserErrorKind> {
-    parse_instrs(reader, 0x0B).map(|p| (Expr::new(p.0), p.1))
+    parse_instrs(reader, BinaryOpcode::End).map(|p| (Expr::new(p.0), p.1))
 }
 
 fn parse_global(reader: &mut Read) -> Result<(Global, usize), ParserErrorKind> {
