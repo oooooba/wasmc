@@ -1,7 +1,7 @@
 use std::str;
 use std::io::Read;
 
-use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Mem, Memidx, Module, Table, Tableidx, Typeidx};
+use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Localidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype};
 
@@ -25,6 +25,7 @@ enum BinaryOpcode {
     End = 0x0B,
     Call = 0x10,
     Drop = 0x1A,
+    GetLocal = 0x20,
     I32Const = 0x41,
 }
 
@@ -70,7 +71,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     // 0x20 - 0x27
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::GetLocal }),
     None,
     None,
     None,
@@ -195,6 +196,10 @@ fn parse_globalidx(reader: &mut Read) -> Result<(Globalidx, usize), ParserErrorK
     parse_u32(reader).map(|p| (Globalidx::new(p.0), p.1))
 }
 
+fn parse_localidx(reader: &mut Read) -> Result<(Localidx, usize), ParserErrorKind> {
+    parse_u32(reader).map(|p| (Localidx::new(p.0), p.1))
+}
+
 fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind> {
     read_one_byte(reader).and_then(|(b, c)| match b {
         0x7F => Ok((Valtype::I32, c)),
@@ -299,6 +304,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             End => if terminal_opcode == End { break; } else { panic!("unexpected terminal opcode") },
             Call => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
             Drop => (WasmInstr::Drop, 0),
+            GetLocal => parse_localidx(reader).map(|p| (WasmInstr::GetLocal(p.0), p.1))?,
             I32Const => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
         };
         instrs.push(instr);
