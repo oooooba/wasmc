@@ -82,6 +82,19 @@ impl Localidx {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Labelidx(u32);
+
+impl Labelidx {
+    pub fn new(idx: u32) -> Labelidx {
+        Labelidx(idx)
+    }
+
+    pub fn as_index(&self) -> usize {
+        self.0 as usize
+    }
+}
+
 #[derive(Debug)]
 pub struct Global {
     typ: Globaltype,

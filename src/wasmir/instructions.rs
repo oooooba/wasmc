@@ -1,4 +1,4 @@
-use wasmir::{Funcidx, Localidx};
+use wasmir::{Funcidx, Labelidx, Localidx};
 use wasmir::types::{Resulttype, Valtype};
 
 #[derive(Debug)]
@@ -46,8 +46,8 @@ pub enum WasmInstr {
     Block(Resulttype, Vec<WasmInstr>),
     If(Resulttype, Vec<WasmInstr>, Vec<WasmInstr>),
     Loop(Resulttype, Vec<WasmInstr>),
-    Br(usize),
-    BrIf(usize),
+    Br(Labelidx),
+    BrIf(Labelidx),
     Return,
     GetLocal(Localidx),
     SetLocal(Localidx),

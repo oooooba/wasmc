@@ -288,7 +288,7 @@ impl WasmToMachine {
                 self.switch_current_basic_block_to(exit_block);
             }
             &WasmInstr::Br(index) => {
-                let entering_block = self.get_label_at(index);
+                let entering_block = self.get_label_at(index.as_index());
                 self.emit_exiting_block(entering_block, JumpCondKind::Unconditional,
                                         false, true, false);
 
@@ -382,7 +382,7 @@ impl WasmToMachine {
                 let jump_cond_kind = match op {
                     &Itestop::Eqz32 => JumpCondKind::Eq0(cond_reg),
                 };
-                let entering_block = self.get_label_at(index);
+                let entering_block = self.get_label_at(index.as_index());
                 self.emit_exiting_block(entering_block, jump_cond_kind,
                                         false, true, false);
 

@@ -14,7 +14,7 @@ use wasmc::machineir::typ::Type;
 use wasmc::parser;
 use wasmc::pass::{FunctionPass, PassManager};
 use wasmc::wasmir;
-use wasmc::wasmir::Module;
+use wasmc::wasmir::{Labelidx, Module};
 use wasmc::wasmir::types::{Functype, Resulttype, Valtype};
 use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
@@ -183,7 +183,7 @@ fn create_test_wasm_ir() -> Module {
         WasmInstr::Block(Resulttype::new(Some(vec![])), vec![
             WasmInstr::GetLocal(wasmir::Localidx::new(0)),
             WasmInstr::Itestop(Itestop::Eqz32),
-            WasmInstr::BrIf(0),
+            WasmInstr::BrIf(Labelidx::new(0)),
             WasmInstr::Const(Const::I32(1)),
             WasmInstr::Return,
         ]),
@@ -193,7 +193,7 @@ fn create_test_wasm_ir() -> Module {
         WasmInstr::Block(Resulttype::new(Some(vec![])), vec![
             WasmInstr::GetLocal(wasmir::Localidx::new(0)),
             WasmInstr::Itestop(Itestop::Eqz32),
-            WasmInstr::BrIf(0),
+            WasmInstr::BrIf(Labelidx::new(0)),
             WasmInstr::GetLocal(wasmir::Localidx::new(0)),
             WasmInstr::Const(Const::I32(1)),
             WasmInstr::Ibinop(Ibinop::Shl32),
