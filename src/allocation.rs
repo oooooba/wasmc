@@ -154,7 +154,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                     _ => unreachable!(),
                                 }
                             }
-                            &Neq(reg1, reg2) => {
+                            &Neq(reg1, reg2) | &GeS(reg1, reg2) => {
                                 assert!(!reg1.is_physical());
                                 let preg1 = self.allocate_physical_register(reg1, 0);
                                 let load_instr1 = self.create_load_instr(basic_block, preg1, reg1, function);
@@ -165,7 +165,11 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 let load_instr2 = self.create_load_instr(basic_block, preg2, reg2, function);
                                 iter.insert_before(load_instr2);
 
-                                Neq(preg1, preg2)
+                                match kind {
+                                    &Neq(_, _) => Neq(preg1, preg2),
+                                    &GeS(_, _) => GeS(preg1, preg2),
+                                    _ => unreachable!(),
+                                }
                             }
                         };
 
