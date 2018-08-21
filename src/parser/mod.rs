@@ -1,7 +1,7 @@
 use std::str;
 use std::io::Read;
 
-use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Localidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
+use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Labelidx, Localidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
 use wasmir::instructions::{Const, Expr, Irelop, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype};
 
@@ -23,6 +23,7 @@ pub enum ParserErrorKind {
 enum BinaryOpcode {
     Block = 0x02,
     End = 0x0B,
+    BrIf = 0x0D,
     Call = 0x10,
     Drop = 0x1A,
     GetLocal = 0x20,
@@ -50,7 +51,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::End }),
     None,
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::BrIf }),
     None,
     None,
     // 0x10 - 0x17
@@ -210,6 +211,10 @@ fn parse_localidx(reader: &mut Read) -> Result<(Localidx, usize), ParserErrorKin
     parse_u32(reader).map(|p| (Localidx::new(p.0), p.1))
 }
 
+fn parse_labelidx(reader: &mut Read) -> Result<(Labelidx, usize), ParserErrorKind> {
+    parse_u32(reader).map(|p| (Labelidx::new(p.0), p.1))
+}
+
 fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind> {
     read_one_byte(reader).and_then(|(b, c)| match b {
         0x7F => Ok((Valtype::I32, c)),
@@ -312,6 +317,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
                 (WasmInstr::Block(resulttype, instrs), c_r + c_i)
             }
             End => if terminal_opcode == End { break; } else { panic!("unexpected terminal opcode") },
+            BrIf => parse_labelidx(reader).map(|p| (WasmInstr::BrIf(p.0), p.1))?,
             Call => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
             Drop => (WasmInstr::Drop, 0),
             GetLocal => parse_localidx(reader).map(|p| (WasmInstr::GetLocal(p.0), p.1))?,
