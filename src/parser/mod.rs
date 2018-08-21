@@ -22,6 +22,7 @@ pub enum ParserErrorKind {
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum BinaryOpcode {
     Block = 0x02,
+    Loop = 0x03,
     End = 0x0B,
     BrIf = 0x0D,
     Call = 0x10,
@@ -41,7 +42,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::Block }),
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::Loop }),
     None,
     None,
     None,
@@ -316,6 +317,11 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
                 let (resulttype, c_r) = parse_blocktype(reader)?;
                 let (instrs, c_i) = parse_instrs(reader, BinaryOpcode::End)?;
                 (WasmInstr::Block(resulttype, instrs), c_r + c_i)
+            }
+            Loop => {
+                let (resulttype, c_r) = parse_blocktype(reader)?;
+                let (instrs, c_i) = parse_instrs(reader, BinaryOpcode::End)?;
+                (WasmInstr::Loop(resulttype, instrs), c_r + c_i)
             }
             End => if terminal_opcode == End { break; } else { panic!("unexpected terminal opcode") },
             BrIf => parse_labelidx(reader).map(|p| (WasmInstr::BrIf(p.0), p.1))?,
