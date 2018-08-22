@@ -37,6 +37,23 @@ pub enum Cvtop {
 }
 
 #[derive(Debug)]
+pub struct Memarg {
+    offset: u32,
+    align: u32,
+}
+
+impl Memarg {
+    pub fn new(offset: u32, align: u32) -> Memarg {
+        Memarg { offset, align }
+    }
+}
+
+#[derive(Debug)]
+pub enum Loadattr {
+    I32,
+}
+
+#[derive(Debug)]
 pub enum WasmInstr {
     Const(Const),
     Ibinop(Ibinop),
@@ -52,6 +69,7 @@ pub enum WasmInstr {
     GetLocal(Localidx),
     SetLocal(Localidx),
     TeeLocal(Localidx),
+    Load { attr: Loadattr, arg: Memarg },
     Call(Funcidx),
     Drop,
 }

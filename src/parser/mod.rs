@@ -2,7 +2,7 @@ use std::str;
 use std::io::Read;
 
 use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Labelidx, Localidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
-use wasmir::instructions::{Const, Expr, Ibinop, Irelop, WasmInstr};
+use wasmir::instructions::{Const, Expr, Ibinop, Irelop, Loadattr, Memarg, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
@@ -30,6 +30,7 @@ enum BinaryOpcode {
     GetLocal = 0x20,
     SetLocal = 0x21,
     TeeLocal = 0x22,
+    I32Load = 0x28,
     I32Const = 0x41,
     I32LtS = 0x48,
     I32Add = 0x60,
@@ -87,7 +88,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     // 0x28 - 0x2F
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::I32Load }),
     None,
     None,
     None,
@@ -349,6 +350,12 @@ fn parse_globaltype(reader: &mut Read) -> Result<(Globaltype, usize), ParserErro
     Ok((Globaltype::new(mutability, valtype), c_v + c_m))
 }
 
+fn parse_memarg(reader: &mut Read) -> Result<(Memarg, usize), ParserErrorKind> {
+    let (align, c_a) = parse_u32(reader)?;
+    let (offset, c_o) = parse_u32(reader)?;
+    Ok((Memarg::new(offset, align), c_a + c_o))
+}
+
 fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec<WasmInstr>, usize), ParserErrorKind> {
     let mut instrs = vec![];
     let mut consumed = 0;
@@ -378,6 +385,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             GetLocal => parse_localidx(reader).map(|p| (WasmInstr::GetLocal(p.0), p.1))?,
             SetLocal => parse_localidx(reader).map(|p| (WasmInstr::SetLocal(p.0), p.1))?,
             TeeLocal => parse_localidx(reader).map(|p| (WasmInstr::TeeLocal(p.0), p.1))?,
+            I32Load => parse_memarg(reader).map(|p| (WasmInstr::Load { attr: Loadattr::I32, arg: p.0 }, p.1))?,
             I32Const => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
             I32LtS => (WasmInstr::Irelop(Irelop::LtS32), 0),
             I32Add => (WasmInstr::Ibinop(Ibinop::Add32), 0),

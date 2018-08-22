@@ -331,6 +331,9 @@ impl WasmToMachine {
                 self.operand_stack.push(src_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Store { dst: dst_mem, src: src_reg });
             }
+            &WasmInstr::Load { .. } => {
+                unimplemented!()
+            }
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
                 let function = self.module.get_functions()[index];
