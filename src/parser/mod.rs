@@ -2,7 +2,7 @@ use std::str;
 use std::io::Read;
 
 use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Labelidx, Localidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
-use wasmir::instructions::{Const, Expr, Irelop, WasmInstr};
+use wasmir::instructions::{Const, Expr, Ibinop, Irelop, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
@@ -31,6 +31,7 @@ enum BinaryOpcode {
     SetLocal = 0x21,
     I32Const = 0x41,
     I32LtS = 0x48,
+    I32Shl = 0x74,
 }
 
 struct InstructionEntry {
@@ -125,6 +126,51 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     None,
+    None,
+    None,
+    None,
+    // 0x50 - 0x57
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x58 - 0x5F
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x60 - 0x67
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x68 - 0x6F
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x70 - 0x77
+    None,
+    None,
+    None,
+    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::I32Shl }),
     None,
     None,
     None,
@@ -331,6 +377,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             SetLocal => parse_localidx(reader).map(|p| (WasmInstr::SetLocal(p.0), p.1))?,
             I32Const => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
             I32LtS => (WasmInstr::Irelop(Irelop::LtS32), 0),
+            I32Shl => (WasmInstr::Ibinop(Ibinop::Shl32), 0),
         };
         instrs.push(instr);
         consumed += c;
