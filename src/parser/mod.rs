@@ -395,7 +395,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             SetLocal => parse_localidx(reader).map(|p| (WasmInstr::SetLocal(p.0), p.1))?,
             TeeLocal => parse_localidx(reader).map(|p| (WasmInstr::TeeLocal(p.0), p.1))?,
             I32Load => parse_memarg(reader).map(|p| (WasmInstr::Load { attr: Loadattr::I32, arg: p.0 }, p.1))?,
-            I32Load8S => parse_memarg(reader).map(|p| (WasmInstr::Load { attr: Loadattr::I32S8, arg: p.0 }, p.1))?,
+            I32Load8S => parse_memarg(reader).map(|p| (WasmInstr::Load { attr: Loadattr::I32x8S, arg: p.0 }, p.1))?,
             I32Store => parse_memarg(reader).map(|p| (WasmInstr::Store { attr: Storeattr::I32, arg: p.0 }, p.1))?,
             I32Const => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
             I32Eqz => (WasmInstr::Itestop(Itestop::Eqz32), 0),
