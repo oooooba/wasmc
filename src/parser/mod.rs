@@ -38,7 +38,7 @@ enum BinaryOpcode {
     I32Ne = 0x47,
     I32LtS = 0x48,
     I32LtU = 0x49,
-    I32Add = 0x60,
+    I32Add = 0x6A,
     I32Sub = 0x6B,
     I32Shl = 0x74,
 }
