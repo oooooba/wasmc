@@ -26,6 +26,7 @@ pub enum Itestop {
 #[derive(Debug)]
 pub enum Irelop {
     Eq32,
+    Ne32,
     LtS32,
     LtU32,
 }

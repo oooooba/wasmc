@@ -26,6 +26,7 @@ pub enum JumpCondKind {
     Unconditional,
     Eq0(RegisterHandle),
     Neq0(RegisterHandle),
+    Eq(RegisterHandle, RegisterHandle),
     Neq(RegisterHandle, RegisterHandle),
     GeS(RegisterHandle, RegisterHandle),
     GeU(RegisterHandle, RegisterHandle),

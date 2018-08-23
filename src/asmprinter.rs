@@ -194,6 +194,10 @@ impl FunctionPass for EmitAssemblyPass {
                                 self.emit_binop_reg_reg("test", preg, preg);
                                 println!("jnz label_{}", target);
                             }
+                            &Eq(preg1, preg2) => {
+                                self.emit_binop_reg_reg("cmp", preg1, preg2);
+                                println!("jz label_{}", target);
+                            }
                             &Neq(preg1, preg2) => {
                                 self.emit_binop_reg_reg("cmp", preg1, preg2);
                                 println!("jnz label_{}", target);

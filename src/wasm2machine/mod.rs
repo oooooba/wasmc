@@ -399,6 +399,7 @@ impl WasmToMachine {
                 let lhs_reg = lhs.get_as_register().unwrap();
                 let cond_kind = match op {
                     &Irelop::Eq32 => JumpCondKind::Neq(lhs_reg, rhs_reg),
+                    &Irelop::Ne32 => JumpCondKind::Eq(lhs_reg, rhs_reg),
                     &Irelop::LtS32 => JumpCondKind::GeS(lhs_reg, rhs_reg),
                     &Irelop::LtU32 => JumpCondKind::GeU(lhs_reg, rhs_reg),
                 };
