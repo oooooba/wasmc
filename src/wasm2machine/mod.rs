@@ -400,6 +400,7 @@ impl WasmToMachine {
                 let cond_kind = match op {
                     &Irelop::Eq32 => JumpCondKind::Neq(lhs_reg, rhs_reg),
                     &Irelop::LtS32 => JumpCondKind::GeS(lhs_reg, rhs_reg),
+                    &Irelop::LtU32 => JumpCondKind::GeU(lhs_reg, rhs_reg),
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
             }

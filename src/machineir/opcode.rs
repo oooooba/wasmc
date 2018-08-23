@@ -28,6 +28,7 @@ pub enum JumpCondKind {
     Neq0(RegisterHandle),
     Neq(RegisterHandle, RegisterHandle),
     GeS(RegisterHandle, RegisterHandle),
+    GeU(RegisterHandle, RegisterHandle),
 }
 
 #[derive(Debug, PartialEq, Eq)]
