@@ -334,6 +334,9 @@ impl WasmToMachine {
             &WasmInstr::Load { .. } => {
                 unimplemented!()
             }
+            &WasmInstr::Store { .. } => {
+                unimplemented!()
+            }
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
                 let function = self.module.get_functions()[index];

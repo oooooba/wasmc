@@ -2,7 +2,7 @@ use std::str;
 use std::io::Read;
 
 use wasmir::{Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Labelidx, Localidx, Mem, Memidx, Module, Table, Tableidx, Typeidx};
-use wasmir::instructions::{Const, Expr, Ibinop, Irelop, Itestop, Loadattr, Memarg, WasmInstr};
+use wasmir::instructions::{Const, Expr, Ibinop, Irelop, Itestop, Loadattr, Memarg, Storeattr, WasmInstr};
 use wasmir::types::{Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype};
 
 #[derive(PartialEq, Eq, Debug)]
@@ -33,6 +33,7 @@ enum BinaryOpcode {
     TeeLocal = 0x22,
     I32Load = 0x28,
     I32Load8S = 0x2C,
+    I32Store = 0x36,
     I32Const = 0x41,
     I32Eqz = 0x45,
     I32Ne = 0x47,
@@ -109,7 +110,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     None,
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::I32Store }),
     None,
     // 0x38 - 0x3F
     None,
@@ -394,6 +395,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             TeeLocal => parse_localidx(reader).map(|p| (WasmInstr::TeeLocal(p.0), p.1))?,
             I32Load => parse_memarg(reader).map(|p| (WasmInstr::Load { attr: Loadattr::I32, arg: p.0 }, p.1))?,
             I32Load8S => parse_memarg(reader).map(|p| (WasmInstr::Load { attr: Loadattr::I32S8, arg: p.0 }, p.1))?,
+            I32Store => parse_memarg(reader).map(|p| (WasmInstr::Store { attr: Storeattr::I32, arg: p.0 }, p.1))?,
             I32Const => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
             I32Eqz => (WasmInstr::Itestop(Itestop::Eqz32), 0),
             I32Ne => (WasmInstr::Irelop(Irelop::Ne32), 0),

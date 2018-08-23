@@ -57,6 +57,11 @@ pub enum Loadattr {
 }
 
 #[derive(Debug)]
+pub enum Storeattr {
+    I32,
+}
+
+#[derive(Debug)]
 pub enum WasmInstr {
     Const(Const),
     Ibinop(Ibinop),
@@ -73,6 +78,7 @@ pub enum WasmInstr {
     SetLocal(Localidx),
     TeeLocal(Localidx),
     Load { attr: Loadattr, arg: Memarg },
+    Store { attr: Storeattr, arg: Memarg },
     Call(Funcidx),
     Drop,
 }
