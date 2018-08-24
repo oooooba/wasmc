@@ -216,6 +216,20 @@ fn decode_by_unsigned_leb128(reader: &mut Read, mut nbits: usize) -> Result<(usi
     Ok((result, consumed))
 }
 
+fn decode_by_signed_leb128(reader: &mut Read, nbits: usize) -> Result<(isize, usize), ParserErrorKind> {
+    assert!(nbits == 32 || nbits == 64);
+    let (n, consumed) = decode_by_unsigned_leb128(reader, nbits)?;
+    let sign_bit = 1 << (consumed * 7 - 1);
+    let mask = (sign_bit << 1) - 1;
+    let masked_n = n & mask;
+    let sign_extended_masked_n = if n & sign_bit != 0 {
+        masked_n | !mask
+    } else {
+        masked_n
+    };
+    Ok((sign_extended_masked_n as isize, consumed))
+}
+
 #[test]
 fn test_integer_decoder() {
     let mut buf: &[u8] = &[0x02];
@@ -230,6 +244,23 @@ fn test_integer_decoder() {
     assert_eq!(decode_by_unsigned_leb128(buf.by_ref(), 32), Ok((130, 2)));
     let mut buf: &[u8] = &[0xb9, 0x64];
     assert_eq!(decode_by_unsigned_leb128(buf.by_ref(), 32), Ok((12857, 2)));
+
+    let mut buf: &[u8] = &[0x02];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((2, 1)));
+    let mut buf: &[u8] = &[0x7e];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((-2, 1)));
+    let mut buf: &[u8] = &[0xff, 0x00];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((127, 2)));
+    let mut buf: &[u8] = &[0x81, 0x7f];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((-127, 2)));
+    let mut buf: &[u8] = &[0x80, 0x01];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((128, 2)));
+    let mut buf: &[u8] = &[0x80, 0x7f];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((-128, 2)));
+    let mut buf: &[u8] = &[0x81, 0x01];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((129, 2)));
+    let mut buf: &[u8] = &[0xff, 0x7e];
+    assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((-129, 2)));
 }
 
 fn parse_u32(reader: &mut Read) -> Result<(u32, usize), ParserErrorKind> {
