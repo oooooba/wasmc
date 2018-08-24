@@ -54,6 +54,7 @@ impl Memarg {
 pub enum Loadattr {
     I32,
     I32x8S,
+    I32x8U,
 }
 
 #[derive(Debug)]
