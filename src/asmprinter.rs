@@ -141,6 +141,7 @@ impl FunctionPass for EmitAssemblyPass {
                             &BinaryOpKind::Shl => "shl",
                             &BinaryOpKind::Shr => "shr",
                             &BinaryOpKind::And => "and",
+                            &BinaryOpKind::Or => "or",
                         };
                         match src2.get_kind() {
                             &OperandKind::PhysicalRegister(preg) => self.emit_binop_reg_reg(op, dst, preg),
