@@ -37,6 +37,7 @@ enum BinaryOpcode {
     I32Store = 0x36,
     I32Store8 = 0x3A,
     I32Const = 0x41,
+    I64Const = 0x42,
     I32Eqz = 0x45,
     I32Eq = 0x46,
     I32Ne = 0x47,
@@ -129,7 +130,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     // 0x40 - 0x47
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::I32Const }),
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::I64Const }),
     None,
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::I32Eqz }),
@@ -275,8 +276,17 @@ fn parse_s32(reader: &mut Read) -> Result<(i32, usize), ParserErrorKind> {
     Ok((n as i32, c))
 }
 
+fn parse_s64(reader: &mut Read) -> Result<(i64, usize), ParserErrorKind> {
+    let (n, c) = decode_by_signed_leb128(reader, 64)?;
+    Ok((n as i64, c))
+}
+
 fn parse_i32(reader: &mut Read) -> Result<(i32, usize), ParserErrorKind> {
     parse_s32(reader)
+}
+
+fn parse_i64(reader: &mut Read) -> Result<(i64, usize), ParserErrorKind> {
+    parse_s64(reader)
 }
 
 fn parse_vector<T, F>(reader: &mut Read, f: F) -> Result<(Vec<T>, usize), ParserErrorKind>
@@ -445,6 +455,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             I32Store => parse_memarg(reader).map(|p| (WasmInstr::Store { attr: Storeattr::I32, arg: p.0 }, p.1))?,
             I32Store8 => parse_memarg(reader).map(|p| (WasmInstr::Store { attr: Storeattr::I32x8, arg: p.0 }, p.1))?,
             I32Const => parse_i32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0 as u32)), p.1))?,
+            I64Const => parse_i64(reader).map(|p| (WasmInstr::Const(Const::I64(p.0 as u64)), p.1))?,
             I32Eqz => (WasmInstr::Itestop(Itestop::Eqz32), 0),
             I32Eq => (WasmInstr::Irelop(Irelop::Eq32), 0),
             I32Ne => (WasmInstr::Irelop(Irelop::Ne32), 0),
