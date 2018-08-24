@@ -71,7 +71,7 @@ impl WasmToMachine {
     fn emit_binop(&mut self, op: &Ibinop) {
         use self::Ibinop::*;
         let typ = match op {
-            &Add32 | &Sub32 | &Mul32 | &Or32 | &Shl32 | &ShrU32 => Type::I32,
+            &Add32 | &Sub32 | &Mul32 | &And32 | &Or32 | &Shl32 | &ShrU32 => Type::I32,
             &Mul64 | &ShrU64 => Type::I64,
         };
         let register = Operand::new_register(Context::create_register(typ));
@@ -93,6 +93,12 @@ impl WasmToMachine {
             },
             &Mul32 | &Mul64 => opcode::Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Mul,
+                dst: register,
+                src1: lhs,
+                src2: rhs,
+            },
+            &And32 => opcode::Opcode::BinaryOp {
+                kind: opcode::BinaryOpKind::And,
                 dst: register,
                 src1: lhs,
                 src2: rhs,
