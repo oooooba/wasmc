@@ -269,6 +269,16 @@ fn parse_u32(reader: &mut Read) -> Result<(u32, usize), ParserErrorKind> {
     Ok((n as u32, c))
 }
 
+fn parse_s32(reader: &mut Read) -> Result<(i32, usize), ParserErrorKind> {
+    let (n, c) = decode_by_signed_leb128(reader, 32)?;
+    assert!(n < 2 << 32);
+    Ok((n as i32, c))
+}
+
+fn parse_i32(reader: &mut Read) -> Result<(i32, usize), ParserErrorKind> {
+    parse_s32(reader)
+}
+
 fn parse_vector<T, F>(reader: &mut Read, f: F) -> Result<(Vec<T>, usize), ParserErrorKind>
     where F: Fn(&mut Read) -> Result<(T, usize), ParserErrorKind> {
     let (num_items, mut consumed) = parse_u32(reader)?;
@@ -434,7 +444,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             I32Load8U => parse_memarg(reader).map(|p| (WasmInstr::Load { attr: Loadattr::I32x8U, arg: p.0 }, p.1))?,
             I32Store => parse_memarg(reader).map(|p| (WasmInstr::Store { attr: Storeattr::I32, arg: p.0 }, p.1))?,
             I32Store8 => parse_memarg(reader).map(|p| (WasmInstr::Store { attr: Storeattr::I32x8, arg: p.0 }, p.1))?,
-            I32Const => parse_u32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0)), p.1))?,
+            I32Const => parse_i32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0 as u32)), p.1))?,
             I32Eqz => (WasmInstr::Itestop(Itestop::Eqz32), 0),
             I32Eq => (WasmInstr::Irelop(Irelop::Eq32), 0),
             I32Ne => (WasmInstr::Irelop(Irelop::Ne32), 0),
