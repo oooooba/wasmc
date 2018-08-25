@@ -18,6 +18,7 @@ pub enum BinaryOpKind {
     Mul,
     And,
     Or,
+    Xor,
     Shl,
     Shr,
 }

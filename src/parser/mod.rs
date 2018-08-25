@@ -52,6 +52,7 @@ enum BinaryOpcode {
     I32Mul = 0x6C,
     I32And = 0x71,
     I32Or = 0x72,
+    I32Xor = 0x73,
     I32Shl = 0x74,
 }
 
@@ -190,7 +191,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::I32And }),
     Some(InstructionEntry { opcode: BinaryOpcode::I32Or }),
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::I32Xor }),
     Some(InstructionEntry { opcode: BinaryOpcode::I32Shl }),
     None,
     None,
@@ -483,6 +484,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             I32Mul => (WasmInstr::Ibinop(Ibinop::Mul32), 0),
             I32And => (WasmInstr::Ibinop(Ibinop::And32), 0),
             I32Or => (WasmInstr::Ibinop(Ibinop::Or32), 0),
+            I32Xor => (WasmInstr::Ibinop(Ibinop::Xor32), 0),
             I32Shl => (WasmInstr::Ibinop(Ibinop::Shl32), 0),
         };
         instrs.push(instr);
