@@ -62,6 +62,7 @@ pub enum Loadattr {
 #[derive(Debug)]
 pub enum Storeattr {
     I32,
+    I64,
     I32x8,
 }
 
