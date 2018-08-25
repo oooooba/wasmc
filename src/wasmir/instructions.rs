@@ -31,6 +31,7 @@ pub enum Irelop {
     Ne32,
     LtS32,
     LtU32,
+    GeU32,
 }
 
 #[derive(Debug)]
