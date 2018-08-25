@@ -89,6 +89,7 @@ pub enum WasmInstr {
     Call(Funcidx),
     CallIndirect(Typeidx),
     Drop,
+    Select,
 }
 
 #[derive(Debug)]

@@ -30,6 +30,7 @@ enum BinaryOpcode {
     Call = 0x10,
     CallIndirect = 0x11,
     Drop = 0x1A,
+    Select = 0x1B,
     GetLocal = 0x20,
     SetLocal = 0x21,
     TeeLocal = 0x22,
@@ -92,7 +93,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::Drop }),
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::Select }),
     None,
     None,
     None,
@@ -462,6 +463,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
                 (WasmInstr::CallIndirect(typeidx), c_t + c_z)
             }
             Drop => (WasmInstr::Drop, 0),
+            Select => (WasmInstr::Select, 0),
             GetLocal => parse_localidx(reader).map(|p| (WasmInstr::GetLocal(p.0), p.1))?,
             SetLocal => parse_localidx(reader).map(|p| (WasmInstr::SetLocal(p.0), p.1))?,
             TeeLocal => parse_localidx(reader).map(|p| (WasmInstr::TeeLocal(p.0), p.1))?,

@@ -390,6 +390,9 @@ impl WasmToMachine {
                 assert!(!self.operand_stack.is_empty());
                 self.operand_stack.pop();
             }
+            &WasmInstr::Select => {
+                unimplemented!()
+            }
         };
         true
     }
