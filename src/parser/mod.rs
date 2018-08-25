@@ -24,6 +24,7 @@ enum BinaryOpcode {
     Block = 0x02,
     Loop = 0x03,
     End = 0x0B,
+    Br = 0x0C,
     BrIf = 0x0D,
     Return = 0x0F,
     Call = 0x10,
@@ -72,7 +73,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::End }),
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::Br }),
     Some(InstructionEntry { opcode: BinaryOpcode::BrIf }),
     None,
     Some(InstructionEntry { opcode: BinaryOpcode::Return }),
@@ -445,6 +446,7 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
                 (WasmInstr::Loop(resulttype, instrs), c_r + c_i)
             }
             End => if terminal_opcode == End { break; } else { panic!("unexpected terminal opcode") },
+            Br => parse_labelidx(reader).map(|p| (WasmInstr::Br(p.0), p.1))?,
             BrIf => parse_labelidx(reader).map(|p| (WasmInstr::BrIf(p.0), p.1))?,
             Return => (WasmInstr::Return, 0),
             Call => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
