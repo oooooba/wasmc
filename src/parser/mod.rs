@@ -28,6 +28,7 @@ enum BinaryOpcode {
     BrIf = 0x0D,
     Return = 0x0F,
     Call = 0x10,
+    CallIndirect = 0x11,
     Drop = 0x1A,
     GetLocal = 0x20,
     SetLocal = 0x21,
@@ -79,7 +80,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     Some(InstructionEntry { opcode: BinaryOpcode::Return }),
     // 0x10 - 0x17
     Some(InstructionEntry { opcode: BinaryOpcode::Call }),
-    None,
+    Some(InstructionEntry { opcode: BinaryOpcode::CallIndirect }),
     None,
     None,
     None,
@@ -450,6 +451,15 @@ fn parse_instrs(reader: &mut Read, terminal_opcode: BinaryOpcode) -> Result<(Vec
             BrIf => parse_labelidx(reader).map(|p| (WasmInstr::BrIf(p.0), p.1))?,
             Return => (WasmInstr::Return, 0),
             Call => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
+            CallIndirect => {
+                let (typeidx, c_t) = parse_typeidx(reader)?;
+                let (zero, c_z) = read_one_byte(reader)?;
+                if zero != 0x00 {
+                    return Err(ParserErrorKind::InvalidFormat(format!(
+                        "instruction call_indirect must be terminated 0x00, but actual {}", zero)));
+                }
+                (WasmInstr::CallIndirect(typeidx), c_t + c_z)
+            }
             Drop => (WasmInstr::Drop, 0),
             GetLocal => parse_localidx(reader).map(|p| (WasmInstr::GetLocal(p.0), p.1))?,
             SetLocal => parse_localidx(reader).map(|p| (WasmInstr::SetLocal(p.0), p.1))?,

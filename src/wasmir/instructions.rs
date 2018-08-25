@@ -1,4 +1,4 @@
-use wasmir::{Funcidx, Labelidx, Localidx};
+use wasmir::{Funcidx, Labelidx, Localidx, Typeidx};
 use wasmir::types::{Resulttype, Valtype};
 
 #[derive(Debug)]
@@ -86,6 +86,7 @@ pub enum WasmInstr {
     Load { attr: Loadattr, arg: Memarg },
     Store { attr: Storeattr, arg: Memarg },
     Call(Funcidx),
+    CallIndirect(Typeidx),
     Drop,
 }
 

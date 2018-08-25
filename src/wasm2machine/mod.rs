@@ -377,6 +377,9 @@ impl WasmToMachine {
                     args,
                 });
             }
+            &WasmInstr::CallIndirect(..) => {
+                unimplemented!()
+            }
             &WasmInstr::Drop => {
                 assert!(!self.operand_stack.is_empty());
                 self.operand_stack.pop();
