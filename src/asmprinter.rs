@@ -138,6 +138,7 @@ impl FunctionPass for EmitAssemblyPass {
                             &BinaryOpKind::Add => "add",
                             &BinaryOpKind::Sub => "sub",
                             &BinaryOpKind::Mul => "imul",
+                            &BinaryOpKind::Div => "idiv",
                             &BinaryOpKind::Shl => "shl",
                             &BinaryOpKind::Shr => "shr",
                             &BinaryOpKind::And => "and",

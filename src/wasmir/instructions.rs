@@ -13,6 +13,7 @@ pub enum Ibinop {
     Sub32,
     Mul32,
     Mul64,
+    DivU32,
     And32,
     Or32,
     Xor32,
