@@ -15,16 +15,24 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(handle: FunctionHandle, func_name: String, parameter_types: Vec<Type>, result_types: Vec<Type>) -> Function {
-        let local_variables = parameter_types.iter().enumerate()
-            .map(|p| (p.0, p.1.clone())).collect();
+    pub fn new(
+        handle: FunctionHandle,
+        func_name: String,
+        parameter_types: Vec<Type>,
+        result_types: Vec<Type>,
+    ) -> Function {
+        let local_variables = parameter_types
+            .iter()
+            .enumerate()
+            .map(|p| (p.0, p.1.clone()))
+            .collect();
         Function {
-            handle: handle,
-            func_name: func_name,
+            handle,
+            func_name,
             basic_blocks: VecDeque::new(),
-            parameter_types: parameter_types,
-            result_types: result_types,
-            local_variables: local_variables,
+            parameter_types,
+            result_types,
+            local_variables,
         }
     }
 

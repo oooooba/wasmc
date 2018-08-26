@@ -40,14 +40,41 @@ pub enum JumpCondKind {
 pub enum Opcode {
     Debug(String),
     Label(String),
-    Copy { dst: Operand, src: Operand },
-    UnaryOp { kind: UnaryOpKind, dst: Operand, src: Operand },
-    BinaryOp { kind: BinaryOpKind, dst: Operand, src1: Operand, src2: Operand },
-    Load { dst: Operand, src: Operand },
-    Store { dst: Operand, src: Operand },
-    Jump { kind: JumpCondKind, target: Operand },
-    Call { func: FunctionHandle, result: Option<Operand>, args: Vec<Operand> },
-    Return { result: Option<Operand> },
+    Copy {
+        dst: Operand,
+        src: Operand,
+    },
+    UnaryOp {
+        kind: UnaryOpKind,
+        dst: Operand,
+        src: Operand,
+    },
+    BinaryOp {
+        kind: BinaryOpKind,
+        dst: Operand,
+        src1: Operand,
+        src2: Operand,
+    },
+    Load {
+        dst: Operand,
+        src: Operand,
+    },
+    Store {
+        dst: Operand,
+        src: Operand,
+    },
+    Jump {
+        kind: JumpCondKind,
+        target: Operand,
+    },
+    Call {
+        func: FunctionHandle,
+        result: Option<Operand>,
+        args: Vec<Operand>,
+    },
+    Return {
+        result: Option<Operand>,
+    },
 }
 
 impl Opcode {
@@ -64,21 +91,34 @@ impl Opcode {
                 print!("\t");
                 print!("{}", label);
             }
-            &Copy { ref dst, ref src, .. } => {
+            &Copy {
+                ref dst, ref src, ..
+            } => {
                 dst.print();
                 print!(" = ");
                 print!("copy");
                 print!(" ");
                 src.print();
             }
-            &UnaryOp { ref kind, ref dst, ref src, .. } => {
+            &UnaryOp {
+                ref kind,
+                ref dst,
+                ref src,
+                ..
+            } => {
                 dst.print();
                 print!(" = ");
                 print!("unary<{:?}>", kind);
                 print!(" ");
                 src.print();
             }
-            &BinaryOp { ref kind, ref dst, ref src1, ref src2, .. } => {
+            &BinaryOp {
+                ref kind,
+                ref dst,
+                ref src1,
+                ref src2,
+                ..
+            } => {
                 dst.print();
                 print!(" = ");
                 print!("binary<{:?}>", kind);
@@ -87,26 +127,38 @@ impl Opcode {
                 print!(", ");
                 src2.print();
             }
-            &Load { ref dst, ref src, .. } => {
+            &Load {
+                ref dst, ref src, ..
+            } => {
                 dst.print();
                 print!(" = ");
                 print!("load");
                 print!(" ");
                 src.print();
             }
-            &Store { ref dst, ref src, .. } => {
+            &Store {
+                ref dst, ref src, ..
+            } => {
                 dst.print();
                 print!(" = ");
                 print!("store");
                 print!(" ");
                 src.print();
             }
-            &Jump { ref kind, ref target, } => {
+            &Jump {
+                ref kind,
+                ref target,
+            } => {
                 print!("jump<{:?}>", kind);
                 print!(" ");
                 target.print();
             }
-            &Call { ref func, ref result, ref args, .. } => {
+            &Call {
+                ref func,
+                ref result,
+                ref args,
+                ..
+            } => {
                 if let &Some(ref res) = result {
                     res.print();
                     print!(" = ");
@@ -131,10 +183,18 @@ impl Opcode {
 }
 
 macro_rules! format {
-    (0)=>("{:<8}");
-    (1)=>("{:<8}{}");
-    (2)=>("{:<8}{}, {}");
-    (3)=>("{:<8}{}, {}, {}");
+    (0) => {
+        "{:<8}"
+    };
+    (1) => {
+        "{:<8}{}"
+    };
+    (2) => {
+        "{:<8}{}, {}"
+    };
+    (3) => {
+        "{:<8}{}, {}, {}"
+    };
 }
 
 impl fmt::Display for Opcode {

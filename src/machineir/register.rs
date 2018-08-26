@@ -14,8 +14,8 @@ pub struct Register {
 impl Register {
     pub fn new(handle: RegisterHandle, typ: Type) -> Register {
         Register {
-            handle: handle,
-            typ: typ,
+            handle,
+            typ,
             is_physical: false,
             offset: 0,
         }
@@ -46,12 +46,21 @@ impl Register {
     }
 
     pub fn print(&self) {
-        print!("{}reg{}", if self.is_physical() { "p" } else { "v" }, self.handle)
+        print!(
+            "{}reg{}",
+            if self.is_physical() { "p" } else { "v" },
+            self.handle
+        )
     }
 }
 
 impl fmt::Display for Register {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}reg{}", if self.is_physical() { "p" } else { "v" }, self.handle)
+        write!(
+            f,
+            "{}reg{}",
+            if self.is_physical() { "p" } else { "v" },
+            self.handle
+        )
     }
 }

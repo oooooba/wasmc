@@ -1,7 +1,7 @@
 use std::fmt;
 
-use context::Context;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, PassHandle};
+use context::Context;
 
 pub trait InstrPass {
     fn do_action(&mut self, instr: InstrHandle);
@@ -65,9 +65,7 @@ pub struct PassManager {
 
 impl PassManager {
     pub fn new() -> PassManager {
-        PassManager {
-            passes: vec![],
-        }
+        PassManager { passes: vec![] }
     }
 
     pub fn add_instr_pass(&mut self, pass: Box<InstrPass>) -> PassHandle {
@@ -106,7 +104,11 @@ impl PassManager {
         after_pass_manager.run_with_instr(instr);
     }
 
-    fn run_on_basic_block(&mut self, basic_block: BasicBlockHandle, pass: &mut Box<BasicBlockPass>) {
+    fn run_on_basic_block(
+        &mut self,
+        basic_block: BasicBlockHandle,
+        pass: &mut Box<BasicBlockPass>,
+    ) {
         let mut before_pass_manager = PassManager::new();
         pass.initialize(&mut before_pass_manager);
         before_pass_manager.run_with_basic_block(basic_block);

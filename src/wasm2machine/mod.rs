@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
+use context::handle::{
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle,
+};
 use context::Context;
-use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle};
 use machineir::opcode;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
-use machineir::typ::Type;
 use machineir::operand::{Operand, OperandKind};
+use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, WasmInstr};
 use wasmir::types::{Functype, Resulttype, Valtype};
@@ -51,8 +53,10 @@ pub struct WasmToMachine {
 impl WasmToMachine {
     pub fn new() -> WasmToMachine {
         let dummy_block = Context::create_basic_block();
-        let (parameter_types, result_types) = WasmToMachine::map_functype(&Functype::new(vec![], vec![]));
-        let dummy_function = Context::create_function("".to_string(), parameter_types, result_types);
+        let (parameter_types, result_types) =
+            WasmToMachine::map_functype(&Functype::new(vec![], vec![]));
+        let dummy_function =
+            Context::create_function("".to_string(), parameter_types, result_types);
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
@@ -71,7 +75,9 @@ impl WasmToMachine {
     fn emit_binop(&mut self, op: &Ibinop) {
         use self::Ibinop::*;
         let typ = match op {
-            &Add32 | &Sub32 | &Mul32 | &DivU32 | &And32 | &Or32 | &Xor32 | &Shl32 | &ShrU32 => Type::I32,
+            &Add32 | &Sub32 | &Mul32 | &DivU32 | &And32 | &Or32 | &Xor32 | &Shl32 | &ShrU32 => {
+                Type::I32
+            }
             &Mul64 | &ShrU64 => Type::I64,
         };
         let register = Operand::new_register(Context::create_register(typ));
@@ -201,28 +207,52 @@ impl WasmToMachine {
         let dst = Operand::new_register(Context::create_register(dst_typ));
         self.operand_stack.push(dst.clone());
         let opcode = match op {
-            &Wrap => Opcode::UnaryOp { kind: UnaryOpKind::Wrap, dst, src },
-            &ExtendU => Opcode::UnaryOp { kind: UnaryOpKind::ZeroExtension, dst, src },
-            &ExtendS => Opcode::UnaryOp { kind: UnaryOpKind::SignExtension, dst, src },
+            &Wrap => Opcode::UnaryOp {
+                kind: UnaryOpKind::Wrap,
+                dst,
+                src,
+            },
+            &ExtendU => Opcode::UnaryOp {
+                kind: UnaryOpKind::ZeroExtension,
+                dst,
+                src,
+            },
+            &ExtendS => Opcode::UnaryOp {
+                kind: UnaryOpKind::SignExtension,
+                dst,
+                src,
+            },
         };
         self.emit_on_current_basic_block(opcode);
     }
 
-    fn emit_if(&mut self, resulttype: &Resulttype, cond_kind: opcode::JumpCondKind, then_instrs: &Vec<WasmInstr>, else_instrs: &Vec<WasmInstr>) {
+    fn emit_if(
+        &mut self,
+        resulttype: &Resulttype,
+        cond_kind: opcode::JumpCondKind,
+        then_instrs: &Vec<WasmInstr>,
+        else_instrs: &Vec<WasmInstr>,
+    ) {
         let result_registers = WasmToMachine::setup_result_registers(resulttype);
         let then_block = Context::create_basic_block();
         let else_block = Context::create_basic_block();
         let merge_block = Context::create_basic_block();
 
-        self.emit_on_current_basic_block(Opcode::Jump { kind: cond_kind, target: Operand::new_label(else_block) });
+        self.emit_on_current_basic_block(Opcode::Jump {
+            kind: cond_kind,
+            target: Operand::new_label(else_block),
+        });
 
-        self.emit_entering_block(then_block, merge_block, result_registers.clone(), then_instrs);
-        self.emit_exiting_block(then_block, JumpCondKind::Unconditional,
-                                true, false, false);
+        self.emit_entering_block(
+            then_block,
+            merge_block,
+            result_registers.clone(),
+            then_instrs,
+        );
+        self.emit_exiting_block(then_block, JumpCondKind::Unconditional, true, false, false);
 
         self.emit_entering_block(else_block, merge_block, result_registers, else_instrs);
-        self.emit_exiting_block(else_block, JumpCondKind::Unconditional,
-                                true, true, true);
+        self.emit_exiting_block(else_block, JumpCondKind::Unconditional, true, true, true);
 
         self.switch_current_basic_block_to(merge_block);
     }
@@ -234,29 +264,53 @@ impl WasmToMachine {
         } else if result_registers.len() == 1 {
             let result_register = result_registers[0];
             let result = Operand::new_register(result_register);
-            self.emit_on_current_basic_block(Opcode::Return { result: Some(result) });
+            self.emit_on_current_basic_block(Opcode::Return {
+                result: Some(result),
+            });
         }
     }
 
-    fn emit_entering_block(&mut self, expr_block: BasicBlockHandle, cont_block: BasicBlockHandle,
-                           result_registers: Vec<RegisterHandle>, instrs: &Vec<WasmInstr>) {
-        self.basic_block_to_continuation.insert(expr_block, (cont_block, result_registers));
+    fn emit_entering_block(
+        &mut self,
+        expr_block: BasicBlockHandle,
+        cont_block: BasicBlockHandle,
+        result_registers: Vec<RegisterHandle>,
+        instrs: &Vec<WasmInstr>,
+    ) {
+        self.basic_block_to_continuation
+            .insert(expr_block, (cont_block, result_registers));
         self.switch_current_basic_block_to(expr_block);
-        self.operand_stack.push(Operand::new_label(self.current_basic_block));
+        self.operand_stack
+            .push(Operand::new_label(self.current_basic_block));
         self.emit_instrs(instrs);
     }
 
-    fn emit_exiting_block(&mut self, entering_block: BasicBlockHandle, jump_cond_kind: JumpCondKind,
-                          removes_label: bool, restores_operands: bool, replaces_registers: bool) {
+    fn emit_exiting_block(
+        &mut self,
+        entering_block: BasicBlockHandle,
+        jump_cond_kind: JumpCondKind,
+        removes_label: bool,
+        restores_operands: bool,
+        replaces_registers: bool,
+    ) {
         if removes_label {
             self.remove_label(entering_block);
         }
-        let (cont_block, result_registers) = self.basic_block_to_continuation.get(&entering_block).unwrap().clone();
+        let (cont_block, result_registers) = self
+            .basic_block_to_continuation
+            .get(&entering_block)
+            .unwrap()
+            .clone();
         let opcode = Opcode::Jump {
             kind: jump_cond_kind,
             target: Operand::new_label(cont_block),
         };
-        self.emit_transition_procedure(opcode, result_registers, restores_operands, replaces_registers);
+        self.emit_transition_procedure(
+            opcode,
+            result_registers,
+            restores_operands,
+            replaces_registers,
+        );
     }
 
     fn emit_body1(&mut self, wasm_instr: &WasmInstr) -> bool {
@@ -268,12 +322,20 @@ impl WasmToMachine {
                 };
                 let dst = Operand::new_register(Context::create_register(typ));
                 self.operand_stack.push(dst.clone());
-                self.emit_on_current_basic_block(Opcode::UnaryOp { kind: UnaryOpKind::Const, dst, src });
+                self.emit_on_current_basic_block(Opcode::UnaryOp {
+                    kind: UnaryOpKind::Const,
+                    dst,
+                    src,
+                });
             }
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
             &WasmInstr::Itestop(_) => unimplemented!(),
             &WasmInstr::Irelop(_) => unimplemented!(),
-            &WasmInstr::Cvtop { ref op, ref dst_type, ref src_type } => self.emit_cvtop(op, dst_type, src_type),
+            &WasmInstr::Cvtop {
+                ref op,
+                ref dst_type,
+                ref src_type,
+            } => self.emit_cvtop(op, dst_type, src_type),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 let expr_block = Context::create_basic_block();
@@ -285,8 +347,7 @@ impl WasmToMachine {
                 });
 
                 self.emit_entering_block(expr_block, cont_block, result_registers, instrs);
-                self.emit_exiting_block(expr_block, JumpCondKind::Unconditional,
-                                        true, true, true);
+                self.emit_exiting_block(expr_block, JumpCondKind::Unconditional, true, true, true);
 
                 self.switch_current_basic_block_to(cont_block);
             }
@@ -313,8 +374,13 @@ impl WasmToMachine {
             }
             &WasmInstr::Br(index) => {
                 let entering_block = self.get_label_at(index.as_index());
-                self.emit_exiting_block(entering_block, JumpCondKind::Unconditional,
-                                        false, true, false);
+                self.emit_exiting_block(
+                    entering_block,
+                    JumpCondKind::Unconditional,
+                    false,
+                    true,
+                    false,
+                );
 
                 let new_block = Context::create_basic_block();
                 self.switch_current_basic_block_to(new_block);
@@ -323,8 +389,13 @@ impl WasmToMachine {
             &WasmInstr::BrIf(_) => unimplemented!(),
             &WasmInstr::Return => {
                 let entering_block = self.entry_block;
-                self.emit_exiting_block(entering_block, JumpCondKind::Unconditional,
-                                        false, true, false);
+                self.emit_exiting_block(
+                    entering_block,
+                    JumpCondKind::Unconditional,
+                    false,
+                    true,
+                    false,
+                );
 
                 let new_block = Context::create_basic_block();
                 self.switch_current_basic_block_to(new_block);
@@ -336,7 +407,10 @@ impl WasmToMachine {
                 let dst_reg = Operand::new_register(Context::create_register(typ.clone()));
                 let src_mem = Operand::new_memory(index, typ);
                 self.operand_stack.push(dst_reg.clone());
-                self.emit_on_current_basic_block(Opcode::Load { dst: dst_reg, src: src_mem });
+                self.emit_on_current_basic_block(Opcode::Load {
+                    dst: dst_reg,
+                    src: src_mem,
+                });
             }
             &WasmInstr::SetLocal(ref localidx) => {
                 let index = localidx.as_index();
@@ -344,7 +418,10 @@ impl WasmToMachine {
                 let typ = src_reg.get_as_register().unwrap().get_typ().clone();
                 assert_eq!(typ, self.local_variable_types[index]);
                 let dst_mem = Operand::new_memory(index, typ);
-                self.emit_on_current_basic_block(Opcode::Store { dst: dst_mem, src: src_reg });
+                self.emit_on_current_basic_block(Opcode::Store {
+                    dst: dst_mem,
+                    src: src_reg,
+                });
             }
             &WasmInstr::TeeLocal(ref localidx) => {
                 let index = localidx.as_index();
@@ -353,17 +430,14 @@ impl WasmToMachine {
                 assert_eq!(typ, self.local_variable_types[index]);
                 let dst_mem = Operand::new_memory(index, typ);
                 self.operand_stack.push(src_reg.clone());
-                self.emit_on_current_basic_block(Opcode::Store { dst: dst_mem, src: src_reg });
+                self.emit_on_current_basic_block(Opcode::Store {
+                    dst: dst_mem,
+                    src: src_reg,
+                });
             }
-            &WasmInstr::GetGlobal(..) => {
-                unimplemented!()
-            }
-            &WasmInstr::Load { .. } => {
-                unimplemented!()
-            }
-            &WasmInstr::Store { .. } => {
-                unimplemented!()
-            }
+            &WasmInstr::GetGlobal(..) => unimplemented!(),
+            &WasmInstr::Load { .. } => unimplemented!(),
+            &WasmInstr::Store { .. } => unimplemented!(),
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
                 let function = self.module.get_functions()[index];
@@ -375,7 +449,10 @@ impl WasmToMachine {
                 }
                 args.reverse();
 
-                assert!(function.get_result_types().len() == 0 || function.get_result_types().len() == 1);
+                assert!(
+                    function.get_result_types().len() == 0
+                        || function.get_result_types().len() == 1
+                );
                 let result = if function.get_result_types().len() == 0 {
                     None
                 } else if function.get_result_types().len() == 1 {
@@ -392,23 +469,22 @@ impl WasmToMachine {
                     args,
                 });
             }
-            &WasmInstr::CallIndirect(..) => {
-                unimplemented!()
-            }
+            &WasmInstr::CallIndirect(..) => unimplemented!(),
             &WasmInstr::Drop => {
                 assert!(!self.operand_stack.is_empty());
                 self.operand_stack.pop();
             }
-            &WasmInstr::Select => {
-                unimplemented!()
-            }
+            &WasmInstr::Select => unimplemented!(),
         };
         true
     }
 
     fn emit_body2(&mut self, wasm_instr0: &WasmInstr, wasm_instr1: &WasmInstr) -> bool {
         match (wasm_instr0, wasm_instr1) {
-            (&WasmInstr::Itestop(ref op), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
+            (
+                &WasmInstr::Itestop(ref op),
+                &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs),
+            ) => {
                 let operand = self.operand_stack.pop().unwrap();
                 let reg = operand.get_as_register().unwrap();
                 let cond_kind = match op {
@@ -422,13 +498,15 @@ impl WasmToMachine {
                     &Itestop::Eqz32 => JumpCondKind::Eq0(cond_reg),
                 };
                 let entering_block = self.get_label_at(index.as_index());
-                self.emit_exiting_block(entering_block, jump_cond_kind,
-                                        false, true, false);
+                self.emit_exiting_block(entering_block, jump_cond_kind, false, true, false);
 
                 let new_block = Context::create_basic_block();
                 self.switch_current_basic_block_to(new_block);
             }
-            (&WasmInstr::Irelop(ref op), &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs)) => {
+            (
+                &WasmInstr::Irelop(ref op),
+                &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs),
+            ) => {
                 let rhs = self.operand_stack.pop().unwrap();
                 let rhs_reg = rhs.get_as_register().unwrap();
                 let lhs = self.operand_stack.pop().unwrap();
@@ -448,7 +526,9 @@ impl WasmToMachine {
     }
 
     fn switch_current_basic_block_to(&mut self, basic_block: BasicBlockHandle) {
-        self.current_function.get_mut_basic_blocks().push_back(basic_block);
+        self.current_function
+            .get_mut_basic_blocks()
+            .push_back(basic_block);
         self.current_basic_block = basic_block;
     }
 
@@ -466,7 +546,7 @@ impl WasmToMachine {
                 let wasm_instr1 = &instrs[i + 1];
                 if self.emit_body2(wasm_instr0, wasm_instr1) {
                     i += 2;
-                    continue
+                    continue;
                 }
             }
             let wasm_instr0 = &instrs[i];
@@ -507,8 +587,13 @@ impl WasmToMachine {
         panic!()
     }
 
-    fn emit_transition_procedure(&mut self, opcode: Opcode, mut registers: Vec<RegisterHandle>,
-                                 restores_operands: bool, replaces_registers: bool) {
+    fn emit_transition_procedure(
+        &mut self,
+        opcode: Opcode,
+        mut registers: Vec<RegisterHandle>,
+        restores_operands: bool,
+        replaces_registers: bool,
+    ) {
         assert!(!(!restores_operands && replaces_registers));
         let mut tmp_operand_stack = OperandStack::new();
         while let Some(register) = registers.pop() {
@@ -537,9 +622,9 @@ impl WasmToMachine {
     }
 
     fn create_registers_for_types(typs: Vec<Type>) -> Vec<RegisterHandle> {
-        typs.into_iter().map(|t| {
-            Context::create_register(t)
-        }).collect()
+        typs.into_iter()
+            .map(|t| Context::create_register(t))
+            .collect()
     }
 
     fn setup_result_registers(resulttype: &Resulttype) -> Vec<RegisterHandle> {
@@ -548,32 +633,38 @@ impl WasmToMachine {
 
     fn pop_conditional_register(&mut self) -> RegisterHandle {
         match self.operand_stack.pop() {
-            Some(operand) => {
-                match operand.get_kind() {
-                    &OperandKind::Register(register) => {
-                        if register.get_typ() == &Type::I32 {
-                            register
-                        } else {
-                            panic!()
-                        }
+            Some(operand) => match operand.get_kind() {
+                &OperandKind::Register(register) => {
+                    if register.get_typ() == &Type::I32 {
+                        register
+                    } else {
+                        panic!()
                     }
-                    _ => panic!(),
                 }
-            }
+                _ => panic!(),
+            },
             _ => panic!(),
         }
     }
 
     fn map_resulttype(resulttype: &Resulttype) -> Vec<Type> {
         match resulttype.peek() {
-            &Some(ref vt) => vt.iter().map(|t| { WasmToMachine::map_valtype(t) }).collect(),
+            &Some(ref vt) => vt.iter().map(|t| WasmToMachine::map_valtype(t)).collect(),
             &None => vec![],
         }
     }
 
     fn map_functype(functype: &Functype) -> (Vec<Type>, Vec<Type>) {
-        let typ_in = functype.peek_in_typ().iter().map(|t| { WasmToMachine::map_valtype(t) }).collect();
-        let typ_out = functype.peek_out_typ().iter().map(|t| { WasmToMachine::map_valtype(t) }).collect();
+        let typ_in = functype
+            .peek_in_typ()
+            .iter()
+            .map(|t| WasmToMachine::map_valtype(t))
+            .collect();
+        let typ_out = functype
+            .peek_out_typ()
+            .iter()
+            .map(|t| WasmToMachine::map_valtype(t))
+            .collect();
         (typ_in, typ_out)
     }
 
@@ -592,11 +683,17 @@ impl WasmToMachine {
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
             let mut local_variable_types = parameter_types.clone();
             let func_name = format!("f_{}", funcidx);
-            let function = Context::create_function(func_name, parameter_types, result_types.clone());
+            let function =
+                Context::create_function(func_name, parameter_types, result_types.clone());
             self.module.get_mut_functions().push(function);
             assert_eq!(self.module.get_functions().len() - 1, funcidx);
-            local_variable_types.append(&mut func.get_locals().iter()
-                .map(|typ| WasmToMachine::map_valtype(typ)).collect());
+            local_variable_types.append(
+                &mut func
+                    .get_locals()
+                    .iter()
+                    .map(|typ| WasmToMachine::map_valtype(typ))
+                    .collect(),
+            );
 
             let entry_block = Context::create_basic_block();
             let exit_block = Context::create_basic_block();
@@ -610,10 +707,13 @@ impl WasmToMachine {
             self.local_variable_types = local_variable_types;
 
             let result_registers = WasmToMachine::create_registers_for_types(result_types);
-            self.emit_entering_block(entry_block, exit_block,
-                                     result_registers.clone(), func.get_body().get_instr_sequences());
-            self.emit_exiting_block(entry_block, JumpCondKind::Unconditional,
-                                    true, true, true);
+            self.emit_entering_block(
+                entry_block,
+                exit_block,
+                result_registers.clone(),
+                func.get_body().get_instr_sequences(),
+            );
+            self.emit_exiting_block(entry_block, JumpCondKind::Unconditional, true, true, true);
 
             self.switch_current_basic_block_to(exit_block);
             self.emit_return(&result_registers);

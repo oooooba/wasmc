@@ -8,16 +8,16 @@ use std::iter::FromIterator;
 
 use wasmc::allocation::SimpleRegisterAllocationPass;
 use wasmc::asmprinter::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitPass};
-use wasmc::context::Context;
 use wasmc::context::handle::{FunctionHandle, ModuleHandle, RegisterHandle};
+use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::parser;
 use wasmc::pass::{FunctionPass, PassManager};
-use wasmc::wasmir;
-use wasmc::wasmir::{Labelidx, Module};
-use wasmc::wasmir::types::{Functype, Resulttype, Valtype};
-use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
 use wasmc::wasm2machine::WasmToMachine;
+use wasmc::wasmir;
+use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
+use wasmc::wasmir::types::{Functype, Resulttype, Valtype};
+use wasmc::wasmir::{Labelidx, Module};
 
 pub struct MainPass {
     registers: Vec<HashMap<Type, RegisterHandle>>,
@@ -31,7 +31,10 @@ pub struct MainPass {
 impl FunctionPass for MainPass {
     fn initialize(&mut self, pass_manager: &mut PassManager) {
         pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(
-            self.registers.clone(), self.argument_registers.clone(), self.result_register.clone()));
+            self.registers.clone(),
+            self.argument_registers.clone(),
+            self.result_register.clone(),
+        ));
     }
 
     fn do_action(&mut self, _function: FunctionHandle) {}
@@ -39,8 +42,11 @@ impl FunctionPass for MainPass {
     fn finalize(&mut self, pass_manager: &mut PassManager) {
         pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
         pass_manager.add_function_pass(EmitAssemblyPass::create(
-            self.register_name_map.clone(), self.base_pointer_register,
-            self.stack_pointer_register, self.argument_registers.clone()));
+            self.register_name_map.clone(),
+            self.base_pointer_register,
+            self.stack_pointer_register,
+            self.argument_registers.clone(),
+        ));
     }
 }
 
@@ -123,97 +129,117 @@ impl MainPass {
 
 #[allow(dead_code)]
 fn create_test_wasm_ir() -> Module {
-    let code1 = vec![
-        WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
-            WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
-                WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
-                    WasmInstr::Const(Const::I32(1)),
-                ]),
+    let code1 = vec![WasmInstr::Block(
+        Resulttype::new(Some(vec![Valtype::I32])),
+        vec![WasmInstr::Block(
+            Resulttype::new(Some(vec![Valtype::I32])),
+            vec![
+                WasmInstr::Block(
+                    Resulttype::new(Some(vec![Valtype::I32])),
+                    vec![WasmInstr::Const(Const::I32(1))],
+                ),
                 WasmInstr::Const(Const::I32(0)),
                 WasmInstr::Const(Const::I32(10)),
                 WasmInstr::Irelop(Irelop::Eq32),
                 WasmInstr::If(
                     Resulttype::new(Some(vec![Valtype::I32])),
-                    vec![
-                        WasmInstr::Const(Const::I32(1)),
-                    ], vec![
-                        WasmInstr::Const(Const::I32(2)),
-                    ]),
+                    vec![WasmInstr::Const(Const::I32(1))],
+                    vec![WasmInstr::Const(Const::I32(2))],
+                ),
                 WasmInstr::Ibinop(Ibinop::Add32),
-            ]),
-        ]),
-    ];
-    let code2 = vec![
-        WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
-            WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
+            ],
+        )],
+    )];
+    let code2 = vec![WasmInstr::Block(
+        Resulttype::new(Some(vec![Valtype::I32])),
+        vec![WasmInstr::Block(
+            Resulttype::new(Some(vec![Valtype::I32])),
+            vec![
                 WasmInstr::Const(Const::I32(0)),
                 WasmInstr::Itestop(Itestop::Eqz32),
                 WasmInstr::If(
                     Resulttype::new(Some(vec![Valtype::I32])),
-                    vec![
-                        WasmInstr::Const(Const::I32(1)),
-                    ], vec![
-                        WasmInstr::Const(Const::I32(2)),
-                    ]),
-                WasmInstr::Block(Resulttype::new(Some(vec![Valtype::I32])), vec![
-                    WasmInstr::Const(Const::I32(1)),
-                ]),
+                    vec![WasmInstr::Const(Const::I32(1))],
+                    vec![WasmInstr::Const(Const::I32(2))],
+                ),
+                WasmInstr::Block(
+                    Resulttype::new(Some(vec![Valtype::I32])),
+                    vec![WasmInstr::Const(Const::I32(1))],
+                ),
                 WasmInstr::Ibinop(Ibinop::Add32),
-            ]),
-        ]),
-    ];
+            ],
+        )],
+    )];
     let code3 = vec![
         WasmInstr::GetLocal(wasmir::Localidx::new(0)),
         WasmInstr::Const(Const::I32(0)),
         WasmInstr::Irelop(Irelop::Eq32),
         WasmInstr::If(
             Resulttype::new(Some(vec![Valtype::I32])),
+            vec![WasmInstr::Const(Const::I32(0))],
             vec![
-                WasmInstr::Const(Const::I32(0)),
-            ], vec![
                 WasmInstr::GetLocal(wasmir::Localidx::new(0)),
                 WasmInstr::GetLocal(wasmir::Localidx::new(0)),
                 WasmInstr::Const(Const::I32(1)),
                 WasmInstr::Ibinop(Ibinop::Sub32),
                 WasmInstr::Call(wasmir::Funcidx::new(2)),
                 WasmInstr::Ibinop(Ibinop::Add32),
-            ]),
+            ],
+        ),
     ];
     let code4 = vec![
-        WasmInstr::Block(Resulttype::new(Some(vec![])), vec![
-            WasmInstr::GetLocal(wasmir::Localidx::new(0)),
-            WasmInstr::Itestop(Itestop::Eqz32),
-            WasmInstr::BrIf(Labelidx::new(0)),
-            WasmInstr::Const(Const::I32(1)),
-            WasmInstr::Return,
-        ]),
+        WasmInstr::Block(
+            Resulttype::new(Some(vec![])),
+            vec![
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Itestop(Itestop::Eqz32),
+                WasmInstr::BrIf(Labelidx::new(0)),
+                WasmInstr::Const(Const::I32(1)),
+                WasmInstr::Return,
+            ],
+        ),
         WasmInstr::Const(Const::I32(0)),
     ];
     let code5 = vec![
-        WasmInstr::Block(Resulttype::new(Some(vec![])), vec![
-            WasmInstr::GetLocal(wasmir::Localidx::new(0)),
-            WasmInstr::Itestop(Itestop::Eqz32),
-            WasmInstr::BrIf(Labelidx::new(0)),
-            WasmInstr::GetLocal(wasmir::Localidx::new(0)),
-            WasmInstr::Const(Const::I32(1)),
-            WasmInstr::Ibinop(Ibinop::Shl32),
-            WasmInstr::GetLocal(wasmir::Localidx::new(0)),
-            WasmInstr::Const(Const::I32(-1i32 as u32)),
-            WasmInstr::Ibinop(Ibinop::Add32),
-            WasmInstr::Cvtop { op: Cvtop::ExtendU, dst_type: Valtype::I64, src_type: Valtype::I32 },
-            WasmInstr::GetLocal(wasmir::Localidx::new(0)),
-            WasmInstr::Const(Const::I32(-2i32 as u32)),
-            WasmInstr::Ibinop(Ibinop::Add32),
-            WasmInstr::Cvtop { op: Cvtop::ExtendU, dst_type: Valtype::I64, src_type: Valtype::I32 },
-            WasmInstr::Ibinop(Ibinop::Mul64),
-            WasmInstr::Const(Const::I64(1)),
-            WasmInstr::Ibinop(Ibinop::ShrU64),
-            WasmInstr::Cvtop { op: Cvtop::Wrap, dst_type: Valtype::I32, src_type: Valtype::I64 },
-            WasmInstr::Ibinop(Ibinop::Add32),
-            WasmInstr::Const(Const::I32(-1i32 as u32)),
-            WasmInstr::Ibinop(Ibinop::Add32),
-            WasmInstr::Return,
-        ]),
+        WasmInstr::Block(
+            Resulttype::new(Some(vec![])),
+            vec![
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Itestop(Itestop::Eqz32),
+                WasmInstr::BrIf(Labelidx::new(0)),
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Const(Const::I32(1)),
+                WasmInstr::Ibinop(Ibinop::Shl32),
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Const(Const::I32(-1i32 as u32)),
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Cvtop {
+                    op: Cvtop::ExtendU,
+                    dst_type: Valtype::I64,
+                    src_type: Valtype::I32,
+                },
+                WasmInstr::GetLocal(wasmir::Localidx::new(0)),
+                WasmInstr::Const(Const::I32(-2i32 as u32)),
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Cvtop {
+                    op: Cvtop::ExtendU,
+                    dst_type: Valtype::I64,
+                    src_type: Valtype::I32,
+                },
+                WasmInstr::Ibinop(Ibinop::Mul64),
+                WasmInstr::Const(Const::I64(1)),
+                WasmInstr::Ibinop(Ibinop::ShrU64),
+                WasmInstr::Cvtop {
+                    op: Cvtop::Wrap,
+                    dst_type: Valtype::I32,
+                    src_type: Valtype::I64,
+                },
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Const(Const::I32(-1i32 as u32)),
+                WasmInstr::Ibinop(Ibinop::Add32),
+                WasmInstr::Return,
+            ],
+        ),
         WasmInstr::Const(Const::I32(0)),
     ];
 
@@ -224,7 +250,15 @@ fn create_test_wasm_ir() -> Module {
         let function = wasmir::Func::new(functype_index, vec![], Expr::new(code));
         functions.push(function);
     }
-    Module::new(vec![functype], functions, vec![], vec![], vec![], vec![], vec![])
+    Module::new(
+        vec![functype],
+        functions,
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+    )
 }
 
 fn lower_wasm_ir_to_machine_ir(module: &Module) -> ModuleHandle {

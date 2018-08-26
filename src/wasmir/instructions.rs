@@ -1,5 +1,5 @@
-use wasmir::{Funcidx, Globalidx, Labelidx, Localidx, Typeidx};
 use wasmir::types::{Resulttype, Valtype};
+use wasmir::{Funcidx, Globalidx, Labelidx, Localidx, Typeidx};
 
 #[derive(Debug)]
 pub enum Const {
@@ -75,7 +75,11 @@ pub enum WasmInstr {
     Ibinop(Ibinop),
     Itestop(Itestop),
     Irelop(Irelop),
-    Cvtop { op: Cvtop, dst_type: Valtype, src_type: Valtype },
+    Cvtop {
+        op: Cvtop,
+        dst_type: Valtype,
+        src_type: Valtype,
+    },
     Block(Resulttype, Vec<WasmInstr>),
     If(Resulttype, Vec<WasmInstr>, Vec<WasmInstr>),
     Loop(Resulttype, Vec<WasmInstr>),
@@ -86,8 +90,14 @@ pub enum WasmInstr {
     SetLocal(Localidx),
     TeeLocal(Localidx),
     GetGlobal(Globalidx),
-    Load { attr: Loadattr, arg: Memarg },
-    Store { attr: Storeattr, arg: Memarg },
+    Load {
+        attr: Loadattr,
+        arg: Memarg,
+    },
+    Store {
+        attr: Storeattr,
+        arg: Memarg,
+    },
     Call(Funcidx),
     CallIndirect(Typeidx),
     Drop,
@@ -106,4 +116,3 @@ impl Expr {
         &self.0
     }
 }
-

@@ -116,7 +116,11 @@ pub struct Elem {
 
 impl Elem {
     pub fn new(table: Tableidx, offset: Expr, init: Vec<Funcidx>) -> Elem {
-        Elem { table, offset, init }
+        Elem {
+            table,
+            offset,
+            init,
+        }
     }
 }
 
@@ -220,8 +224,15 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn new(types: Vec<Functype>, funcs: Vec<Func>, tables: Vec<Table>,
-               mems: Vec<Mem>, globals: Vec<Global>, exports: Vec<Export>, imports: Vec<Import>) -> Module {
+    pub fn new(
+        types: Vec<Functype>,
+        funcs: Vec<Func>,
+        tables: Vec<Table>,
+        mems: Vec<Mem>,
+        globals: Vec<Global>,
+        exports: Vec<Export>,
+        imports: Vec<Import>,
+    ) -> Module {
         Module {
             types,
             funcs,

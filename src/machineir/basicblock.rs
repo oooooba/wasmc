@@ -33,7 +33,9 @@ impl Iterator {
         if self.index == n - 1 {
             self.basic_block.get_mut_instrs().push_back(instr);
         } else {
-            self.basic_block.get_mut_instrs().insert(self.index + 1, instr);
+            self.basic_block
+                .get_mut_instrs()
+                .insert(self.index + 1, instr);
         }
     }
 
@@ -66,7 +68,7 @@ impl fmt::Display for BasicBlock {
 impl BasicBlock {
     pub fn new(handle: BasicBlockHandle) -> BasicBlock {
         BasicBlock {
-            handle: handle,
+            handle,
             instrs: VecDeque::new(),
         }
     }

@@ -87,7 +87,9 @@ pub struct Globaltype {
 
 impl Globaltype {
     pub fn new(mutability: Mut, valtype: Valtype) -> Globaltype {
-        Globaltype { mutability, valtype }
+        Globaltype {
+            mutability,
+            valtype,
+        }
     }
 }
-
