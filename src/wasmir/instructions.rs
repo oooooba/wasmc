@@ -1,4 +1,4 @@
-use wasmir::{Funcidx, Labelidx, Localidx, Typeidx};
+use wasmir::{Funcidx, Globalidx, Labelidx, Localidx, Typeidx};
 use wasmir::types::{Resulttype, Valtype};
 
 #[derive(Debug)]
@@ -85,6 +85,7 @@ pub enum WasmInstr {
     GetLocal(Localidx),
     SetLocal(Localidx),
     TeeLocal(Localidx),
+    GetGlobal(Globalidx),
     Load { attr: Loadattr, arg: Memarg },
     Store { attr: Storeattr, arg: Memarg },
     Call(Funcidx),

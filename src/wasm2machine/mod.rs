@@ -355,6 +355,9 @@ impl WasmToMachine {
                 self.operand_stack.push(src_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Store { dst: dst_mem, src: src_reg });
             }
+            &WasmInstr::GetGlobal(..) => {
+                unimplemented!()
+            }
             &WasmInstr::Load { .. } => {
                 unimplemented!()
             }
