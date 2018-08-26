@@ -34,6 +34,7 @@ pub enum Irelop {
     Ne32,
     LtS32,
     LtU32,
+    GtU32,
     LeS32,
     GeU32,
 }
