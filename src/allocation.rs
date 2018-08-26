@@ -218,6 +218,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             &Eq(reg1, reg2)
                             | &Neq(reg1, reg2)
                             | &LtU(reg1, reg2)
+                            | &GtS(reg1, reg2)
                             | &GeS(reg1, reg2)
                             | &GeU(reg1, reg2) => {
                                 assert!(!reg1.is_physical());
@@ -236,6 +237,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                     &Eq(_, _) => Eq(preg1, preg2),
                                     &Neq(_, _) => Neq(preg1, preg2),
                                     &LtU(_, _) => LtU(preg1, preg2),
+                                    &GtS(_, _) => GtS(preg1, preg2),
                                     &GeS(_, _) => GeS(preg1, preg2),
                                     &GeU(_, _) => GeU(preg1, preg2),
                                     _ => unreachable!(),

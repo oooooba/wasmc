@@ -498,6 +498,7 @@ impl WasmToMachine {
                     &Irelop::Ne32 => JumpCondKind::Eq(lhs_reg, rhs_reg),
                     &Irelop::LtS32 => JumpCondKind::GeS(lhs_reg, rhs_reg),
                     &Irelop::LtU32 => JumpCondKind::GeU(lhs_reg, rhs_reg),
+                    &Irelop::LeS32 => JumpCondKind::GtS(lhs_reg, rhs_reg),
                     &Irelop::GeU32 => JumpCondKind::LtU(lhs_reg, rhs_reg),
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
