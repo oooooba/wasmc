@@ -436,6 +436,7 @@ impl WasmToMachine {
                 });
             }
             &WasmInstr::GetGlobal(..) => unimplemented!(),
+            &WasmInstr::SetGlobal(..) => unimplemented!(),
             &WasmInstr::Load { .. } => unimplemented!(),
             &WasmInstr::Store { .. } => unimplemented!(),
             &WasmInstr::Call(ref funcidx) => {

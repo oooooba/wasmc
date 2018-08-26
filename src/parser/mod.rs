@@ -42,6 +42,7 @@ enum BinaryOpcode {
     SetLocal = 0x21,
     TeeLocal = 0x22,
     GetGlobal = 0x23,
+    SetGlobal = 0x24,
     I32Load = 0x28,
     I32Load8S = 0x2C,
     I32Load8U = 0x2D,
@@ -140,7 +141,9 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     Some(InstructionEntry {
         opcode: BinaryOpcode::GetGlobal,
     }),
-    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::SetGlobal,
+    }),
     None,
     None,
     None,
@@ -566,6 +569,7 @@ fn parse_instrs(
             SetLocal => parse_localidx(reader).map(|p| (WasmInstr::SetLocal(p.0), p.1))?,
             TeeLocal => parse_localidx(reader).map(|p| (WasmInstr::TeeLocal(p.0), p.1))?,
             GetGlobal => parse_globalidx(reader).map(|p| (WasmInstr::GetGlobal(p.0), p.1))?,
+            SetGlobal => parse_globalidx(reader).map(|p| (WasmInstr::SetGlobal(p.0), p.1))?,
             I32Load => parse_memarg(reader).map(|p| {
                 (
                     WasmInstr::Load {

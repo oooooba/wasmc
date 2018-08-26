@@ -90,6 +90,7 @@ pub enum WasmInstr {
     SetLocal(Localidx),
     TeeLocal(Localidx),
     GetGlobal(Globalidx),
+    SetGlobal(Globalidx),
     Load {
         attr: Loadattr,
         arg: Memarg,
