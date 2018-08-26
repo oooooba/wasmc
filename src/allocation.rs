@@ -116,7 +116,9 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         let new_src2 = match src2.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let index = match kind {
-                                    &BinaryOpKind::Shl | &BinaryOpKind::Shr => 2,
+                                    &BinaryOpKind::Shl
+                                    | &BinaryOpKind::Shr
+                                    | &BinaryOpKind::Sar => 2,
                                     _ => 1,
                                 };
                                 let preg = self.allocate_physical_register(vreg, index);
