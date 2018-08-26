@@ -75,9 +75,8 @@ impl WasmToMachine {
     fn emit_binop(&mut self, op: &Ibinop) {
         use self::Ibinop::*;
         let typ = match op {
-            &Add32 | &Sub32 | &Mul32 | &DivU32 | &And32 | &Or32 | &Xor32 | &Shl32 | &ShrU32 => {
-                Type::I32
-            }
+            &Add32 | &Sub32 | &Mul32 | &DivU32 | &And32 | &Or32 | &Xor32 | &Shl32 | &ShrS32
+            | &ShrU32 => Type::I32,
             &Mul64 | &ShrU64 => Type::I64,
         };
         let register = Operand::new_register(Context::create_register(typ));
@@ -144,6 +143,28 @@ impl WasmToMachine {
                 });
                 Opcode::BinaryOp {
                     kind: BinaryOpKind::Shl,
+                    dst: register,
+                    src1: lhs,
+                    src2: num_shift_reg_8,
+                }
+            }
+            &ShrS32 => {
+                let mask = Operand::new_const_i32(32 - 1);
+                let num_shift_reg_32 = Operand::new_register(Context::create_register(Type::I32));
+                self.emit_on_current_basic_block(Opcode::BinaryOp {
+                    kind: BinaryOpKind::And,
+                    dst: num_shift_reg_32.clone(),
+                    src1: rhs,
+                    src2: mask,
+                });
+                let num_shift_reg_8 = Operand::new_register(Context::create_register(Type::I8));
+                self.emit_on_current_basic_block(Opcode::UnaryOp {
+                    kind: UnaryOpKind::Wrap,
+                    dst: num_shift_reg_8.clone(),
+                    src: num_shift_reg_32,
+                });
+                Opcode::BinaryOp {
+                    kind: BinaryOpKind::Sar,
                     dst: register,
                     src1: lhs,
                     src2: num_shift_reg_8,

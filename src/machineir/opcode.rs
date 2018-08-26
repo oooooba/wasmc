@@ -22,6 +22,7 @@ pub enum BinaryOpKind {
     Xor,
     Shl,
     Shr,
+    Sar,
 }
 
 #[derive(Debug, PartialEq, Eq)]

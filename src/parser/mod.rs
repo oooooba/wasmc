@@ -65,6 +65,7 @@ enum BinaryOpcode {
     I32Or = 0x72,
     I32Xor = 0x73,
     I32Shl = 0x74,
+    I32ShrS = 0x75,
 }
 
 struct InstructionEntry {
@@ -278,7 +279,9 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     Some(InstructionEntry {
         opcode: BinaryOpcode::I32Shl,
     }),
-    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::I32ShrS,
+    }),
     None,
     None,
 ];
@@ -640,6 +643,7 @@ fn parse_instrs(
             I32Or => (WasmInstr::Ibinop(Ibinop::Or32), 0),
             I32Xor => (WasmInstr::Ibinop(Ibinop::Xor32), 0),
             I32Shl => (WasmInstr::Ibinop(Ibinop::Shl32), 0),
+            I32ShrS => (WasmInstr::Ibinop(Ibinop::ShrS32), 0),
         };
         instrs.push(instr);
         consumed += c;
