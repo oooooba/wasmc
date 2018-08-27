@@ -661,16 +661,19 @@ impl WasmToMachine {
     }
 
     pub fn emit(&mut self, module: &wasmir::Module) {
-        for (funcidx, func) in module.get_funcs().iter().enumerate() {
+        for (i, func) in module.get_funcs().iter().enumerate() {
             let typeidx = func.get_type();
             let functype = &module.get_types()[typeidx.as_index()];
             let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
-            let mut local_variable_types = parameter_types.clone();
-            let func_name = format!("f_{}", funcidx);
-            let function =
-                Context::create_function(func_name, parameter_types, result_types.clone());
+            let func_name = format!("f_{}", i);
+            let function = Context::create_function(func_name, parameter_types, result_types);
             self.module.get_mut_functions().push(function);
-            assert_eq!(self.module.get_functions().len() - 1, funcidx);
+        }
+        assert_eq!(self.module.get_functions().len(), module.get_funcs().len());
+
+        for (i, func) in module.get_funcs().iter().enumerate() {
+            let function = self.module.get_functions()[i];
+            let mut local_variable_types = function.get_parameter_types().clone();
             local_variable_types.append(
                 &mut func
                     .get_locals()
@@ -690,7 +693,8 @@ impl WasmToMachine {
             self.current_function = function;
             self.local_variable_types = local_variable_types;
 
-            let result_registers = WasmToMachine::create_registers_for_types(result_types);
+            let result_registers =
+                WasmToMachine::create_registers_for_types(function.get_result_types().clone());
             self.emit_entering_block(
                 entry_block,
                 exit_block,
