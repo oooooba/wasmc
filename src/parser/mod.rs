@@ -44,6 +44,7 @@ enum BinaryOpcode {
     GetGlobal = 0x23,
     SetGlobal = 0x24,
     I32Load = 0x28,
+    I64Load = 0x29,
     I32Load8S = 0x2C,
     I32Load8U = 0x2D,
     I32Store = 0x36,
@@ -156,7 +157,9 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     Some(InstructionEntry {
         opcode: BinaryOpcode::I32Load,
     }),
-    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::I64Load,
+    }),
     None,
     None,
     Some(InstructionEntry {
@@ -643,6 +646,15 @@ fn parse_instrs(
                 (
                     WasmInstr::Load {
                         attr: Loadattr::I32,
+                        arg: p.0,
+                    },
+                    p.1,
+                )
+            })?,
+            I64Load => parse_memarg(reader).map(|p| {
+                (
+                    WasmInstr::Load {
+                        attr: Loadattr::I64,
                         arg: p.0,
                     },
                     p.1,
