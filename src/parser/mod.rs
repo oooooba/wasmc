@@ -2,7 +2,7 @@ use std::io::Read;
 use std::str;
 
 use wasmir::instructions::{
-    Const, Expr, Ibinop, Irelop, Itestop, Loadattr, Memarg, Storeattr, WasmInstr,
+    Const, Cvtop, Expr, Ibinop, Irelop, Itestop, Loadattr, Memarg, Storeattr, WasmInstr,
 };
 use wasmir::types::{
     Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype,
@@ -69,6 +69,7 @@ enum BinaryOpcode {
     I32Shl = 0x74,
     I32ShrS = 0x75,
     I64ShrU = 0x88,
+    I32WrapI64 = 0xA7,
 }
 
 struct InstructionEntry {
@@ -320,6 +321,35 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     None,
+    // 0x90 - 0x97
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0x98 - 0x9F
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    // 0xA0 - 0xA7
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::I32WrapI64,
+    }),
 ];
 
 fn read_one_byte(reader: &mut Read) -> Result<(u8, usize), ParserErrorKind> {
@@ -683,6 +713,14 @@ fn parse_instrs(
             I32Shl => (WasmInstr::Ibinop(Ibinop::Shl32), 0),
             I32ShrS => (WasmInstr::Ibinop(Ibinop::ShrS32), 0),
             I64ShrU => (WasmInstr::Ibinop(Ibinop::ShrU64), 0),
+            I32WrapI64 => (
+                WasmInstr::Cvtop {
+                    op: Cvtop::Wrap,
+                    dst_type: Valtype::I32,
+                    src_type: Valtype::I64,
+                },
+                0,
+            ),
         };
         instrs.push(instr);
         consumed += c;
