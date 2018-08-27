@@ -358,14 +358,6 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     }),
 ];
 
-fn read_one_byte(reader: &mut Read) -> Result<(u8, usize), ParserErrorKind> {
-    let mut buf = [0];
-    match reader.read(&mut buf) {
-        Ok(1) => Ok((buf[0], 1)),
-        _ => Err(ParserErrorKind::UnexpectedFileTermination),
-    }
-}
-
 fn decode_by_unsigned_leb128(
     reader: &mut Read,
     mut nbits: usize,
@@ -375,7 +367,7 @@ fn decode_by_unsigned_leb128(
     let mut result: usize = 0;
     let mut consumed = 0;
     for i in 0..num_iters {
-        let (n, c) = read_one_byte(reader)?;
+        let (n, c) = parse_byte(reader)?;
         consumed += c;
         result |= (n as usize & 0x7f) << (i * 7);
         if n & 0x80 == 0 {
@@ -434,6 +426,14 @@ fn test_integer_decoder() {
     assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((129, 2)));
     let mut buf: &[u8] = &[0xff, 0x7e];
     assert_eq!(decode_by_signed_leb128(buf.by_ref(), 32), Ok((-129, 2)));
+}
+
+fn parse_byte(reader: &mut Read) -> Result<(u8, usize), ParserErrorKind> {
+    let mut buf = [0];
+    match reader.read(&mut buf) {
+        Ok(1) => Ok((buf[0], 1)),
+        _ => Err(ParserErrorKind::UnexpectedFileTermination),
+    }
 }
 
 fn parse_u32(reader: &mut Read) -> Result<(u32, usize), ParserErrorKind> {
@@ -504,7 +504,7 @@ fn parse_labelidx(reader: &mut Read) -> Result<(Labelidx, usize), ParserErrorKin
 }
 
 fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind> {
-    read_one_byte(reader).and_then(|(b, c)| match b {
+    parse_byte(reader).and_then(|(b, c)| match b {
         0x7F => Ok((Valtype::I32, c)),
         0x7E => Ok((Valtype::I64, c)),
         b => Err(ParserErrorKind::IllegalValtypeFormat(b)),
@@ -512,7 +512,7 @@ fn parse_valtype(reader: &mut Read) -> Result<(Valtype, usize), ParserErrorKind>
 }
 
 fn parse_blocktype(reader: &mut Read) -> Result<(Resulttype, usize), ParserErrorKind> {
-    let (b, c) = read_one_byte(reader)?;
+    let (b, c) = parse_byte(reader)?;
     if b == 0x40 {
         Ok((Resulttype::new(None), c))
     } else {
@@ -522,7 +522,7 @@ fn parse_blocktype(reader: &mut Read) -> Result<(Resulttype, usize), ParserError
 }
 
 fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKind> {
-    let c = read_one_byte(reader).and_then(|(b, c)| match b {
+    let c = parse_byte(reader).and_then(|(b, c)| match b {
         0x60 => Ok(c),
         _ => Err(ParserErrorKind::IllegalFunctypeFormat),
     })?;
@@ -532,14 +532,14 @@ fn parse_functype(reader: &mut Read) -> Result<(Functype, usize), ParserErrorKin
 }
 
 fn parse_elemtype(reader: &mut Read) -> Result<(Elemtype, usize), ParserErrorKind> {
-    read_one_byte(reader).and_then(|(b, c)| match b {
+    parse_byte(reader).and_then(|(b, c)| match b {
         0x70 => Ok((Elemtype::Anyfunc, c)),
         b => Err(ParserErrorKind::IllegalElemtypeFormat(b)),
     })
 }
 
 fn parse_limits(reader: &mut Read) -> Result<(Limits, usize), ParserErrorKind> {
-    let (b, c_b) = read_one_byte(reader)?;
+    let (b, c_b) = parse_byte(reader)?;
     let (min, max, c_r) = match b {
         0x00 => {
             let (min, c) = parse_u32(reader)?;
@@ -574,7 +574,7 @@ fn parse_table(reader: &mut Read) -> Result<(Table, usize), ParserErrorKind> {
 }
 
 fn parse_mut(reader: &mut Read) -> Result<(Mut, usize), ParserErrorKind> {
-    read_one_byte(reader).and_then(|(b, c)| match b {
+    parse_byte(reader).and_then(|(b, c)| match b {
         0x00 => Ok((Mut::Const, c)),
         0x01 => Ok((Mut::Var, c)),
         b => Err(ParserErrorKind::IllegalMutFormat(b)),
@@ -601,7 +601,7 @@ fn parse_instrs(
     let mut consumed = 0;
     loop {
         use self::BinaryOpcode::*;
-        let (b, c) = read_one_byte(reader)?;
+        let (b, c) = parse_byte(reader)?;
         consumed += c;
         let opcode = match INSTRUCTION_TABLE[b as usize].as_ref() {
             Some(entry) => entry.opcode,
@@ -629,7 +629,7 @@ fn parse_instrs(
             Call => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
             CallIndirect => {
                 let (typeidx, c_t) = parse_typeidx(reader)?;
-                let (zero, c_z) = read_one_byte(reader)?;
+                let (zero, c_z) = parse_byte(reader)?;
                 if zero != 0x00 {
                     return Err(ParserErrorKind::InvalidFormat(format!(
                         "instruction call_indirect must be terminated 0x00, but actual {}",
@@ -755,7 +755,7 @@ fn parse_global(reader: &mut Read) -> Result<(Global, usize), ParserErrorKind> {
 }
 
 fn parse_exportdesc(reader: &mut Read) -> Result<(Exportdesc, usize), ParserErrorKind> {
-    read_one_byte(reader).and_then(|(b, c)| match b {
+    parse_byte(reader).and_then(|(b, c)| match b {
         0x00 => parse_funcidx(reader).map(|p| (Exportdesc::Func(p.0), c + p.1)),
         0x01 => parse_tableidx(reader).map(|p| (Exportdesc::Table(p.0), c + p.1)),
         0x02 => parse_memidx(reader).map(|p| (Exportdesc::Mem(p.0), c + p.1)),
@@ -765,7 +765,7 @@ fn parse_exportdesc(reader: &mut Read) -> Result<(Exportdesc, usize), ParserErro
 }
 
 fn parse_importdesc(reader: &mut Read) -> Result<(Importdesc, usize), ParserErrorKind> {
-    read_one_byte(reader).and_then(|(b, c)| match b {
+    parse_byte(reader).and_then(|(b, c)| match b {
         0x00 => parse_typeidx(reader).map(|p| (Importdesc::Func(p.0), c + p.1)),
         0x01 => parse_tabletype(reader).map(|p| (Importdesc::Table(p.0), c + p.1)),
         0x02 => parse_memtype(reader).map(|p| (Importdesc::Mem(p.0), c + p.1)),
@@ -840,7 +840,7 @@ fn parse_code(reader: &mut Read) -> Result<(Code, usize), ParserErrorKind> {
 fn parse_data(reader: &mut Read) -> Result<(Data, usize), ParserErrorKind> {
     let (data, c_d) = parse_memidx(reader)?;
     let (offset, c_o) = parse_expr(reader)?;
-    let (init, c_i) = parse_vector(reader, read_one_byte)?;
+    let (init, c_i) = parse_vector(reader, parse_byte)?;
     Ok((Data::new(data, offset, init), c_d + c_o + c_i))
 }
 
@@ -919,7 +919,7 @@ fn discard_until_next_semantic_section(
 ) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
     let mut consumed = 0;
     loop {
-        let (section_id, c_i) = match read_one_byte(reader) {
+        let (section_id, c_i) = match parse_byte(reader) {
             Ok((n, c)) => (n, c),
             Err(ParserErrorKind::UnexpectedFileTermination) => return Ok(None),
             Err(e) => return Err(e),
