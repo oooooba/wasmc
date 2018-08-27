@@ -213,6 +213,19 @@ impl Import {
 }
 
 #[derive(Debug)]
+pub struct Data {
+    data: Memidx,
+    offset: Expr,
+    init: Vec<u8>,
+}
+
+impl Data {
+    pub fn new(data: Memidx, offset: Expr, init: Vec<u8>) -> Data {
+        Data { data, offset, init }
+    }
+}
+
+#[derive(Debug)]
 pub struct Module {
     types: Vec<Functype>,
     funcs: Vec<Func>,
@@ -221,6 +234,7 @@ pub struct Module {
     globals: Vec<Global>,
     exports: Vec<Export>,
     imports: Vec<Import>,
+    data: Vec<Data>,
 }
 
 impl Module {
@@ -232,6 +246,7 @@ impl Module {
         globals: Vec<Global>,
         exports: Vec<Export>,
         imports: Vec<Import>,
+        data: Vec<Data>,
     ) -> Module {
         Module {
             types,
@@ -241,6 +256,7 @@ impl Module {
             globals,
             exports,
             imports,
+            data,
         }
     }
 
@@ -270,5 +286,9 @@ impl Module {
 
     pub fn get_imports(&self) -> &Vec<Import> {
         &self.imports
+    }
+
+    pub fn get_data(&self) -> &Vec<Data> {
+        &self.data
     }
 }

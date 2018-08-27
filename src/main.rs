@@ -258,6 +258,7 @@ fn create_test_wasm_ir() -> Module {
         vec![],
         vec![],
         vec![],
+        vec![],
     )
 }
 

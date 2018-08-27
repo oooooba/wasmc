@@ -8,7 +8,7 @@ use wasmir::types::{
     Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype,
 };
 use wasmir::{
-    Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Labelidx,
+    Data, Elem, Export, Exportdesc, Func, Funcidx, Global, Globalidx, Import, Importdesc, Labelidx,
     Localidx, Mem, Memidx, Module, Table, Tableidx, Typeidx,
 };
 
@@ -837,6 +837,13 @@ fn parse_code(reader: &mut Read) -> Result<(Code, usize), ParserErrorKind> {
     Ok((Code { size, locals, expr }, c_s + c_l + c_e))
 }
 
+fn parse_data(reader: &mut Read) -> Result<(Data, usize), ParserErrorKind> {
+    let (data, c_d) = parse_memidx(reader)?;
+    let (offset, c_o) = parse_expr(reader)?;
+    let (init, c_i) = parse_vector(reader, read_one_byte)?;
+    Ok((Data::new(data, offset, init), c_d + c_o + c_i))
+}
+
 fn parse_type_section(
     reader: &mut Read,
     _size: usize,
@@ -900,6 +907,13 @@ fn parse_code_section(
     parse_vector(reader, parse_code)
 }
 
+fn parse_data_section(
+    reader: &mut Read,
+    _size: usize,
+) -> Result<(Vec<Data>, usize), ParserErrorKind> {
+    parse_vector(reader, parse_data)
+}
+
 fn discard_until_next_semantic_section(
     reader: &mut Read,
 ) -> Result<Option<(u8, usize, usize)>, ParserErrorKind> {
@@ -951,6 +965,7 @@ fn parse_module(reader: &mut Read) -> Result<Module, ParserErrorKind> {
     let mut export_section = vec![];
     let mut element_section = vec![];
     let mut code_section = vec![];
+    let mut data_section = vec![];
 
     let mut last_parsed_section_id = 0;
     while let Some((section_id, section_size, _)) = discard_until_next_semantic_section(reader)? {
@@ -1011,7 +1026,9 @@ fn parse_module(reader: &mut Read) -> Result<Module, ParserErrorKind> {
             10 => {
                 section_parser_driver(reader, parse_code_section, section_size, &mut code_section)?
             }
-            11 => unimplemented!(),
+            11 => {
+                section_parser_driver(reader, parse_data_section, section_size, &mut data_section)?
+            }
             _ => {
                 return Err(ParserErrorKind::InvalidFormat(format!(
                     "invalid section id {}",
@@ -1038,6 +1055,7 @@ fn parse_module(reader: &mut Read) -> Result<Module, ParserErrorKind> {
         global_section,
         export_section,
         import_section,
+        data_section,
     ))
 }
 
