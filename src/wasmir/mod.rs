@@ -210,6 +210,10 @@ impl Import {
     pub fn new(module: String, name: String, desc: Importdesc) -> Import {
         Import { module, name, desc }
     }
+
+    pub fn get_desc(&self) -> &Importdesc {
+        &self.desc
+    }
 }
 
 #[derive(Debug)]

@@ -11,6 +11,7 @@ use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, WasmInstr};
 use wasmir::types::{Functype, Resulttype, Valtype};
+use wasmir::{Importdesc, Typeidx};
 
 #[derive(Debug)]
 struct OperandStack {
@@ -660,17 +661,43 @@ impl WasmToMachine {
         }
     }
 
-    pub fn emit(&mut self, module: &wasmir::Module) {
+    fn declare_function(
+        &self,
+        module: &wasmir::Module,
+        typeidx: Typeidx,
+        i: usize,
+    ) -> FunctionHandle {
+        let functype = &module.get_types()[typeidx.as_index()];
+        let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
+        let func_name = format!("f_{}", i);
+        Context::create_function(func_name, parameter_types, result_types)
+    }
+
+    fn declare_functions(&mut self, module: &wasmir::Module) {
+        let mut num_host_functions = 0;
+        for (i, import) in module.get_imports().iter().enumerate() {
+            use self::Importdesc::*;
+            let typeidx = match import.get_desc() {
+                &Func(typeidx) => typeidx,
+                _ => continue,
+            };
+            let function = self.declare_function(module, typeidx, i);
+            self.module.get_mut_functions().push(function);
+            num_host_functions += 1;
+        }
         for (i, func) in module.get_funcs().iter().enumerate() {
-            let typeidx = func.get_type();
-            let functype = &module.get_types()[typeidx.as_index()];
-            let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
-            let func_name = format!("f_{}", i);
-            let function = Context::create_function(func_name, parameter_types, result_types);
+            let typeidx = *func.get_type();
+            let function = self.declare_function(module, typeidx, num_host_functions + i);
             self.module.get_mut_functions().push(function);
         }
-        assert_eq!(self.module.get_functions().len(), module.get_funcs().len());
+        assert_eq!(
+            self.module.get_functions().len(),
+            num_host_functions + module.get_funcs().len()
+        );
+    }
 
+    pub fn emit(&mut self, module: &wasmir::Module) {
+        self.declare_functions(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
             let function = self.module.get_functions()[i];
             let mut local_variable_types = function.get_parameter_types().clone();
