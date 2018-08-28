@@ -360,7 +360,7 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
 
 fn decode_by_unsigned_leb128(
     reader: &mut Read,
-    mut nbits: usize,
+    nbits: usize,
 ) -> Result<(usize, usize), ParserErrorKind> {
     assert!(nbits == 32 || nbits == 64);
     let num_iters = (nbits as f64 / 7.0).ceil() as usize;
@@ -373,7 +373,6 @@ fn decode_by_unsigned_leb128(
         if n & 0x80 == 0 {
             break;
         }
-        nbits -= 8;
     }
     Ok((result, consumed))
 }
