@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
-use machineir::operand::OperandKind;
+use machineir::operand::{MemoryKind, OperandKind};
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
@@ -189,48 +189,54 @@ impl FunctionPass for EmitAssemblyPass {
                         assert!(dst.is_physical());
                         let dst_name = self.register_name_map.get(&dst).unwrap();
 
-                        let (src_offset, typ) = match src.get_kind() {
-                            &OperandKind::Memory { index, ref typ } => {
-                                (self.get_local_variable_offset_of(index), typ)
+                        match src.get_kind() {
+                            &OperandKind::Memory {
+                                index,
+                                ref typ,
+                                ref kind,
+                            } if kind == &MemoryKind::Local =>
+                            {
+                                let src_offset = self.get_local_variable_offset_of(index);
+                                let ptr_notation = typ.get_ptr_notation();
+                                let bpr_name = self
+                                    .register_name_map
+                                    .get(&self.base_pointer_register)
+                                    .unwrap();
+                                println!(
+                                    "mov {}, {} ptr [{} - {}]",
+                                    dst_name, ptr_notation, bpr_name, src_offset
+                                );
                             }
                             _ => unimplemented!(),
-                        };
-
-                        let ptr_notation = typ.get_ptr_notation();
-                        let bpr_name = self
-                            .register_name_map
-                            .get(&self.base_pointer_register)
-                            .unwrap();
-
-                        println!(
-                            "mov {}, {} ptr [{} - {}]",
-                            dst_name, ptr_notation, bpr_name, src_offset
-                        );
+                        }
                     }
                     &Store {
                         ref dst, ref src, ..
                     } => {
-                        let (dst_offset, typ) = match dst.get_kind() {
-                            &OperandKind::Memory { index, ref typ } => {
-                                (self.get_local_variable_offset_of(index), typ)
-                            }
-                            _ => unimplemented!(),
-                        };
-
                         let src = src.get_as_physical_register().unwrap();
                         assert!(src.is_physical());
                         let src_name = self.register_name_map.get(&src).unwrap();
 
-                        let ptr_notation = typ.get_ptr_notation();
-                        let bpr_name = self
-                            .register_name_map
-                            .get(&self.base_pointer_register)
-                            .unwrap();
-
-                        println!(
-                            "mov {} ptr [{} - {}], {}",
-                            ptr_notation, bpr_name, dst_offset, src_name
-                        );
+                        match dst.get_kind() {
+                            &OperandKind::Memory {
+                                index,
+                                ref typ,
+                                ref kind,
+                            } if kind == &MemoryKind::Local =>
+                            {
+                                let dst_offset = self.get_local_variable_offset_of(index);
+                                let ptr_notation = typ.get_ptr_notation();
+                                let bpr_name = self
+                                    .register_name_map
+                                    .get(&self.base_pointer_register)
+                                    .unwrap();
+                                println!(
+                                    "mov {} ptr [{} - {}], {}",
+                                    ptr_notation, bpr_name, dst_offset, src_name
+                                );
+                            }
+                            _ => unimplemented!(),
+                        }
                     }
                     &Jump {
                         ref kind,

@@ -6,7 +6,7 @@ use context::handle::{
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
-use machineir::operand::{Operand, OperandKind};
+use machineir::operand::{MemoryKind, Operand, OperandKind};
 use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, WasmInstr};
@@ -387,7 +387,7 @@ impl WasmToMachine {
                 let index = localidx.as_index();
                 let typ = self.local_variable_types[index].clone();
                 let dst_reg = Operand::new_register(Context::create_register(typ.clone()));
-                let src_mem = Operand::new_memory(index, typ);
+                let src_mem = Operand::new_memory(index, typ, MemoryKind::Local);
                 self.operand_stack.push(dst_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst: dst_reg,
@@ -399,7 +399,7 @@ impl WasmToMachine {
                 let src_reg = self.operand_stack.pop().unwrap();
                 let typ = src_reg.get_as_register().unwrap().get_typ().clone();
                 assert_eq!(typ, self.local_variable_types[index]);
-                let dst_mem = Operand::new_memory(index, typ);
+                let dst_mem = Operand::new_memory(index, typ, MemoryKind::Local);
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst: dst_mem,
                     src: src_reg,
@@ -410,7 +410,7 @@ impl WasmToMachine {
                 let src_reg = self.operand_stack.pop().unwrap();
                 let typ = src_reg.get_as_register().unwrap().get_typ().clone();
                 assert_eq!(typ, self.local_variable_types[index]);
-                let dst_mem = Operand::new_memory(index, typ);
+                let dst_mem = Operand::new_memory(index, typ, MemoryKind::Local);
                 self.operand_stack.push(src_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst: dst_mem,

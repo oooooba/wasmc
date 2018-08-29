@@ -3,6 +3,13 @@ use std::fmt;
 use context::handle::{BasicBlockHandle, RegisterHandle};
 use machineir::typ::Type;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MemoryKind {
+    Local,
+    StaticGlobal,
+    DynamicGlobal { min: usize, max: Option<usize> },
+}
+
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum OperandKind {
     Register(RegisterHandle),
@@ -10,7 +17,11 @@ pub enum OperandKind {
     ConstI32(u32),
     ConstI64(u64),
     Label(BasicBlockHandle),
-    Memory { index: usize, typ: Type },
+    Memory {
+        index: usize,
+        typ: Type,
+        kind: MemoryKind,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,9 +60,9 @@ impl Operand {
         }
     }
 
-    pub fn new_memory(index: usize, typ: Type) -> Operand {
+    pub fn new_memory(index: usize, typ: Type, kind: MemoryKind) -> Operand {
         Operand {
-            kind: OperandKind::Memory { index, typ },
+            kind: OperandKind::Memory { index, typ, kind },
         }
     }
 
@@ -138,7 +149,11 @@ impl fmt::Debug for OperandKind {
             &ConstI32(ref i) => write!(f, "ConstantI32({:?})", i),
             &ConstI64(ref i) => write!(f, "ConstantI64({:?})", i),
             &Label(ref basic_block) => write!(f, "Label({:?})", basic_block),
-            &Memory { index, ref typ } => write!(f, "Memory({} / {:?})", index, typ),
+            &Memory {
+                index,
+                ref typ,
+                ref kind,
+            } => write!(f, "Memory({} / {:?} / {:?})", index, typ, kind),
         }
     }
 }
