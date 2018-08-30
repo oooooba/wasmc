@@ -1,7 +1,9 @@
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
-use context::handle::{BasicBlockHandle, FunctionHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, RegionHandle};
+use context::Context;
+use machineir::region::RegionKind;
 use machineir::typ::Type;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -12,6 +14,7 @@ pub struct Function {
     parameter_types: Vec<Type>,
     result_types: Vec<Type>,
     local_variables: HashMap<usize, Type>,
+    local_region: RegionHandle,
 }
 
 impl Function {
@@ -33,6 +36,7 @@ impl Function {
             parameter_types,
             result_types,
             local_variables,
+            local_region: Context::create_region(RegionKind::Local),
         }
     }
 
@@ -66,6 +70,10 @@ impl Function {
 
     pub fn get_mut_local_variables(&mut self) -> &mut HashMap<usize, Type> {
         &mut self.local_variables
+    }
+
+    pub fn get_local_region(&self) -> RegionHandle {
+        self.local_region
     }
 
     pub fn print(&self) {

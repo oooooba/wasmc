@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode};
-use machineir::operand::{MemoryKind, Operand, OperandKind};
+use machineir::operand::{Operand, OperandKind};
 use machineir::typ::Type;
 use pass::FunctionPass;
 
@@ -370,7 +370,7 @@ impl SimpleRegisterAllocationPass {
         Context::create_instr(
             Opcode::Load {
                 dst: Operand::new_physical_register(preg),
-                src: Operand::new_memory(vreg_index, typ, MemoryKind::Local),
+                src: Operand::new_region(vreg_index, typ, function.get_local_region()),
             },
             basic_block,
         )
@@ -390,7 +390,7 @@ impl SimpleRegisterAllocationPass {
         let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
         Context::create_instr(
             Opcode::Store {
-                dst: Operand::new_memory(vreg_index, typ, MemoryKind::Local),
+                dst: Operand::new_region(vreg_index, typ, function.get_local_region()),
                 src: Operand::new_physical_register(preg),
             },
             basic_block,

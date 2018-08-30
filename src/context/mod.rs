@@ -3,13 +3,15 @@ pub mod handle;
 use std::collections::BTreeMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, PassHandle, RegisterHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, PassHandle, RegionHandle,
+    RegisterHandle,
 };
 use machineir::basicblock::BasicBlock;
 use machineir::function::Function;
 use machineir::instruction::Instr;
 use machineir::module::Module;
 use machineir::opcode::Opcode;
+use machineir::region::{Region, RegionKind};
 use machineir::register::Register;
 use machineir::typ::Type;
 use pass::PassKind;
@@ -24,6 +26,8 @@ pub struct Context {
     num_created_basic_blocks: usize,
     functions: Option<BTreeMap<FunctionHandle, Function>>,
     num_created_functions: usize,
+    regions: Option<BTreeMap<RegionHandle, Region>>,
+    num_created_regions: usize,
     modules: Option<BTreeMap<ModuleHandle, Module>>,
     num_created_modules: usize,
     passes: Option<BTreeMap<PassHandle, PassKind>>,
@@ -39,6 +43,8 @@ static mut CONTEXT: Context = Context {
     num_created_basic_blocks: 0,
     functions: None,
     num_created_functions: 0,
+    regions: None,
+    num_created_regions: 0,
     modules: None,
     num_created_modules: 0,
     passes: None,
@@ -52,6 +58,7 @@ impl Context {
             CONTEXT.instrs = Some(BTreeMap::new());
             CONTEXT.basic_blocks = Some(BTreeMap::new());
             CONTEXT.functions = Some(BTreeMap::new());
+            CONTEXT.regions = Some(BTreeMap::new());
             CONTEXT.modules = Some(BTreeMap::new());
             CONTEXT.passes = Some(BTreeMap::new());
         }
@@ -105,6 +112,17 @@ impl Context {
             let handle = FunctionHandle::new(id);
             let function = Function::new(handle, func_name, parameter_types, result_types);
             CONTEXT.functions.as_mut().unwrap().insert(handle, function);
+            handle
+        }
+    }
+
+    pub fn create_region(kind: RegionKind) -> RegionHandle {
+        unsafe {
+            let id = CONTEXT.num_created_regions;
+            CONTEXT.num_created_regions += 1;
+            let handle = RegionHandle::new(id);
+            let region = Region::new(handle, kind);
+            CONTEXT.regions.as_mut().unwrap().insert(handle, region);
             handle
         }
     }

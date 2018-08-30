@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
-use machineir::operand::{MemoryKind, OperandKind};
+use machineir::operand::OperandKind;
+use machineir::region::RegionKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
@@ -193,8 +194,8 @@ impl FunctionPass for EmitAssemblyPass {
                             &OperandKind::Memory {
                                 index,
                                 ref typ,
-                                ref kind,
-                            } if kind == &MemoryKind::Local =>
+                                region,
+                            } if region.get_kind() == &RegionKind::Local =>
                             {
                                 let src_offset = self.get_local_variable_offset_of(index);
                                 let ptr_notation = typ.get_ptr_notation();
@@ -221,8 +222,8 @@ impl FunctionPass for EmitAssemblyPass {
                             &OperandKind::Memory {
                                 index,
                                 ref typ,
-                                ref kind,
-                            } if kind == &MemoryKind::Local =>
+                                region,
+                            } if region.get_kind() == &RegionKind::Local =>
                             {
                                 let dst_offset = self.get_local_variable_offset_of(index);
                                 let ptr_notation = typ.get_ptr_notation();

@@ -5,6 +5,7 @@ use machineir::basicblock::BasicBlock;
 use machineir::function::Function;
 use machineir::instruction::Instr;
 use machineir::module::Module;
+use machineir::region::Region;
 use machineir::register::Register;
 use pass::PassKind;
 
@@ -216,6 +217,53 @@ impl DerefMut for FunctionHandle {
 }
 
 impl fmt::Display for FunctionHandle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
+pub struct RegionHandle(usize);
+
+impl RegionHandle {
+    pub(super) fn new(id: usize) -> Self {
+        RegionHandle(id)
+    }
+
+    pub fn get(&self) -> &Region {
+        unsafe { super::CONTEXT.regions.as_ref().unwrap().get(self).unwrap() }
+    }
+
+    pub fn get_mut(&mut self) -> &mut Region {
+        unsafe {
+            super::CONTEXT
+                .regions
+                .as_mut()
+                .unwrap()
+                .get_mut(self)
+                .unwrap()
+        }
+    }
+
+    pub fn print(&self) {
+        print!("region{}", self.0);
+    }
+}
+
+impl Deref for RegionHandle {
+    type Target = Region;
+    fn deref(&self) -> &Region {
+        self.get()
+    }
+}
+
+impl DerefMut for RegionHandle {
+    fn deref_mut(&mut self) -> &mut Region {
+        self.get_mut()
+    }
+}
+
+impl fmt::Display for RegionHandle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }

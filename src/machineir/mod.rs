@@ -4,5 +4,6 @@ pub mod instruction;
 pub mod module;
 pub mod opcode;
 pub mod operand;
+pub mod region;
 pub mod register;
 pub mod typ;
