@@ -49,7 +49,7 @@ pub struct WasmToMachine {
     basic_block_to_continuation: HashMap<BasicBlockHandle, (BasicBlockHandle, Vec<RegisterHandle>)>,
     current_function: FunctionHandle,
     module: ModuleHandle,
-    local_variable_types: Vec<Type>,
+    local_variables: Vec<RegisterHandle>,
     memory: Option<RegionHandle>,
 }
 
@@ -77,7 +77,7 @@ impl WasmToMachine {
             basic_block_to_continuation: HashMap::new(),
             current_function: dummy_function,
             module: Context::create_module(),
-            local_variable_types: vec![],
+            local_variables: vec![],
             memory,
         }
     }
@@ -398,10 +398,10 @@ impl WasmToMachine {
             }
             &WasmInstr::GetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let typ = self.local_variable_types[index].clone();
-                let dst_reg = Operand::new_register(Context::create_register(typ.clone()));
-                let src_mem =
-                    Operand::new_region(index, typ, self.current_function.get_local_region());
+                let var = self.local_variables[index];
+                let dst_reg =
+                    Operand::new_register(Context::create_register(var.get_typ().clone()));
+                let src_mem = Operand::new_register(var);
                 self.operand_stack.push(dst_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst: dst_reg,
@@ -410,11 +410,11 @@ impl WasmToMachine {
             }
             &WasmInstr::SetLocal(ref localidx) => {
                 let index = localidx.as_index();
+                let var = self.local_variables[index];
                 let src_reg = self.operand_stack.pop().unwrap();
                 let typ = src_reg.get_as_register().unwrap().get_typ().clone();
-                assert_eq!(typ, self.local_variable_types[index]);
-                let dst_mem =
-                    Operand::new_region(index, typ, self.current_function.get_local_region());
+                assert_eq!(&typ, var.get_typ());
+                let dst_mem = Operand::new_register(var);
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst: dst_mem,
                     src: src_reg,
@@ -422,11 +422,11 @@ impl WasmToMachine {
             }
             &WasmInstr::TeeLocal(ref localidx) => {
                 let index = localidx.as_index();
+                let var = self.local_variables[index];
                 let src_reg = self.operand_stack.pop().unwrap();
                 let typ = src_reg.get_as_register().unwrap().get_typ().clone();
-                assert_eq!(typ, self.local_variable_types[index]);
-                let dst_mem =
-                    Operand::new_region(index, typ, self.current_function.get_local_region());
+                assert_eq!(&typ, var.get_typ());
+                let dst_mem = Operand::new_register(var);
                 self.operand_stack.push(src_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst: dst_mem,
@@ -736,14 +736,16 @@ impl WasmToMachine {
         self.declare_functions(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
             let function = self.module.get_functions()[i];
-            let mut local_variable_types = function.get_parameter_types().clone();
-            local_variable_types.append(
-                &mut func
-                    .get_locals()
-                    .iter()
-                    .map(|typ| WasmToMachine::map_valtype(typ))
-                    .collect(),
-            );
+            let mut local_variables = function.get_parameter_variables().clone();
+            for valtype in func.get_locals().iter() {
+                let typ = WasmToMachine::map_valtype(valtype);
+                let var = Context::create_register(typ);
+                function
+                    .get_local_region()
+                    .get_mut_offset_map()
+                    .insert(var, 0);
+                local_variables.push(var);
+            }
 
             let entry_block = Context::create_basic_block();
             let exit_block = Context::create_basic_block();
@@ -754,7 +756,7 @@ impl WasmToMachine {
             self.entry_block = entry_block;
             self.basic_block_to_continuation = HashMap::new();
             self.current_function = function;
-            self.local_variable_types = local_variable_types;
+            self.local_variables = local_variables;
 
             let result_registers =
                 WasmToMachine::create_registers_for_types(function.get_result_types().clone());

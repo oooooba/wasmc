@@ -337,22 +337,13 @@ impl SimpleRegisterAllocationPass {
         })
     }
 
-    fn get_or_create_virtual_register_index(
-        &mut self,
-        vreg: RegisterHandle,
-        mut function: FunctionHandle,
-    ) -> usize {
+    fn allocate_memory_for_virtual_register(&self, vreg: RegisterHandle, function: FunctionHandle) {
         assert!(!vreg.is_physical());
-        let mut vreg_index = self.virtual_register_indexes.get(&vreg).map(|i| *i);
-        if vreg_index.is_none() {
-            let new_index = function.get_local_variables().len();
-            self.virtual_register_indexes.insert(vreg, new_index);
-            function
-                .get_mut_local_variables()
-                .insert(new_index, vreg.get_typ().clone());
-            vreg_index = Some(new_index);
+        let mut region = function.get_local_region();
+        if region.get_mut_offset_map().contains_key(&vreg) {
+            return;
         }
-        vreg_index.unwrap()
+        region.get_mut_offset_map().insert(vreg, 0);
     }
 
     fn create_load_instr(
@@ -366,11 +357,11 @@ impl SimpleRegisterAllocationPass {
         assert!(!vreg.is_physical());
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
-        let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
+        self.allocate_memory_for_virtual_register(vreg, function);
         Context::create_instr(
             Opcode::Load {
                 dst: Operand::new_physical_register(preg),
-                src: Operand::new_region(vreg_index, typ, function.get_local_region()),
+                src: Operand::new_register(vreg),
             },
             basic_block,
         )
@@ -387,10 +378,10 @@ impl SimpleRegisterAllocationPass {
         assert!(preg.is_physical());
         let typ = vreg.get_typ().clone();
         assert_eq!(&typ, preg.get_typ());
-        let vreg_index = self.get_or_create_virtual_register_index(vreg, function);
+        self.allocate_memory_for_virtual_register(vreg, function);
         Context::create_instr(
             Opcode::Store {
-                dst: Operand::new_region(vreg_index, typ, function.get_local_region()),
+                dst: Operand::new_register(vreg),
                 src: Operand::new_physical_register(preg),
             },
             basic_block,

@@ -1,7 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::fmt;
 
-use context::handle::{BasicBlockHandle, FunctionHandle, RegionHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, RegionHandle, RegisterHandle};
 use context::Context;
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -12,8 +12,8 @@ pub struct Function {
     func_name: String,
     basic_blocks: VecDeque<BasicBlockHandle>,
     parameter_types: Vec<Type>,
+    parameter_variables: Vec<RegisterHandle>,
     result_types: Vec<Type>,
-    local_variables: HashMap<usize, Type>,
     local_region: RegionHandle,
 }
 
@@ -24,19 +24,21 @@ impl Function {
         parameter_types: Vec<Type>,
         result_types: Vec<Type>,
     ) -> Function {
-        let local_variables = parameter_types
-            .iter()
-            .enumerate()
-            .map(|p| (p.0, p.1.clone()))
-            .collect();
+        let mut region = Context::create_region(RegionKind::Local);
+        let mut parameter_variables = vec![];
+        for typ in parameter_types.iter() {
+            let reg = Context::create_register(typ.clone());
+            region.get_mut_offset_map().insert(reg, 0);
+            parameter_variables.push(reg);
+        }
         Function {
             handle,
             func_name,
             basic_blocks: VecDeque::new(),
             parameter_types,
+            parameter_variables,
             result_types,
-            local_variables,
-            local_region: Context::create_region(RegionKind::Local),
+            local_region: region,
         }
     }
 
@@ -60,16 +62,12 @@ impl Function {
         &self.parameter_types
     }
 
+    pub fn get_parameter_variables(&self) -> &Vec<RegisterHandle> {
+        &self.parameter_variables
+    }
+
     pub fn get_result_types(&self) -> &Vec<Type> {
         &self.result_types
-    }
-
-    pub fn get_local_variables(&self) -> &HashMap<usize, Type> {
-        &self.local_variables
-    }
-
-    pub fn get_mut_local_variables(&mut self) -> &mut HashMap<usize, Type> {
-        &mut self.local_variables
     }
 
     pub fn get_local_region(&self) -> RegionHandle {

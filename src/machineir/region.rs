@@ -1,6 +1,7 @@
+use std::collections::HashMap;
 use std::fmt;
 
-use context::handle::RegionHandle;
+use context::handle::{RegionHandle, RegisterHandle};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RegionKind {
@@ -13,11 +14,16 @@ pub enum RegionKind {
 pub struct Region {
     handle: RegionHandle,
     kind: RegionKind,
+    offset_map: HashMap<RegisterHandle, usize>,
 }
 
 impl Region {
     pub fn new(handle: RegionHandle, kind: RegionKind) -> Region {
-        Region { handle, kind }
+        Region {
+            handle,
+            kind,
+            offset_map: HashMap::new(),
+        }
     }
 
     pub fn get_handle(&self) -> &RegionHandle {
@@ -26,6 +32,29 @@ impl Region {
 
     pub fn get_kind(&self) -> &RegionKind {
         &self.kind
+    }
+
+    pub fn get_offset_map(&self) -> &HashMap<RegisterHandle, usize> {
+        &self.offset_map
+    }
+
+    pub fn get_mut_offset_map(&mut self) -> &mut HashMap<RegisterHandle, usize> {
+        &mut self.offset_map
+    }
+
+    pub fn calculate_variable_offset(&mut self) -> usize {
+        let word_size = 8;
+        let mut tmp_pairs = vec![];
+        let mut len_buffer = word_size;
+        for var in self.offset_map.keys() {
+            tmp_pairs.push((*var, len_buffer));
+            let typ = var.get_typ();
+            len_buffer += ((typ.get_size() + word_size - 1) / word_size) * word_size;
+        }
+        for (var, offset) in tmp_pairs.into_iter() {
+            self.offset_map.insert(var, offset);
+        }
+        len_buffer
     }
 }
 

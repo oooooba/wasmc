@@ -4,7 +4,6 @@ use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHa
 use context::Context;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::operand::OperandKind;
-use machineir::region::RegionKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
@@ -48,20 +47,12 @@ pub struct EmitAssemblyPass {
     base_pointer_register: RegisterHandle,
     stack_pointer_register: RegisterHandle,
     argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    local_variable_index_to_offset_map: HashMap<usize, usize>,
 }
 
 impl FunctionPass for EmitAssemblyPass {
     fn do_action(&mut self, mut function: FunctionHandle) {
         {
-            // calculate offset of local variables
-            let word_size = 8;
-            let mut len_buffer = word_size;
-            for (index, typ) in function.get_local_variables().iter() {
-                self.local_variable_index_to_offset_map
-                    .insert(*index, len_buffer);
-                len_buffer += ((typ.get_size() + word_size - 1) / word_size) * word_size;
-            }
+            let len_buffer = function.get_local_region().calculate_variable_offset();
 
             let base_pointer_register = self
                 .register_name_map
@@ -81,8 +72,17 @@ impl FunctionPass for EmitAssemblyPass {
 
             // store parameter registers to memory
             assert!(function.get_parameter_types().len() < self.argument_registers.len());
-            for (i, typ) in function.get_parameter_types().iter().enumerate() {
-                let dst_offset = self.get_local_variable_offset_of(i);
+            assert_eq!(
+                function.get_parameter_types().len(),
+                function.get_parameter_variables().len()
+            );
+            for (i, var) in function.get_parameter_variables().iter().enumerate() {
+                let dst_offset = *function
+                    .get_local_region()
+                    .get_offset_map()
+                    .get(var)
+                    .unwrap();
+                let typ = var.get_typ();
                 let src_reg = self.argument_registers[i].get(typ).unwrap();
                 let src_name = self.register_name_map.get(src_reg).unwrap();
                 let ptr_notation = typ.get_ptr_notation();
@@ -191,14 +191,10 @@ impl FunctionPass for EmitAssemblyPass {
                         let dst_name = self.register_name_map.get(&dst).unwrap();
 
                         match src.get_kind() {
-                            &OperandKind::Memory {
-                                index,
-                                ref typ,
-                                region,
-                            } if region.get_kind() == &RegionKind::Local =>
-                            {
-                                let src_offset = self.get_local_variable_offset_of(index);
-                                let ptr_notation = typ.get_ptr_notation();
+                            &OperandKind::Register(vreg) => {
+                                let region = function.get_local_region();
+                                let src_offset = region.get_offset_map().get(&vreg).unwrap();
+                                let ptr_notation = vreg.get_typ().get_ptr_notation();
                                 let bpr_name = self
                                     .register_name_map
                                     .get(&self.base_pointer_register)
@@ -219,14 +215,10 @@ impl FunctionPass for EmitAssemblyPass {
                         let src_name = self.register_name_map.get(&src).unwrap();
 
                         match dst.get_kind() {
-                            &OperandKind::Memory {
-                                index,
-                                ref typ,
-                                region,
-                            } if region.get_kind() == &RegionKind::Local =>
-                            {
-                                let dst_offset = self.get_local_variable_offset_of(index);
-                                let ptr_notation = typ.get_ptr_notation();
+                            &OperandKind::Register(vreg) => {
+                                let region = function.get_local_region();
+                                let dst_offset = region.get_offset_map().get(&vreg).unwrap();
+                                let ptr_notation = vreg.get_typ().get_ptr_notation();
                                 let bpr_name = self
                                     .register_name_map
                                     .get(&self.base_pointer_register)
@@ -300,7 +292,6 @@ impl FunctionPass for EmitAssemblyPass {
                 iter.advance();
             }
         }
-        self.local_variable_index_to_offset_map.clear();
     }
 }
 
@@ -316,7 +307,6 @@ impl EmitAssemblyPass {
             base_pointer_register,
             stack_pointer_register,
             argument_registers,
-            local_variable_index_to_offset_map: HashMap::new(),
         })
     }
 
@@ -345,9 +335,5 @@ impl EmitAssemblyPass {
             self.register_name_map.get(&target).unwrap(),
             imm
         );
-    }
-
-    fn get_local_variable_offset_of(&self, index: usize) -> usize {
-        *self.local_variable_index_to_offset_map.get(&index).unwrap()
     }
 }
