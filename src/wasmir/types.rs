@@ -43,6 +43,14 @@ impl Limits {
     pub fn new(min: u32, max: Option<u32>) -> Limits {
         Limits { min, max }
     }
+
+    pub fn get_min(&self) -> u32 {
+        self.min
+    }
+
+    pub fn get_max(&self) -> &Option<u32> {
+        &self.max
+    }
 }
 
 #[derive(Debug)]
@@ -53,6 +61,10 @@ pub struct Memtype {
 impl Memtype {
     pub fn new(lim: Limits) -> Memtype {
         Memtype { lim }
+    }
+
+    pub fn get_lim(&self) -> &Limits {
+        &self.lim
     }
 }
 

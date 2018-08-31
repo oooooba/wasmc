@@ -169,6 +169,10 @@ impl Mem {
     pub fn new(typ: Memtype) -> Mem {
         Mem { typ }
     }
+
+    pub fn get_type(&self) -> &Memtype {
+        &self.typ
+    }
 }
 
 #[derive(Debug)]

@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
 };
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
 use machineir::operand::{Operand, OperandKind};
+use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, WasmInstr};
@@ -49,15 +50,26 @@ pub struct WasmToMachine {
     current_function: FunctionHandle,
     module: ModuleHandle,
     local_variable_types: Vec<Type>,
+    memory: Option<RegionHandle>,
 }
 
 impl WasmToMachine {
-    pub fn new() -> WasmToMachine {
+    pub fn new(module: &wasmir::Module) -> WasmToMachine {
         let dummy_block = Context::create_basic_block();
         let (parameter_types, result_types) =
             WasmToMachine::map_functype(&Functype::new(vec![], vec![]));
         let dummy_function =
             Context::create_function("".to_string(), parameter_types, result_types);
+        let memory = if module.get_mems().len() == 0 {
+            None
+        } else {
+            assert_eq!(module.get_mems().len(), 1);
+            let mem = &module.get_mems()[0];
+            Some(Context::create_region(RegionKind::DynamicGlobal {
+                min: mem.get_type().get_lim().get_min() as usize,
+                max: mem.get_type().get_lim().get_max().map(|i| i as usize),
+            }))
+        };
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
@@ -66,6 +78,7 @@ impl WasmToMachine {
             current_function: dummy_function,
             module: Context::create_module(),
             local_variable_types: vec![],
+            memory,
         }
     }
 

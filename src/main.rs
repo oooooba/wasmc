@@ -263,7 +263,7 @@ fn create_test_wasm_ir() -> Module {
 }
 
 fn lower_wasm_ir_to_machine_ir(module: &Module) -> ModuleHandle {
-    let mut wasm_to_machine = WasmToMachine::new();
+    let mut wasm_to_machine = WasmToMachine::new(module);
     wasm_to_machine.emit(module);
     wasm_to_machine.finalize()
 }
