@@ -174,12 +174,8 @@ impl FunctionPass for EmitAssemblyPass {
                             &OpOperandKind::Register(src2) => {
                                 self.emit_binop_reg_reg(op, dst, src2)
                             }
-                            &OpOperandKind::ConstI32(imm) => {
-                                self.emit_binop_reg_imm32(op, dst, imm)
-                            }
-                            &OpOperandKind::ConstI64(imm) => {
-                                self.emit_binop_reg_imm64(op, dst, imm)
-                            }
+                            &OpOperandKind::ImmI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
+                            &OpOperandKind::ImmI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
                         }
                     }
                     &Load {

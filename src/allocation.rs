@@ -102,8 +102,8 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 iter.insert_before(load_instr);
                                 OpOperandKind::Register(preg)
                             }
-                            &OpOperandKind::ConstI32(_) => src2.clone(),
-                            &OpOperandKind::ConstI64(_) => src2.clone(),
+                            &OpOperandKind::ImmI32(_) => src2.clone(),
+                            &OpOperandKind::ImmI64(_) => src2.clone(),
                         };
 
                         let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();

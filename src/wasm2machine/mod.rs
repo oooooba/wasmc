@@ -103,8 +103,8 @@ impl WasmToMachine {
         let rhs = self.operand_stack.pop().unwrap();
         let src2 = match rhs.get_kind() {
             &OperandKind::Register(reg) => OpOperandKind::Register(reg),
-            &OperandKind::ConstI32(n) => OpOperandKind::ConstI32(n),
-            &OperandKind::ConstI64(n) => OpOperandKind::ConstI64(n),
+            &OperandKind::ConstI32(n) => OpOperandKind::ImmI32(n),
+            &OperandKind::ConstI64(n) => OpOperandKind::ImmI64(n),
             _ => unreachable!(),
         };
         let lhs = self.operand_stack.pop().unwrap();
@@ -311,12 +311,12 @@ impl WasmToMachine {
                     kind: BinaryOpKind::And,
                     dst: canonical_num_shift_reg,
                     src1: num_shift_reg,
-                    src2: OpOperandKind::ConstI32(num_shift_limit as u32 - 1),
+                    src2: OpOperandKind::ImmI32(num_shift_limit as u32 - 1),
                 });
                 OpOperandKind::Register(canonical_num_shift_reg)
             }
-            OpOperandKind::ConstI32(n) => OpOperandKind::ConstI32(n as u32 % 32),
-            OpOperandKind::ConstI64(n) => OpOperandKind::ConstI32(n as u32 % 64),
+            OpOperandKind::ImmI32(n) => OpOperandKind::ImmI32(n as u32 % 32),
+            OpOperandKind::ImmI64(n) => OpOperandKind::ImmI32(n as u32 % 64),
         };
 
         Opcode::BinaryOp {
@@ -469,7 +469,7 @@ impl WasmToMachine {
                         kind: BinaryOpKind::Add,
                         dst: offset,
                         src1: base,
-                        src2: OpOperandKind::ConstI32(arg.get_offset() as u32),
+                        src2: OpOperandKind::ImmI32(arg.get_offset() as u32),
                     });
                     offset
                 };
