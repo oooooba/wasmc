@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
-use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
+use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, Opcode, UnaryOpKind};
 use machineir::operand::OperandKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
@@ -184,16 +184,22 @@ impl FunctionPass for EmitAssemblyPass {
                         }
                     }
                     &Load {
-                        ref dst, ref src, ..
+                        ref dst,
+                        ref src_base,
+                        ref src_offset,
                     } => {
                         let dst = dst.get_as_physical_register().unwrap();
                         assert!(dst.is_physical());
                         let dst_name = self.register_name_map.get(&dst).unwrap();
 
-                        match src.get_kind() {
+                        match src_base.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let region = function.get_local_region();
-                                let src_offset = region.get_offset_map().get(&vreg).unwrap();
+                                let src_offset = match src_offset {
+                                    &OffsetKind::None => {
+                                        region.get_offset_map().get(&vreg).unwrap()
+                                    }
+                                };
                                 let ptr_notation = vreg.get_typ().get_ptr_notation();
                                 let bpr_name = self
                                     .register_name_map
@@ -208,16 +214,22 @@ impl FunctionPass for EmitAssemblyPass {
                         }
                     }
                     &Store {
-                        ref dst, ref src, ..
+                        ref dst_base,
+                        ref dst_offset,
+                        ref src,
                     } => {
                         let src = src.get_as_physical_register().unwrap();
                         assert!(src.is_physical());
                         let src_name = self.register_name_map.get(&src).unwrap();
 
-                        match dst.get_kind() {
+                        match dst_base.get_kind() {
                             &OperandKind::Register(vreg) => {
                                 let region = function.get_local_region();
-                                let dst_offset = region.get_offset_map().get(&vreg).unwrap();
+                                let dst_offset = match dst_offset {
+                                    &OffsetKind::None => {
+                                        region.get_offset_map().get(&vreg).unwrap()
+                                    }
+                                };
                                 let ptr_notation = vreg.get_typ().get_ptr_notation();
                                 let bpr_name = self
                                     .register_name_map

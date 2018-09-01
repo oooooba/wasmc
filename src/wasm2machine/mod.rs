@@ -5,7 +5,7 @@ use context::handle::{
 };
 use context::Context;
 use machineir::opcode;
-use machineir::opcode::{BinaryOpKind, JumpCondKind, Opcode, UnaryOpKind};
+use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, Opcode, UnaryOpKind};
 use machineir::operand::{Operand, OperandKind};
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -405,7 +405,8 @@ impl WasmToMachine {
                 self.operand_stack.push(dst_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst: dst_reg,
-                    src: src_mem,
+                    src_base: src_mem,
+                    src_offset: OffsetKind::None,
                 });
             }
             &WasmInstr::SetLocal(ref localidx) => {
@@ -416,7 +417,8 @@ impl WasmToMachine {
                 assert_eq!(&typ, var.get_typ());
                 let dst_mem = Operand::new_register(var);
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: dst_mem,
+                    dst_base: dst_mem,
+                    dst_offset: OffsetKind::None,
                     src: src_reg,
                 });
             }
@@ -429,7 +431,8 @@ impl WasmToMachine {
                 let dst_mem = Operand::new_register(var);
                 self.operand_stack.push(src_reg.clone());
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: dst_mem,
+                    dst_base: dst_mem,
+                    dst_offset: OffsetKind::None,
                     src: src_reg,
                 });
             }

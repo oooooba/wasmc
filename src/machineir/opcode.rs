@@ -39,6 +39,20 @@ pub enum JumpCondKind {
     GeU(RegisterHandle, RegisterHandle),
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum OffsetKind {
+    None,
+}
+
+impl OffsetKind {
+    pub fn print(&self) {
+        use self::OffsetKind::*;
+        match self {
+            &None => print!("none"),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Opcode {
     Debug(String),
@@ -60,10 +74,12 @@ pub enum Opcode {
     },
     Load {
         dst: Operand,
-        src: Operand,
+        src_base: Operand,
+        src_offset: OffsetKind,
     },
     Store {
-        dst: Operand,
+        dst_base: Operand,
+        dst_offset: OffsetKind,
         src: Operand,
     },
     Jump {
@@ -131,18 +147,26 @@ impl Opcode {
                 src2.print();
             }
             &Load {
-                ref dst, ref src, ..
+                ref dst,
+                ref src_base,
+                ref src_offset,
             } => {
                 dst.print();
                 print!(" = ");
                 print!("load");
                 print!(" ");
-                src.print();
+                src_base.print();
+                print!(", ");
+                src_offset.print();
             }
             &Store {
-                ref dst, ref src, ..
+                ref dst_base,
+                ref dst_offset,
+                ref src,
             } => {
-                dst.print();
+                dst_base.print();
+                print!(", ");
+                dst_offset.print();
                 print!(" = ");
                 print!("store");
                 print!(" ");
