@@ -681,8 +681,8 @@ impl WasmToMachine {
             let mut operand = self.operand_stack.pop().unwrap();
             if let &OperandKind::Register(src_register) = operand.get_kind() {
                 self.emit_on_current_basic_block(Opcode::Copy {
-                    dst: Operand::new_register(register),
-                    src: Operand::new_register(src_register),
+                    dst: register,
+                    src: src_register,
                 });
             } else {
                 panic!()

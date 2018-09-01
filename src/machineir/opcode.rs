@@ -60,8 +60,8 @@ pub enum Opcode {
     Debug(String),
     Label(String),
     Copy {
-        dst: Operand,
-        src: Operand,
+        dst: RegisterHandle,
+        src: RegisterHandle,
     },
     UnaryOp {
         kind: UnaryOpKind,

@@ -25,29 +25,16 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                 let (new_opcode, num_advance) = match instr.get_opcode() {
                     &Opcode::Debug(..) => (None, 0),
                     &Opcode::Label(..) => (None, 0),
-                    &Opcode::Copy { ref dst, ref src } => {
-                        let new_src = match src.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg = self.allocate_physical_register(vreg, 0);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, preg, vreg, function);
-                                iter.insert_before(load_instr);
-                                Operand::new_physical_register(preg)
-                            }
-                            _ => unimplemented!(),
-                        };
+                    &Opcode::Copy { dst, src } => {
+                        let new_src = self.allocate_physical_register(src, 0);
+                        let load_instr =
+                            self.create_load_instr(basic_block, new_src, src, function);
+                        iter.insert_before(load_instr);
 
-                        let new_dst = match dst.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg =
-                                    *self.physical_result_register.get(vreg.get_typ()).unwrap();
-                                let store_instr =
-                                    self.create_store_instr(basic_block, vreg, preg, function);
-                                iter.insert_after(store_instr);
-                                Operand::new_physical_register(preg)
-                            }
-                            _ => unimplemented!(),
-                        };
+                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
+                        let store_instr =
+                            self.create_store_instr(basic_block, dst, new_dst, function);
+                        iter.insert_after(store_instr);
 
                         (
                             Some(Opcode::Copy {

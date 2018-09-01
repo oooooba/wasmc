@@ -109,12 +109,8 @@ impl FunctionPass for EmitAssemblyPass {
                     &Label(ref label) => {
                         println!("{}:", label);
                     }
-                    &Copy {
-                        ref dst, ref src, ..
-                    } => {
-                        let dst = dst.get_as_physical_register().unwrap();
+                    &Copy { dst, src } => {
                         let dst_name = self.register_name_map.get(&dst).unwrap();
-                        let src = src.get_as_physical_register().unwrap();
                         let src_name = self.register_name_map.get(&src).unwrap();
                         println!("mov {}, {}", dst_name, src_name);
                     }
