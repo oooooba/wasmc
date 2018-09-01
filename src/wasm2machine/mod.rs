@@ -5,7 +5,9 @@ use context::handle::{
 };
 use context::Context;
 use machineir::opcode;
-use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, Opcode, UnaryOpKind};
+use machineir::opcode::{
+    BinaryOpKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
+};
 use machineir::operand::{Operand, OperandKind};
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -94,56 +96,70 @@ impl WasmToMachine {
             &Mul64 | &ShrU64 => Type::I64,
         };
         let register = Operand::new_register(Context::create_register(typ));
+        let dst = match register.get_kind() {
+            &OperandKind::Register(reg) => reg,
+            _ => unreachable!(),
+        };
         let rhs = self.operand_stack.pop().unwrap();
+        let src2 = match rhs.get_kind() {
+            &OperandKind::Register(reg) => OpOperandKind::Register(reg),
+            &OperandKind::ConstI32(n) => OpOperandKind::ConstI32(n),
+            &OperandKind::ConstI64(n) => OpOperandKind::ConstI64(n),
+            _ => unreachable!(),
+        };
         let lhs = self.operand_stack.pop().unwrap();
-        self.operand_stack.push(register.clone());
+        let src1 = match lhs.get_kind() {
+            &OperandKind::Register(reg) => reg,
+            _ => unreachable!(),
+        };
+        self.operand_stack.push(register);
         let opcode = match op {
-            &Add32 => opcode::Opcode::BinaryOp {
+            &Add32 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Add,
-                dst: register,
-                src1: lhs,
-                src2: rhs,
+                dst,
+                src1,
+                src2,
             },
-            &Sub32 => opcode::Opcode::BinaryOp {
+            &Sub32 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Sub,
-                dst: register,
-                src1: lhs,
-                src2: rhs,
+                dst,
+                src1,
+                src2,
             },
-            &Mul32 | &Mul64 => opcode::Opcode::BinaryOp {
+            &Mul32 | &Mul64 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Mul,
-                dst: register,
-                src1: lhs,
-                src2: rhs,
+                dst,
+                src1,
+                src2,
             },
-            &DivU32 => opcode::Opcode::BinaryOp {
+            &DivU32 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Div,
-                dst: register,
-                src1: lhs,
-                src2: rhs,
+                dst,
+                src1,
+                src2,
             },
-            &And32 => opcode::Opcode::BinaryOp {
+            &And32 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::And,
-                dst: register,
-                src1: lhs,
-                src2: rhs,
+                dst,
+                src1,
+                src2,
             },
-            &Or32 => opcode::Opcode::BinaryOp {
+            &Or32 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Or,
-                dst: register,
-                src1: lhs,
-                src2: rhs,
+                dst,
+                src1,
+                src2,
             },
-            &Xor32 => opcode::Opcode::BinaryOp {
+            &Xor32 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Xor,
-                dst: register,
-                src1: lhs,
-                src2: rhs,
+                dst,
+                src1,
+                src2,
             },
-            &Shl32 => self.emit_shift_opcode_helper(BinaryOpKind::Shl, register, lhs, rhs, 32),
-            &ShrS32 => self.emit_shift_opcode_helper(BinaryOpKind::Sar, register, lhs, rhs, 32),
-            &ShrU32 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, register, lhs, rhs, 32),
-            &ShrU64 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, register, lhs, rhs, 64),
+            &Shl32 => self.emit_shift_opcode_helper(BinaryOpKind::Shl, dst, src1, src2, 32),
+            &ShrS32 => self.emit_shift_opcode_helper(BinaryOpKind::Sar, dst, src1, src2, 32),
+            &ShrU32 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, dst, src1, src2, 32),
+            &ShrU64 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, dst, src1, src2, 64),
         };
         self.emit_on_current_basic_block(opcode);
     }
@@ -267,44 +283,47 @@ impl WasmToMachine {
     fn emit_shift_opcode_helper(
         &mut self,
         op: BinaryOpKind,
-        dst: Operand,
-        src_target: Operand,
-        src_num_shift: Operand,
+        dst: RegisterHandle,
+        src_target: RegisterHandle,
+        src_num_shift: OpOperandKind,
         num_shift_limit: usize,
     ) -> Opcode {
         assert!(op == BinaryOpKind::Shl || op == BinaryOpKind::Shr || op == BinaryOpKind::Sar);
         assert!(num_shift_limit == 32 || num_shift_limit == 64);
 
-        let (mask, num_shift_reg) = match num_shift_limit {
-            32 => (
-                Operand::new_const_i32(32 - 1),
-                Operand::new_register(Context::create_register(Type::I32)),
-            ),
-            64 => (
-                Operand::new_const_i64(64 - 1),
-                Operand::new_register(Context::create_register(Type::I64)),
-            ),
-            _ => panic!(),
-        };
-        self.emit_on_current_basic_block(Opcode::BinaryOp {
-            kind: BinaryOpKind::And,
-            dst: num_shift_reg.clone(),
-            src1: src_num_shift,
-            src2: mask,
-        });
+        let src_num_shift = match src_num_shift {
+            OpOperandKind::Register(reg) => {
+                let num_shift_reg = if reg.get_typ() == &Type::I64 {
+                    let num_shift_reg = Context::create_register(Type::I32);
+                    self.emit_on_current_basic_block(Opcode::UnaryOp {
+                        kind: UnaryOpKind::Wrap,
+                        dst: Operand::new_register(num_shift_reg),
+                        src: Operand::new_register(reg),
+                    });
+                    num_shift_reg
+                } else {
+                    assert_eq!(reg.get_typ(), &Type::I32);
+                    reg
+                };
 
-        let num_shift_reg_8 = Operand::new_register(Context::create_register(Type::I8));
-        self.emit_on_current_basic_block(Opcode::UnaryOp {
-            kind: UnaryOpKind::Wrap,
-            dst: num_shift_reg_8.clone(),
-            src: num_shift_reg,
-        });
+                let canonical_num_shift_reg = Context::create_register(Type::I32);
+                self.emit_on_current_basic_block(Opcode::BinaryOp {
+                    kind: BinaryOpKind::And,
+                    dst: canonical_num_shift_reg,
+                    src1: num_shift_reg,
+                    src2: OpOperandKind::ConstI32(num_shift_limit as u32 - 1),
+                });
+                OpOperandKind::Register(canonical_num_shift_reg)
+            }
+            OpOperandKind::ConstI32(n) => OpOperandKind::ConstI32(n as u32 % 32),
+            OpOperandKind::ConstI64(n) => OpOperandKind::ConstI32(n as u32 % 64),
+        };
 
         Opcode::BinaryOp {
             kind: BinaryOpKind::Shl,
             dst,
             src1: src_target,
-            src2: num_shift_reg_8,
+            src2: src_num_shift,
         }
     }
 
@@ -440,25 +459,21 @@ impl WasmToMachine {
             &WasmInstr::SetGlobal(..) => unimplemented!(),
             &WasmInstr::Load { ref attr, ref arg } => {
                 let offset = {
-                    let offset_const = Operand::new_const_i32(arg.get_offset());
-                    let offset_reg = Operand::new_register(Context::create_register(Type::I32));
-                    self.emit_on_current_basic_block(Opcode::UnaryOp {
-                        kind: UnaryOpKind::Const,
-                        dst: offset_reg.clone(),
-                        src: offset_const,
-                    });
-
+                    let offset = Context::create_register(Type::I32);
                     let base = self.operand_stack.pop().unwrap();
-                    let offset = Operand::new_register(Context::create_register(Type::I32));
+                    let base = match base.get_kind() {
+                        &OperandKind::Register(reg) => reg,
+                        _ => unreachable!(),
+                    };
                     self.emit_on_current_basic_block(Opcode::BinaryOp {
                         kind: BinaryOpKind::Add,
-                        dst: offset.clone(),
+                        dst: offset,
                         src1: base,
-                        src2: offset_reg,
+                        src2: OpOperandKind::ConstI32(arg.get_offset() as u32),
                     });
                     offset
-                }.get_as_register()
-                    .unwrap();
+                };
+
                 let dst = match attr {
                     &Loadattr::I32 => Operand::new_register(Context::create_register(Type::I32)),
                     &Loadattr::I64 => Operand::new_register(Context::create_register(Type::I64)),

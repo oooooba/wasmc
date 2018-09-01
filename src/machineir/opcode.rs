@@ -55,6 +55,24 @@ impl OffsetKind {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum OpOperandKind {
+    Register(RegisterHandle),
+    ConstI32(u32),
+    ConstI64(u64),
+}
+
+impl OpOperandKind {
+    fn print(&self) {
+        use self::OpOperandKind::*;
+        match self {
+            &Register(reg) => reg.print(),
+            &ConstI32(n) => print!("{}", n),
+            &ConstI64(n) => print!("{}", n),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Opcode {
     Debug(String),
@@ -70,9 +88,9 @@ pub enum Opcode {
     },
     BinaryOp {
         kind: BinaryOpKind,
-        dst: Operand,
-        src1: Operand,
-        src2: Operand,
+        dst: RegisterHandle,
+        src1: RegisterHandle,
+        src2: OpOperandKind,
     },
     Load {
         dst: Operand,

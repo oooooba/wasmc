@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
-use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, Opcode};
+use machineir::opcode::{JumpCondKind, OffsetKind, OpOperandKind, Opcode};
 use machineir::operand::{Operand, OperandKind};
 use machineir::typ::Type;
 use pass::FunctionPass;
@@ -85,51 +85,31 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     }
                     &Opcode::BinaryOp {
                         ref kind,
-                        ref dst,
-                        ref src1,
+                        dst,
+                        src1,
                         ref src2,
                     } => {
-                        let new_src1 = match src1.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg = self.allocate_physical_register(vreg, 0);
+                        let new_src1 = self.allocate_physical_register(src1, 0);
+                        let load_instr =
+                            self.create_load_instr(basic_block, new_src1, src1, function);
+                        iter.insert_before(load_instr);
+
+                        let new_src2 = match src2 {
+                            &OpOperandKind::Register(vreg) => {
+                                let preg = self.allocate_physical_register(vreg, 1);
                                 let load_instr =
                                     self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
-                                Operand::new_physical_register(preg)
+                                OpOperandKind::Register(preg)
                             }
-                            _ => unimplemented!(),
+                            &OpOperandKind::ConstI32(_) => src2.clone(),
+                            &OpOperandKind::ConstI64(_) => src2.clone(),
                         };
 
-                        let new_src2 = match src2.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let index = match kind {
-                                    &BinaryOpKind::Shl
-                                    | &BinaryOpKind::Shr
-                                    | &BinaryOpKind::Sar => 2,
-                                    _ => 1,
-                                };
-                                let preg = self.allocate_physical_register(vreg, index);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, preg, vreg, function);
-                                iter.insert_before(load_instr);
-                                Operand::new_physical_register(preg)
-                            }
-                            &OperandKind::ConstI32(_) => src2.clone(),
-                            &OperandKind::ConstI64(_) => src2.clone(),
-                            _ => unimplemented!(),
-                        };
-
-                        let new_dst = match dst.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg =
-                                    *self.physical_result_register.get(vreg.get_typ()).unwrap();
-                                let store_instr =
-                                    self.create_store_instr(basic_block, vreg, preg, function);
-                                iter.insert_after(store_instr);
-                                Operand::new_physical_register(preg)
-                            }
-                            _ => unimplemented!(),
-                        };
+                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
+                        let store_instr =
+                            self.create_store_instr(basic_block, dst, new_dst, function);
+                        iter.insert_after(store_instr);
 
                         (
                             Some(Opcode::BinaryOp {

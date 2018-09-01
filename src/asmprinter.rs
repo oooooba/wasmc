@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
-use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, Opcode, UnaryOpKind};
+use machineir::opcode::{
+    BinaryOpKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
+};
 use machineir::operand::OperandKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
@@ -150,13 +152,11 @@ impl FunctionPass for EmitAssemblyPass {
                     }
                     &BinaryOp {
                         ref kind,
-                        ref dst,
-                        ref src1,
+                        dst,
+                        src1,
                         ref src2,
-                        ..
                     } => {
                         assert_eq!(dst, src1);
-                        let dst = dst.get_as_physical_register().unwrap();
                         assert!(dst.is_physical());
                         let op = match kind {
                             &BinaryOpKind::Add => "add",
@@ -170,13 +170,16 @@ impl FunctionPass for EmitAssemblyPass {
                             &BinaryOpKind::Or => "or",
                             &BinaryOpKind::Xor => "xor",
                         };
-                        match src2.get_kind() {
-                            &OperandKind::PhysicalRegister(preg) => {
-                                self.emit_binop_reg_reg(op, dst, preg)
+                        match src2 {
+                            &OpOperandKind::Register(src2) => {
+                                self.emit_binop_reg_reg(op, dst, src2)
                             }
-                            &OperandKind::ConstI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
-                            &OperandKind::ConstI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
-                            _ => unimplemented!(),
+                            &OpOperandKind::ConstI32(imm) => {
+                                self.emit_binop_reg_imm32(op, dst, imm)
+                            }
+                            &OpOperandKind::ConstI64(imm) => {
+                                self.emit_binop_reg_imm64(op, dst, imm)
+                            }
                         }
                     }
                     &Load {
