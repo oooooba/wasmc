@@ -42,6 +42,7 @@ pub enum JumpCondKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum OffsetKind {
     None,
+    Register(RegisterHandle),
 }
 
 impl OffsetKind {
@@ -49,6 +50,7 @@ impl OffsetKind {
         use self::OffsetKind::*;
         match self {
             &None => print!("none"),
+            &Register(reg) => reg.print(),
         }
     }
 }

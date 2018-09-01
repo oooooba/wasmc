@@ -1,9 +1,10 @@
-use context::handle::{FunctionHandle, ModuleHandle};
+use context::handle::{FunctionHandle, ModuleHandle, RegionHandle};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Module {
     handle: ModuleHandle,
     functions: Vec<FunctionHandle>,
+    dynamic_regions: Vec<RegionHandle>,
 }
 
 impl Module {
@@ -11,6 +12,7 @@ impl Module {
         Module {
             handle: handle,
             functions: vec![],
+            dynamic_regions: vec![],
         }
     }
 
@@ -24,5 +26,13 @@ impl Module {
 
     pub fn get_mut_functions(&mut self) -> &mut Vec<FunctionHandle> {
         &mut self.functions
+    }
+
+    pub fn get_dynamic_regions(&self) -> &Vec<RegionHandle> {
+        &self.dynamic_regions
+    }
+
+    pub fn get_mut_dynamic_regions(&mut self) -> &mut Vec<RegionHandle> {
+        &mut self.dynamic_regions
     }
 }

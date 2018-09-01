@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle,
 };
 use context::Context;
 use machineir::opcode;
@@ -10,7 +10,7 @@ use machineir::operand::{Operand, OperandKind};
 use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
-use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, WasmInstr};
+use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, Loadattr, WasmInstr};
 use wasmir::types::{Functype, Resulttype, Valtype};
 use wasmir::{Importdesc, Typeidx};
 
@@ -50,35 +50,35 @@ pub struct WasmToMachine {
     current_function: FunctionHandle,
     module: ModuleHandle,
     local_variables: Vec<RegisterHandle>,
-    memory: Option<RegionHandle>,
 }
 
 impl WasmToMachine {
-    pub fn new(module: &wasmir::Module) -> WasmToMachine {
+    pub fn new(wasmir_module: &wasmir::Module) -> WasmToMachine {
         let dummy_block = Context::create_basic_block();
         let (parameter_types, result_types) =
             WasmToMachine::map_functype(&Functype::new(vec![], vec![]));
         let dummy_function =
             Context::create_function("".to_string(), parameter_types, result_types);
-        let memory = if module.get_mems().len() == 0 {
-            None
+        let mut module = Context::create_module();
+        let memory = if wasmir_module.get_mems().len() == 0 {
+            Context::create_region(RegionKind::DynamicGlobal { min: 0, max: None })
         } else {
-            assert_eq!(module.get_mems().len(), 1);
-            let mem = &module.get_mems()[0];
-            Some(Context::create_region(RegionKind::DynamicGlobal {
+            assert_eq!(wasmir_module.get_mems().len(), 1);
+            let mem = &wasmir_module.get_mems()[0];
+            Context::create_region(RegionKind::DynamicGlobal {
                 min: mem.get_type().get_lim().get_min() as usize,
                 max: mem.get_type().get_lim().get_max().map(|i| i as usize),
-            }))
+            })
         };
+        module.get_mut_dynamic_regions().push(memory);
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
             entry_block: dummy_block,
             basic_block_to_continuation: HashMap::new(),
             current_function: dummy_function,
-            module: Context::create_module(),
+            module,
             local_variables: vec![],
-            memory,
         }
     }
 
@@ -438,7 +438,64 @@ impl WasmToMachine {
             }
             &WasmInstr::GetGlobal(..) => unimplemented!(),
             &WasmInstr::SetGlobal(..) => unimplemented!(),
-            &WasmInstr::Load { .. } => unimplemented!(),
+            &WasmInstr::Load { ref attr, ref arg } => {
+                let offset = {
+                    let offset_const = Operand::new_const_i32(arg.get_offset());
+                    let offset_reg = Operand::new_register(Context::create_register(Type::I32));
+                    self.emit_on_current_basic_block(Opcode::UnaryOp {
+                        kind: UnaryOpKind::Const,
+                        dst: offset_reg.clone(),
+                        src: offset_const,
+                    });
+
+                    let base = self.operand_stack.pop().unwrap();
+                    let offset = Operand::new_register(Context::create_register(Type::I32));
+                    self.emit_on_current_basic_block(Opcode::BinaryOp {
+                        kind: BinaryOpKind::Add,
+                        dst: offset.clone(),
+                        src1: base,
+                        src2: offset_reg,
+                    });
+                    offset
+                }.get_as_register()
+                    .unwrap();
+                let dst = match attr {
+                    &Loadattr::I32 => Operand::new_register(Context::create_register(Type::I32)),
+                    &Loadattr::I64 => Operand::new_register(Context::create_register(Type::I64)),
+                    &Loadattr::I32x8S | &Loadattr::I32x8U => {
+                        Operand::new_register(Context::create_register(Type::I8))
+                    }
+                };
+                let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
+                self.emit_on_current_basic_block(Opcode::Load {
+                    dst: dst.clone(),
+                    src_base: Operand::new_register(memory_variable),
+                    src_offset: OffsetKind::Register(offset),
+                });
+                let result = match attr {
+                    &Loadattr::I32 => dst,
+                    &Loadattr::I64 => dst,
+                    &Loadattr::I32x8S => {
+                        let result = Operand::new_register(Context::create_register(Type::I32));
+                        self.emit_on_current_basic_block(Opcode::UnaryOp {
+                            kind: UnaryOpKind::SignExtension,
+                            dst: result.clone(),
+                            src: dst,
+                        });
+                        result
+                    }
+                    &Loadattr::I32x8U => {
+                        let result = Operand::new_register(Context::create_register(Type::I32));
+                        self.emit_on_current_basic_block(Opcode::UnaryOp {
+                            kind: UnaryOpKind::ZeroExtension,
+                            dst: result.clone(),
+                            src: dst,
+                        });
+                        result
+                    }
+                };
+                self.operand_stack.push(result);
+            }
             &WasmInstr::Store { .. } => unimplemented!(),
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();

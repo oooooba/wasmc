@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::fmt;
 
 use context::handle::{RegionHandle, RegisterHandle};
+use context::Context;
+use machineir::typ::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RegionKind {
@@ -14,14 +16,17 @@ pub enum RegionKind {
 pub struct Region {
     handle: RegionHandle,
     kind: RegionKind,
+    variable: RegisterHandle,
     offset_map: HashMap<RegisterHandle, usize>,
 }
 
 impl Region {
     pub fn new(handle: RegionHandle, kind: RegionKind) -> Region {
+        let variable = Context::create_register(Type::I8);
         Region {
             handle,
             kind,
+            variable,
             offset_map: HashMap::new(),
         }
     }
@@ -40,6 +45,10 @@ impl Region {
 
     pub fn get_mut_offset_map(&mut self) -> &mut HashMap<RegisterHandle, usize> {
         &mut self.offset_map
+    }
+
+    pub fn get_variable(&self) -> RegisterHandle {
+        self.variable
     }
 
     pub fn calculate_variable_offset(&mut self) -> usize {

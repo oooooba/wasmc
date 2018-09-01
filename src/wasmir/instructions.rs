@@ -56,6 +56,10 @@ impl Memarg {
     pub fn new(offset: u32, align: u32) -> Memarg {
         Memarg { offset, align }
     }
+
+    pub fn get_offset(&self) -> u32 {
+        self.offset
+    }
 }
 
 #[derive(Debug)]

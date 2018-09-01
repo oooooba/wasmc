@@ -199,6 +199,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     &OffsetKind::None => {
                                         region.get_offset_map().get(&vreg).unwrap()
                                     }
+                                    &OffsetKind::Register(_) => unimplemented!(),
                                 };
                                 let ptr_notation = vreg.get_typ().get_ptr_notation();
                                 let bpr_name = self
@@ -229,6 +230,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     &OffsetKind::None => {
                                         region.get_offset_map().get(&vreg).unwrap()
                                     }
+                                    &OffsetKind::Register(_) => unimplemented!(),
                                 };
                                 let ptr_notation = vreg.get_typ().get_ptr_notation();
                                 let bpr_name = self
