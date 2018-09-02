@@ -6,7 +6,8 @@ use context::handle::{
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{
-    BinaryOpKind, CastKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode,
+    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, OpOperandKind,
+    Opcode,
 };
 use machineir::operand::{Operand, OperandKind};
 use machineir::region::RegionKind;
@@ -215,7 +216,7 @@ impl WasmToMachine {
 
         self.emit_on_current_basic_block(Opcode::Jump {
             kind: cond_kind,
-            target: Operand::new_label(else_block),
+            target: JumpTargetKind::BasicBlock(else_block),
         });
 
         self.emit_entering_block(
@@ -278,7 +279,7 @@ impl WasmToMachine {
             .clone();
         let opcode = Opcode::Jump {
             kind: jump_cond_kind,
-            target: Operand::new_label(cont_block),
+            target: JumpTargetKind::BasicBlock(cont_block),
         };
         self.emit_transition_procedure(
             opcode,
@@ -356,7 +357,7 @@ impl WasmToMachine {
 
                 self.emit_on_current_basic_block(opcode::Opcode::Jump {
                     kind: opcode::JumpCondKind::Unconditional,
-                    target: Operand::new_label(expr_block),
+                    target: JumpTargetKind::BasicBlock(expr_block),
                 });
 
                 self.emit_entering_block(expr_block, cont_block, result_registers, instrs);
@@ -373,13 +374,13 @@ impl WasmToMachine {
 
                 self.emit_on_current_basic_block(opcode::Opcode::Jump {
                     kind: opcode::JumpCondKind::Unconditional,
-                    target: Operand::new_label(body_block),
+                    target: JumpTargetKind::BasicBlock(body_block),
                 });
 
                 self.emit_entering_block(body_block, exit_block, result_registers, instrs);
                 self.emit_on_current_basic_block(opcode::Opcode::Jump {
                     kind: opcode::JumpCondKind::Unconditional,
-                    target: Operand::new_label(body_block),
+                    target: JumpTargetKind::BasicBlock(body_block),
                 });
                 self.remove_label(body_block);
 

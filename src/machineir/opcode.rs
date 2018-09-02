@@ -1,6 +1,6 @@
 use std::fmt;
 
-use context::handle::{FunctionHandle, RegisterHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, RegisterHandle};
 use machineir::operand::Operand;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -36,6 +36,20 @@ pub enum JumpCondKind {
     GtS(RegisterHandle, RegisterHandle),
     GeS(RegisterHandle, RegisterHandle),
     GeU(RegisterHandle, RegisterHandle),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum JumpTargetKind {
+    BasicBlock(BasicBlockHandle),
+}
+
+impl JumpTargetKind {
+    fn print(&self) {
+        use self::JumpTargetKind::*;
+        match self {
+            &BasicBlock(bb) => bb.print(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -127,7 +141,7 @@ pub enum Opcode {
     },
     Jump {
         kind: JumpCondKind,
-        target: Operand,
+        target: JumpTargetKind,
     },
     Call {
         func: FunctionHandle,

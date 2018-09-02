@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{
-    BinaryOpKind, CastKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode,
+    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, OpOperandKind,
+    Opcode,
 };
 use machineir::operand::OperandKind;
 use machineir::typ::Type;
@@ -239,7 +240,9 @@ impl FunctionPass for EmitAssemblyPass {
                         ref kind,
                         ref target,
                     } => {
-                        let target = target.get_as_label().unwrap();
+                        let target = match target {
+                            JumpTargetKind::BasicBlock(bb) => bb,
+                        };
                         use self::JumpCondKind::*;
                         match kind {
                             &Unconditional => {
