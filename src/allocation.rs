@@ -240,22 +240,20 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         ref args,
                     } => {
                         let mut new_args = vec![];
-                        for (i, arg) in args.iter().enumerate() {
-                            let vreg = arg.get_as_register().unwrap();
-                            let preg = self.allocate_physical_argument_register(vreg, i);
+                        for (i, vreg) in args.iter().enumerate() {
+                            let preg = self.allocate_physical_argument_register(*vreg, i);
                             let load_instr =
-                                self.create_load_instr(basic_block, preg, vreg, function);
+                                self.create_load_instr(basic_block, preg, *vreg, function);
                             iter.insert_before(load_instr);
-                            new_args.push(Operand::new_physical_register(preg));
+                            new_args.push(preg);
                         }
 
-                        let new_result = if let &Some(ref result) = result {
-                            let vreg = result.get_as_register().unwrap();
+                        let new_result = if let &Some(vreg) = result {
                             let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
                             let store_instr =
                                 self.create_store_instr(basic_block, vreg, preg, function);
                             iter.insert_after(store_instr);
-                            Some(Operand::new_physical_register(preg))
+                            Some(preg)
                         } else {
                             None
                         };

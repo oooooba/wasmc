@@ -145,8 +145,8 @@ pub enum Opcode {
     },
     Call {
         func: FunctionHandle,
-        result: Option<Operand>,
-        args: Vec<Operand>,
+        result: Option<RegisterHandle>,
+        args: Vec<RegisterHandle>,
     },
     Return {
         result: Option<Operand>,

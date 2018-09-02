@@ -518,7 +518,7 @@ impl WasmToMachine {
                 let mut args = vec![];
                 assert!(function.get_parameter_types().len() <= self.operand_stack.len());
                 for _ in 0..function.get_parameter_types().len() {
-                    args.push(self.operand_stack.pop().unwrap());
+                    args.push(self.operand_stack.pop().unwrap().get_as_register().unwrap());
                 }
                 args.reverse();
 
@@ -530,9 +530,9 @@ impl WasmToMachine {
                     None
                 } else if function.get_result_types().len() == 1 {
                     let typ = function.get_result_types()[0].clone();
-                    let result_reg = Operand::new_register(Context::create_register(typ));
-                    self.operand_stack.push(result_reg.clone());
-                    Some(result_reg)
+                    let result = Context::create_register(typ);
+                    self.operand_stack.push(Operand::new_register(result));
+                    Some(result)
                 } else {
                     unreachable!()
                 };
