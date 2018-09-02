@@ -268,13 +268,13 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         )
                     }
                     &Opcode::Return {
-                        result: Some(ref result),
+                        result: Some(result),
                     } => {
-                        let vreg = result.get_as_register().unwrap();
-                        let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
-                        let load_instr = self.create_load_instr(basic_block, preg, vreg, function);
+                        let new_result =
+                            *self.physical_result_register.get(result.get_typ()).unwrap();
+                        let load_instr =
+                            self.create_load_instr(basic_block, new_result, result, function);
                         iter.insert_before(load_instr);
-                        let new_result = Operand::new_physical_register(preg);
 
                         (
                             Some(Opcode::Return {

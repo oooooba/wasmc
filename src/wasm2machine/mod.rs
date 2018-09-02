@@ -238,8 +238,7 @@ impl WasmToMachine {
         if result_registers.len() == 0 {
             self.emit_on_current_basic_block(Opcode::Return { result: None });
         } else if result_registers.len() == 1 {
-            let result_register = result_registers[0];
-            let result = Operand::new_register(result_register);
+            let result = result_registers[0];
             self.emit_on_current_basic_block(Opcode::Return {
                 result: Some(result),
             });

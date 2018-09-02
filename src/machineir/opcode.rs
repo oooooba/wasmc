@@ -149,7 +149,7 @@ pub enum Opcode {
         args: Vec<RegisterHandle>,
     },
     Return {
-        result: Option<Operand>,
+        result: Option<RegisterHandle>,
     },
 }
 
