@@ -6,7 +6,7 @@ use context::handle::{
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{
-    BinaryOpKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
+    BinaryOpKind, CastKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode,
 };
 use machineir::operand::{Operand, OperandKind};
 use machineir::region::RegionKind;
@@ -167,25 +167,33 @@ impl WasmToMachine {
     fn emit_cvtop(&mut self, op: &Cvtop, dst_type: &Valtype, _src_type: &Valtype) {
         use self::Cvtop::*;
         let src = self.operand_stack.pop().unwrap();
+        let src = *match src.get_kind() {
+            OperandKind::Register(reg) => reg,
+            _ => unreachable!(),
+        };
         let dst_typ = match dst_type {
             &Valtype::I32 => Type::I32,
             &Valtype::I64 => Type::I64,
         };
         let dst = Operand::new_register(Context::create_register(dst_typ));
         self.operand_stack.push(dst.clone());
+        let dst = *match dst.get_kind() {
+            OperandKind::Register(reg) => reg,
+            _ => unreachable!(),
+        };
         let opcode = match op {
-            &Wrap => Opcode::UnaryOp {
-                kind: UnaryOpKind::Wrap,
+            &Wrap => Opcode::Cast {
+                kind: CastKind::Wrap,
                 dst,
                 src,
             },
-            &ExtendU => Opcode::UnaryOp {
-                kind: UnaryOpKind::ZeroExtension,
+            &ExtendU => Opcode::Cast {
+                kind: CastKind::ZeroExtension,
                 dst,
                 src,
             },
-            &ExtendS => Opcode::UnaryOp {
-                kind: UnaryOpKind::SignExtension,
+            &ExtendS => Opcode::Cast {
+                kind: CastKind::SignExtension,
                 dst,
                 src,
             },
@@ -294,10 +302,10 @@ impl WasmToMachine {
         let src_num_shift = match src_num_shift {
             OpOperandKind::Register(reg) => {
                 let num_shift_reg = Context::create_register(Type::I8);
-                self.emit_on_current_basic_block(Opcode::UnaryOp {
-                    kind: UnaryOpKind::Wrap,
-                    dst: Operand::new_register(num_shift_reg),
-                    src: Operand::new_register(reg),
+                self.emit_on_current_basic_block(Opcode::Cast {
+                    kind: CastKind::Wrap,
+                    dst: num_shift_reg,
+                    src: reg,
                 });
 
                 let canonical_num_shift_reg = Context::create_register(Type::I8);
@@ -466,38 +474,37 @@ impl WasmToMachine {
                 };
 
                 let dst = match attr {
-                    &Loadattr::I32 => Operand::new_register(Context::create_register(Type::I32)),
-                    &Loadattr::I64 => Operand::new_register(Context::create_register(Type::I64)),
-                    &Loadattr::I32x8S | &Loadattr::I32x8U => {
-                        Operand::new_register(Context::create_register(Type::I8))
-                    }
+                    &Loadattr::I32 => Context::create_register(Type::I32),
+                    &Loadattr::I64 => Context::create_register(Type::I64),
+                    &Loadattr::I32x8S | &Loadattr::I32x8U => Context::create_register(Type::I8),
                 };
+                let dst_operand = Operand::new_register(dst);
                 let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
                 self.emit_on_current_basic_block(Opcode::Load {
-                    dst: dst.clone(),
+                    dst: dst_operand.clone(),
                     src_base: Operand::new_register(memory_variable),
                     src_offset: OffsetKind::Register(offset),
                 });
                 let result = match attr {
-                    &Loadattr::I32 => dst,
-                    &Loadattr::I64 => dst,
+                    &Loadattr::I32 => dst_operand,
+                    &Loadattr::I64 => dst_operand,
                     &Loadattr::I32x8S => {
-                        let result = Operand::new_register(Context::create_register(Type::I32));
-                        self.emit_on_current_basic_block(Opcode::UnaryOp {
-                            kind: UnaryOpKind::SignExtension,
-                            dst: result.clone(),
+                        let result = Context::create_register(Type::I32);
+                        self.emit_on_current_basic_block(Opcode::Cast {
+                            kind: CastKind::SignExtension,
+                            dst: result,
                             src: dst,
                         });
-                        result
+                        Operand::new_register(result)
                     }
                     &Loadattr::I32x8U => {
-                        let result = Operand::new_register(Context::create_register(Type::I32));
-                        self.emit_on_current_basic_block(Opcode::UnaryOp {
-                            kind: UnaryOpKind::ZeroExtension,
-                            dst: result.clone(),
+                        let result = Context::create_register(Type::I32);
+                        self.emit_on_current_basic_block(Opcode::Cast {
+                            kind: CastKind::ZeroExtension,
+                            dst: result,
                             src: dst,
                         });
-                        result
+                        Operand::new_register(result)
                     }
                 };
                 self.operand_stack.push(result);

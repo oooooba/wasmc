@@ -58,38 +58,19 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             1,
                         )
                     }
-                    &Opcode::UnaryOp {
-                        ref kind,
-                        ref dst,
-                        ref src,
-                    } => {
-                        let new_src = match src.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg = self.allocate_physical_register(vreg, 0);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, preg, vreg, function);
-                                iter.insert_before(load_instr);
-                                Operand::new_physical_register(preg)
-                            }
-                            &OperandKind::ConstI32(_) => src.clone(),
-                            &OperandKind::ConstI64(_) => src.clone(),
-                            _ => unimplemented!(),
-                        };
+                    &Opcode::Cast { ref kind, dst, src } => {
+                        let new_src = self.allocate_physical_register(src, 0);
+                        let load_instr =
+                            self.create_load_instr(basic_block, new_src, src, function);
+                        iter.insert_before(load_instr);
 
-                        let new_dst = match dst.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg =
-                                    *self.physical_result_register.get(vreg.get_typ()).unwrap();
-                                let store_instr =
-                                    self.create_store_instr(basic_block, vreg, preg, function);
-                                iter.insert_after(store_instr);
-                                Operand::new_physical_register(preg)
-                            }
-                            _ => unimplemented!(),
-                        };
+                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
+                        let store_instr =
+                            self.create_store_instr(basic_block, dst, new_dst, function);
+                        iter.insert_after(store_instr);
 
                         (
-                            Some(Opcode::UnaryOp {
+                            Some(Opcode::Cast {
                                 kind: kind.clone(),
                                 dst: new_dst,
                                 src: new_src,

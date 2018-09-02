@@ -4,7 +4,7 @@ use context::handle::{FunctionHandle, RegisterHandle};
 use machineir::operand::Operand;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum UnaryOpKind {
+pub enum CastKind {
     Wrap,
     ZeroExtension,
     SignExtension,
@@ -104,10 +104,10 @@ pub enum Opcode {
         dst: RegisterHandle,
         src: ConstKind,
     },
-    UnaryOp {
-        kind: UnaryOpKind,
-        dst: Operand,
-        src: Operand,
+    Cast {
+        kind: CastKind,
+        dst: RegisterHandle,
+        src: RegisterHandle,
     },
     BinaryOp {
         kind: BinaryOpKind,
@@ -169,11 +169,8 @@ impl Opcode {
                 print!(" ");
                 src.print();
             }
-            &UnaryOp {
-                ref kind,
-                ref dst,
-                ref src,
-                ..
+            &Cast {
+                ref kind, dst, src, ..
             } => {
                 dst.print();
                 print!(" = ");
@@ -282,7 +279,7 @@ impl fmt::Display for Opcode {
             &Label(ref label) => write!(f, format!(1), "label", label),
             &Copy { .. } => unimplemented!(),
             &Const { .. } => unimplemented!(),
-            &UnaryOp { .. } => unimplemented!(),
+            &Cast { .. } => unimplemented!(),
             &BinaryOp { .. } => unimplemented!(),
             &Load { .. } => unimplemented!(),
             &Store { .. } => unimplemented!(),

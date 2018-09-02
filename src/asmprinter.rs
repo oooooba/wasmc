@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{
-    BinaryOpKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
+    BinaryOpKind, CastKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode,
 };
 use machineir::operand::OperandKind;
 use machineir::typ::Type;
@@ -124,25 +124,21 @@ impl FunctionPass for EmitAssemblyPass {
                             &ConstKind::ConstI64(i) => println!("mov {}, {}", dst_name, i),
                         };
                     }
-                    &UnaryOp {
-                        ref kind,
-                        ref dst,
-                        ref src,
-                        ..
+                    &Cast {
+                        ref kind, dst, src, ..
                     } => {
-                        let dst = dst.get_as_physical_register().unwrap();
                         assert!(dst.is_physical());
+                        assert!(src.is_physical());
                         match kind {
-                            &UnaryOpKind::Wrap => println!("# UnaryOpKind::Wrap"),
-                            &UnaryOpKind::ZeroExtension | &UnaryOpKind::SignExtension => {
+                            &CastKind::Wrap => println!("# UnaryOpKind::Wrap"),
+                            &CastKind::ZeroExtension | &CastKind::SignExtension => {
                                 assert_eq!(dst.get_typ(), &Type::I64);
-                                let src = src.get_as_physical_register().unwrap();
                                 assert_eq!(src.get_typ(), &Type::I32);
                                 match kind {
-                                    &UnaryOpKind::ZeroExtension => {
+                                    &CastKind::ZeroExtension => {
                                         println!("# UnaryOpKind::ZeroExtension")
                                     }
-                                    &UnaryOpKind::SignExtension => println!("cdqe"),
+                                    &CastKind::SignExtension => println!("cdqe"),
                                     _ => panic!(),
                                 }
                             }
