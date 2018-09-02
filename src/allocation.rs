@@ -44,6 +44,20 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             1,
                         )
                     }
+                    &Opcode::Const { dst, ref src } => {
+                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
+                        let store_instr =
+                            self.create_store_instr(basic_block, dst, new_dst, function);
+                        iter.insert_after(store_instr);
+
+                        (
+                            Some(Opcode::Const {
+                                dst: new_dst,
+                                src: src.clone(),
+                            }),
+                            1,
+                        )
+                    }
                     &Opcode::UnaryOp {
                         ref kind,
                         ref dst,

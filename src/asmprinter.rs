@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{
-    BinaryOpKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
+    BinaryOpKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
 };
 use machineir::operand::OperandKind;
 use machineir::typ::Type;
@@ -116,6 +116,14 @@ impl FunctionPass for EmitAssemblyPass {
                         let src_name = self.register_name_map.get(&src).unwrap();
                         println!("mov {}, {}", dst_name, src_name);
                     }
+                    &Const { dst, ref src } => {
+                        let dst_name = self.register_name_map.get(&dst).unwrap();
+                        match src {
+                            &ConstKind::ConstI8(i) => println!("mov {}, {}", dst_name, i),
+                            &ConstKind::ConstI32(i) => println!("mov {}, {}", dst_name, i),
+                            &ConstKind::ConstI64(i) => println!("mov {}, {}", dst_name, i),
+                        };
+                    }
                     &UnaryOp {
                         ref kind,
                         ref dst,
@@ -124,17 +132,7 @@ impl FunctionPass for EmitAssemblyPass {
                     } => {
                         let dst = dst.get_as_physical_register().unwrap();
                         assert!(dst.is_physical());
-                        let dst_name = self.register_name_map.get(&dst).unwrap();
                         match kind {
-                            &UnaryOpKind::Const => match src.get_kind() {
-                                &OperandKind::ConstI32(cst) => {
-                                    println!("mov {}, {}", dst_name, cst)
-                                }
-                                &OperandKind::ConstI64(cst) => {
-                                    println!("mov {}, {}", dst_name, cst)
-                                }
-                                _ => unimplemented!(),
-                            },
                             &UnaryOpKind::Wrap => println!("# UnaryOpKind::Wrap"),
                             &UnaryOpKind::ZeroExtension | &UnaryOpKind::SignExtension => {
                                 assert_eq!(dst.get_typ(), &Type::I64);

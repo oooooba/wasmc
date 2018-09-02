@@ -5,7 +5,6 @@ use machineir::operand::Operand;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum UnaryOpKind {
-    Const,
     Wrap,
     ZeroExtension,
     SignExtension,
@@ -56,6 +55,24 @@ impl OffsetKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ConstKind {
+    ConstI8(u8),
+    ConstI32(u32),
+    ConstI64(u64),
+}
+
+impl ConstKind {
+    fn print(&self) {
+        use self::ConstKind::*;
+        match self {
+            &ConstI8(i) => print!("{}", i),
+            &ConstI32(i) => print!("{}", i),
+            &ConstI64(i) => print!("{}", i),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum OpOperandKind {
     Register(RegisterHandle),
     ImmI8(u8),
@@ -82,6 +99,10 @@ pub enum Opcode {
     Copy {
         dst: RegisterHandle,
         src: RegisterHandle,
+    },
+    Const {
+        dst: RegisterHandle,
+        src: ConstKind,
     },
     UnaryOp {
         kind: UnaryOpKind,
@@ -138,6 +159,13 @@ impl Opcode {
                 dst.print();
                 print!(" = ");
                 print!("copy");
+                print!(" ");
+                src.print();
+            }
+            &Const { dst, ref src, .. } => {
+                dst.print();
+                print!(" = ");
+                print!("const");
                 print!(" ");
                 src.print();
             }
@@ -253,6 +281,7 @@ impl fmt::Display for Opcode {
             &Debug(ref msg) => write!(f, format!(1), "debug", msg),
             &Label(ref label) => write!(f, format!(1), "label", label),
             &Copy { .. } => unimplemented!(),
+            &Const { .. } => unimplemented!(),
             &UnaryOp { .. } => unimplemented!(),
             &BinaryOp { .. } => unimplemented!(),
             &Load { .. } => unimplemented!(),

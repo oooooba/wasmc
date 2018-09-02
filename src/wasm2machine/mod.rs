@@ -6,7 +6,7 @@ use context::handle::{
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{
-    BinaryOpKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
+    BinaryOpKind, ConstKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode, UnaryOpKind,
 };
 use machineir::operand::{Operand, OperandKind};
 use machineir::region::RegionKind;
@@ -326,16 +326,12 @@ impl WasmToMachine {
         match wasm_instr {
             &WasmInstr::Const(ref cst) => {
                 let (typ, src) = match cst {
-                    &Const::I32(i) => (Type::I32, Operand::new_const_i32(i)),
-                    &Const::I64(i) => (Type::I64, Operand::new_const_i64(i)),
+                    &Const::I32(i) => (Type::I32, ConstKind::ConstI32(i)),
+                    &Const::I64(i) => (Type::I64, ConstKind::ConstI64(i)),
                 };
-                let dst = Operand::new_register(Context::create_register(typ));
-                self.operand_stack.push(dst.clone());
-                self.emit_on_current_basic_block(Opcode::UnaryOp {
-                    kind: UnaryOpKind::Const,
-                    dst,
-                    src,
-                });
+                let dst = Context::create_register(typ);
+                self.operand_stack.push(Operand::new_register(dst));
+                self.emit_on_current_basic_block(Opcode::Const { dst, src });
             }
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
             &WasmInstr::Itestop(_) => unimplemented!(),
