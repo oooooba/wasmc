@@ -174,6 +174,7 @@ impl FunctionPass for EmitAssemblyPass {
                             &OpOperandKind::Register(src2) => {
                                 self.emit_binop_reg_reg(op, dst, src2)
                             }
+                            &OpOperandKind::ImmI8(imm) => self.emit_binop_reg_imm8(op, dst, imm),
                             &OpOperandKind::ImmI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
                             &OpOperandKind::ImmI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
                         }
@@ -325,6 +326,15 @@ impl EmitAssemblyPass {
             op,
             self.register_name_map.get(&dst).unwrap(),
             self.register_name_map.get(&src).unwrap()
+        );
+    }
+
+    fn emit_binop_reg_imm8(&mut self, op: &'static str, target: RegisterHandle, imm: u8) {
+        println!(
+            "{} {}, {}",
+            op,
+            self.register_name_map.get(&target).unwrap(),
+            imm
         );
     }
 

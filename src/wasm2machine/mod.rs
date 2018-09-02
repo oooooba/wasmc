@@ -293,30 +293,25 @@ impl WasmToMachine {
 
         let src_num_shift = match src_num_shift {
             OpOperandKind::Register(reg) => {
-                let num_shift_reg = if reg.get_typ() == &Type::I64 {
-                    let num_shift_reg = Context::create_register(Type::I32);
-                    self.emit_on_current_basic_block(Opcode::UnaryOp {
-                        kind: UnaryOpKind::Wrap,
-                        dst: Operand::new_register(num_shift_reg),
-                        src: Operand::new_register(reg),
-                    });
-                    num_shift_reg
-                } else {
-                    assert_eq!(reg.get_typ(), &Type::I32);
-                    reg
-                };
+                let num_shift_reg = Context::create_register(Type::I8);
+                self.emit_on_current_basic_block(Opcode::UnaryOp {
+                    kind: UnaryOpKind::Wrap,
+                    dst: Operand::new_register(num_shift_reg),
+                    src: Operand::new_register(reg),
+                });
 
-                let canonical_num_shift_reg = Context::create_register(Type::I32);
+                let canonical_num_shift_reg = Context::create_register(Type::I8);
                 self.emit_on_current_basic_block(Opcode::BinaryOp {
                     kind: BinaryOpKind::And,
                     dst: canonical_num_shift_reg,
                     src1: num_shift_reg,
-                    src2: OpOperandKind::ImmI32(num_shift_limit as u32 - 1),
+                    src2: OpOperandKind::ImmI8(num_shift_limit as u8 - 1),
                 });
                 OpOperandKind::Register(canonical_num_shift_reg)
             }
-            OpOperandKind::ImmI32(n) => OpOperandKind::ImmI32(n as u32 % 32),
-            OpOperandKind::ImmI64(n) => OpOperandKind::ImmI32(n as u32 % 64),
+            OpOperandKind::ImmI8(n) => OpOperandKind::ImmI8(n as u8 % num_shift_limit as u8),
+            OpOperandKind::ImmI32(n) => OpOperandKind::ImmI8(n as u8 % num_shift_limit as u8),
+            OpOperandKind::ImmI64(n) => OpOperandKind::ImmI8(n as u8 % num_shift_limit as u8),
         };
 
         Opcode::BinaryOp {

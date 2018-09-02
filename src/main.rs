@@ -82,7 +82,11 @@ impl MainPass {
         reg_rsp.set_physical();
 
         let registers = vec![
-            HashMap::from_iter(vec![(Type::I32, reg_eax), (Type::I64, reg_rax)]),
+            HashMap::from_iter(vec![
+                (Type::I8, reg_al),
+                (Type::I32, reg_eax),
+                (Type::I64, reg_rax),
+            ]),
             HashMap::from_iter(vec![(Type::I32, reg_ebx), (Type::I64, reg_rbx)]),
             HashMap::from_iter(vec![(Type::I8, reg_cl)]),
         ];

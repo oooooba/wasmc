@@ -58,6 +58,7 @@ impl OffsetKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum OpOperandKind {
     Register(RegisterHandle),
+    ImmI8(u8),
     ImmI32(u32),
     ImmI64(u64),
 }
@@ -67,6 +68,7 @@ impl OpOperandKind {
         use self::OpOperandKind::*;
         match self {
             &Register(reg) => reg.print(),
+            &ImmI8(n) => print!("{}", n),
             &ImmI32(n) => print!("{}", n),
             &ImmI64(n) => print!("{}", n),
         }

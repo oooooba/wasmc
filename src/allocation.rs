@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
-use machineir::opcode::{JumpCondKind, OffsetKind, OpOperandKind, Opcode};
+use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode};
 use machineir::operand::{Operand, OperandKind};
 use machineir::typ::Type;
 use pass::FunctionPass;
@@ -96,12 +96,19 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_src2 = match src2 {
                             &OpOperandKind::Register(vreg) => {
-                                let preg = self.allocate_physical_register(vreg, 1);
+                                let index = match kind {
+                                    &BinaryOpKind::Shl
+                                    | &BinaryOpKind::Shr
+                                    | &BinaryOpKind::Sar => 2,
+                                    _ => 1,
+                                };
+                                let preg = self.allocate_physical_register(vreg, index);
                                 let load_instr =
                                     self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
                                 OpOperandKind::Register(preg)
                             }
+                            &OpOperandKind::ImmI8(_) => src2.clone(),
                             &OpOperandKind::ImmI32(_) => src2.clone(),
                             &OpOperandKind::ImmI64(_) => src2.clone(),
                         };
