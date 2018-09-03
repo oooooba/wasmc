@@ -422,35 +422,32 @@ impl WasmToMachine {
                 self.operand_stack.push(dst_reg);
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src_base: src_base,
+                    src_base,
                     src_offset: OffsetKind::None,
                 });
             }
             &WasmInstr::SetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let var = self.local_variables[index];
-                let src_reg = self.operand_stack.pop().unwrap();
-                let typ = src_reg.get_as_register().unwrap().get_typ().clone();
-                assert_eq!(&typ, var.get_typ());
-                let dst_mem = Operand::new_register(var);
+                let dst_base = self.local_variables[index];
+                let src = self.operand_stack.pop().unwrap().get_as_register().unwrap();
+                assert_eq!(src.get_typ(), dst_base.get_typ());
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst_base: dst_mem,
+                    dst_base,
                     dst_offset: OffsetKind::None,
-                    src: src_reg,
+                    src,
                 });
             }
             &WasmInstr::TeeLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let var = self.local_variables[index];
+                let dst_base = self.local_variables[index];
                 let src_reg = self.operand_stack.pop().unwrap();
-                let typ = src_reg.get_as_register().unwrap().get_typ().clone();
-                assert_eq!(&typ, var.get_typ());
-                let dst_mem = Operand::new_register(var);
-                self.operand_stack.push(src_reg.clone());
+                let src = src_reg.get_as_register().unwrap();
+                assert_eq!(src.get_typ(), dst_base.get_typ());
+                self.operand_stack.push(Operand::new_register(src));
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst_base: dst_mem,
+                    dst_base,
                     dst_offset: OffsetKind::None,
-                    src: src_reg,
+                    src,
                 });
             }
             &WasmInstr::GetGlobal(..) => unimplemented!(),

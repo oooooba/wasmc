@@ -1,7 +1,6 @@
 use std::fmt;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, RegisterHandle};
-use machineir::operand::Operand;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CastKind {
@@ -135,9 +134,9 @@ pub enum Opcode {
         src_offset: OffsetKind,
     },
     Store {
-        dst_base: Operand,
+        dst_base: RegisterHandle,
         dst_offset: OffsetKind,
-        src: Operand,
+        src: RegisterHandle,
     },
     Jump {
         kind: JumpCondKind,

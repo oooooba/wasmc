@@ -6,7 +6,6 @@ use machineir::opcode::{
     BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, OpOperandKind,
     Opcode,
 };
-use machineir::operand::OperandKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
@@ -207,34 +206,35 @@ impl FunctionPass for EmitAssemblyPass {
                         }
                     }
                     &Store {
-                        ref dst_base,
+                        dst_base,
                         ref dst_offset,
-                        ref src,
+                        src,
                     } => {
-                        let src = src.get_as_physical_register().unwrap();
                         assert!(src.is_physical());
                         let src_name = self.register_name_map.get(&src).unwrap();
-
-                        match dst_base.get_kind() {
-                            &OperandKind::Register(vreg) => {
+                        let ptr_notation = dst_base.get_typ().get_ptr_notation();
+                        match dst_offset {
+                            &OffsetKind::None => {
+                                assert!(!dst_base.is_physical());
                                 let region = function.get_local_region();
-                                let dst_offset = match dst_offset {
-                                    &OffsetKind::None => {
-                                        region.get_offset_map().get(&vreg).unwrap()
-                                    }
-                                    &OffsetKind::Register(_) => unimplemented!(),
-                                };
-                                let ptr_notation = vreg.get_typ().get_ptr_notation();
+                                let offset = *region.get_offset_map().get(&dst_base).unwrap();
                                 let bpr_name = self
                                     .register_name_map
                                     .get(&self.base_pointer_register)
                                     .unwrap();
                                 println!(
                                     "mov {} ptr [{} - {}], {}",
-                                    ptr_notation, bpr_name, dst_offset, src_name
+                                    ptr_notation, bpr_name, offset, src_name
                                 );
                             }
-                            _ => unimplemented!(),
+                            &OffsetKind::Register(offset) => {
+                                assert!(dst_base.is_physical());
+                                assert!(offset.is_physical());
+                                println!(
+                                    "mov {} ptr [{} + {}], {}",
+                                    ptr_notation, dst_base, offset, src_name
+                                );
+                            }
                         }
                     }
                     &Jump {

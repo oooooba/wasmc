@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode};
-use machineir::operand::{Operand, OperandKind};
 use machineir::typ::Type;
 use pass::FunctionPass;
 
@@ -164,26 +163,40 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         )
                     }
                     &Opcode::Store {
-                        ref dst_base,
+                        dst_base,
                         ref dst_offset,
-                        ref src,
+                        src,
                     } => {
-                        let new_src = match src.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg = self.allocate_physical_register(vreg, 0);
+                        let new_src = self.allocate_physical_register(src, 0);
+                        let load_instr =
+                            self.create_load_instr(basic_block, new_src, src, function);
+                        iter.insert_before(load_instr);
+
+                        let (new_dst_base, new_dst_offset) = match dst_offset {
+                            &OffsetKind::None => (dst_base, OffsetKind::None),
+                            &OffsetKind::Register(vreg) => {
+                                let new_dst_base = self.allocate_physical_register(dst_base, 1);
+                                let load_instr = self.create_load_instr(
+                                    basic_block,
+                                    new_dst_base,
+                                    dst_base,
+                                    function,
+                                );
+                                iter.insert_before(load_instr);
+
+                                let preg = self.allocate_physical_register(vreg, 2);
                                 let load_instr =
                                     self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
-                                Operand::new_physical_register(preg)
+
+                                (new_dst_base, OffsetKind::Register(preg))
                             }
-                            &OperandKind::ConstI32(_) => src.clone(),
-                            _ => unimplemented!(),
                         };
 
                         (
                             Some(Opcode::Store {
-                                dst_base: dst_base.clone(),
-                                dst_offset: dst_offset.clone(),
+                                dst_base: new_dst_base,
+                                dst_offset: new_dst_offset,
                                 src: new_src,
                             }),
                             0,
@@ -373,9 +386,9 @@ impl SimpleRegisterAllocationPass {
         self.allocate_memory_for_virtual_register(vreg, function);
         Context::create_instr(
             Opcode::Store {
-                dst_base: Operand::new_register(vreg),
+                dst_base: vreg,
                 dst_offset: OffsetKind::None,
-                src: Operand::new_physical_register(preg),
+                src: preg,
             },
             basic_block,
         )
