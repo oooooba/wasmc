@@ -130,8 +130,8 @@ pub enum Opcode {
         src2: OpOperandKind,
     },
     Load {
-        dst: Operand,
-        src_base: Operand,
+        dst: RegisterHandle,
+        src_base: RegisterHandle,
         src_offset: OffsetKind,
     },
     Store {

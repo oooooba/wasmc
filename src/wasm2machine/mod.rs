@@ -416,14 +416,13 @@ impl WasmToMachine {
             }
             &WasmInstr::GetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let var = self.local_variables[index];
-                let dst_reg =
-                    Operand::new_register(Context::create_register(var.get_typ().clone()));
-                let src_mem = Operand::new_register(var);
-                self.operand_stack.push(dst_reg.clone());
+                let src_base = self.local_variables[index];
+                let dst = Context::create_register(src_base.get_typ().clone());
+                let dst_reg = Operand::new_register(dst);
+                self.operand_stack.push(dst_reg);
                 self.emit_on_current_basic_block(Opcode::Load {
-                    dst: dst_reg,
-                    src_base: src_mem,
+                    dst,
+                    src_base: src_base,
                     src_offset: OffsetKind::None,
                 });
             }
@@ -478,16 +477,15 @@ impl WasmToMachine {
                     &Loadattr::I64 => Context::create_register(Type::I64),
                     &Loadattr::I32x8S | &Loadattr::I32x8U => Context::create_register(Type::I8),
                 };
-                let dst_operand = Operand::new_register(dst);
                 let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
                 self.emit_on_current_basic_block(Opcode::Load {
-                    dst: dst_operand.clone(),
-                    src_base: Operand::new_register(memory_variable),
+                    dst,
+                    src_base: memory_variable,
                     src_offset: OffsetKind::Register(offset),
                 });
                 let result = match attr {
-                    &Loadattr::I32 => dst_operand,
-                    &Loadattr::I64 => dst_operand,
+                    &Loadattr::I32 => dst,
+                    &Loadattr::I64 => dst,
                     &Loadattr::I32x8S => {
                         let result = Context::create_register(Type::I32);
                         self.emit_on_current_basic_block(Opcode::Cast {
@@ -495,7 +493,7 @@ impl WasmToMachine {
                             dst: result,
                             src: dst,
                         });
-                        Operand::new_register(result)
+                        result
                     }
                     &Loadattr::I32x8U => {
                         let result = Context::create_register(Type::I32);
@@ -504,10 +502,10 @@ impl WasmToMachine {
                             dst: result,
                             src: dst,
                         });
-                        Operand::new_register(result)
+                        result
                     }
                 };
-                self.operand_stack.push(result);
+                self.operand_stack.push(Operand::new_register(result));
             }
             &WasmInstr::Store { .. } => unimplemented!(),
             &WasmInstr::Call(ref funcidx) => {

@@ -175,34 +175,35 @@ impl FunctionPass for EmitAssemblyPass {
                         }
                     }
                     &Load {
-                        ref dst,
-                        ref src_base,
+                        dst,
+                        src_base,
                         ref src_offset,
                     } => {
-                        let dst = dst.get_as_physical_register().unwrap();
                         assert!(dst.is_physical());
                         let dst_name = self.register_name_map.get(&dst).unwrap();
-
-                        match src_base.get_kind() {
-                            &OperandKind::Register(vreg) => {
+                        let ptr_notation = src_base.get_typ().get_ptr_notation();
+                        match src_offset {
+                            &OffsetKind::None => {
+                                assert!(!src_base.is_physical());
                                 let region = function.get_local_region();
-                                let src_offset = match src_offset {
-                                    &OffsetKind::None => {
-                                        region.get_offset_map().get(&vreg).unwrap()
-                                    }
-                                    &OffsetKind::Register(_) => unimplemented!(),
-                                };
-                                let ptr_notation = vreg.get_typ().get_ptr_notation();
+                                let offset = *region.get_offset_map().get(&src_base).unwrap();
                                 let bpr_name = self
                                     .register_name_map
                                     .get(&self.base_pointer_register)
                                     .unwrap();
                                 println!(
                                     "mov {}, {} ptr [{} - {}]",
-                                    dst_name, ptr_notation, bpr_name, src_offset
+                                    dst_name, ptr_notation, bpr_name, offset
                                 );
                             }
-                            _ => unimplemented!(),
+                            &OffsetKind::Register(offset) => {
+                                assert!(src_base.is_physical());
+                                assert!(offset.is_physical());
+                                println!(
+                                    "mov {}, {} ptr [{} + {}]",
+                                    dst_name, ptr_notation, src_base, offset
+                                );
+                            }
                         }
                     }
                     &Store {

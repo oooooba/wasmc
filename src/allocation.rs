@@ -124,27 +124,41 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         )
                     }
                     &Opcode::Load {
-                        ref dst,
-                        ref src_base,
+                        dst,
+                        src_base,
                         ref src_offset,
                     } => {
-                        let new_dst = match dst.get_kind() {
-                            &OperandKind::Register(vreg) => {
-                                let preg =
-                                    *self.physical_result_register.get(vreg.get_typ()).unwrap();
-                                let store_instr =
-                                    self.create_store_instr(basic_block, vreg, preg, function);
-                                iter.insert_after(store_instr);
-                                Operand::new_physical_register(preg)
+                        let (new_src_base, new_src_offset) = match src_offset {
+                            &OffsetKind::None => (src_base, OffsetKind::None),
+                            &OffsetKind::Register(vreg) => {
+                                let new_src_base = self.allocate_physical_register(src_base, 0);
+                                let load_instr = self.create_load_instr(
+                                    basic_block,
+                                    new_src_base,
+                                    src_base,
+                                    function,
+                                );
+                                iter.insert_before(load_instr);
+
+                                let preg = self.allocate_physical_register(vreg, 1);
+                                let load_instr =
+                                    self.create_load_instr(basic_block, preg, vreg, function);
+                                iter.insert_before(load_instr);
+
+                                (new_src_base, OffsetKind::Register(preg))
                             }
-                            _ => unimplemented!(),
                         };
+
+                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
+                        let store_instr =
+                            self.create_store_instr(basic_block, dst, new_dst, function);
+                        iter.insert_after(store_instr);
 
                         (
                             Some(Opcode::Load {
                                 dst: new_dst,
-                                src_base: src_base.clone(),
-                                src_offset: src_offset.clone(),
+                                src_base: new_src_base,
+                                src_offset: new_src_offset,
                             }),
                             1,
                         )
@@ -337,8 +351,8 @@ impl SimpleRegisterAllocationPass {
         self.allocate_memory_for_virtual_register(vreg, function);
         Context::create_instr(
             Opcode::Load {
-                dst: Operand::new_physical_register(preg),
-                src_base: Operand::new_register(vreg),
+                dst: preg,
+                src_base: vreg,
                 src_offset: OffsetKind::None,
             },
             basic_block,
