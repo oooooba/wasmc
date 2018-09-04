@@ -6,8 +6,8 @@ use context::handle::{
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{
-    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, OpOperandKind,
-    Opcode,
+    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, Opcode,
+    OperandKind,
 };
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -145,7 +145,7 @@ impl WasmToMachine {
 
         let rhs = self.operand_stack.pop().unwrap();
         let src2 = match rhs {
-            StackElem::Value(reg) => OpOperandKind::Register(reg),
+            StackElem::Value(reg) => OperandKind::Register(reg),
             StackElem::Label(_) => unreachable!(),
         };
 
@@ -332,14 +332,14 @@ impl WasmToMachine {
         op: BinaryOpKind,
         dst: RegisterHandle,
         src_target: RegisterHandle,
-        src_num_shift: OpOperandKind,
+        src_num_shift: OperandKind,
         num_shift_limit: usize,
     ) -> Opcode {
         assert!(op == BinaryOpKind::Shl || op == BinaryOpKind::Shr || op == BinaryOpKind::Sar);
         assert!(num_shift_limit == 32 || num_shift_limit == 64);
 
         let src_num_shift = match src_num_shift {
-            OpOperandKind::Register(reg) => {
+            OperandKind::Register(reg) => {
                 let num_shift_reg = Context::create_register(Type::I8);
                 self.emit_on_current_basic_block(Opcode::Cast {
                     kind: CastKind::Wrap,
@@ -352,13 +352,13 @@ impl WasmToMachine {
                     kind: BinaryOpKind::And,
                     dst: canonical_num_shift_reg,
                     src1: num_shift_reg,
-                    src2: OpOperandKind::ImmI8(num_shift_limit as u8 - 1),
+                    src2: OperandKind::ImmI8(num_shift_limit as u8 - 1),
                 });
-                OpOperandKind::Register(canonical_num_shift_reg)
+                OperandKind::Register(canonical_num_shift_reg)
             }
-            OpOperandKind::ImmI8(n) => OpOperandKind::ImmI8(n as u8 % num_shift_limit as u8),
-            OpOperandKind::ImmI32(n) => OpOperandKind::ImmI8(n as u8 % num_shift_limit as u8),
-            OpOperandKind::ImmI64(n) => OpOperandKind::ImmI8(n as u8 % num_shift_limit as u8),
+            OperandKind::ImmI8(n) => OperandKind::ImmI8(n as u8 % num_shift_limit as u8),
+            OperandKind::ImmI32(n) => OperandKind::ImmI8(n as u8 % num_shift_limit as u8),
+            OperandKind::ImmI64(n) => OperandKind::ImmI8(n as u8 % num_shift_limit as u8),
         };
 
         Opcode::BinaryOp {
@@ -506,7 +506,7 @@ impl WasmToMachine {
                         kind: BinaryOpKind::Add,
                         dst: offset,
                         src1: base,
-                        src2: OpOperandKind::ImmI32(arg.get_offset() as u32),
+                        src2: OperandKind::ImmI32(arg.get_offset() as u32),
                     });
                     offset
                 };

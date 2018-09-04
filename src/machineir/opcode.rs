@@ -86,16 +86,16 @@ impl ConstKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum OpOperandKind {
+pub enum OperandKind {
     Register(RegisterHandle),
     ImmI8(u8),
     ImmI32(u32),
     ImmI64(u64),
 }
 
-impl OpOperandKind {
+impl OperandKind {
     fn print(&self) {
-        use self::OpOperandKind::*;
+        use self::OperandKind::*;
         match self {
             &Register(reg) => reg.print(),
             &ImmI8(n) => print!("{}", n),
@@ -126,7 +126,7 @@ pub enum Opcode {
         kind: BinaryOpKind,
         dst: RegisterHandle,
         src1: RegisterHandle,
-        src2: OpOperandKind,
+        src2: OperandKind,
     },
     Load {
         dst: RegisterHandle,

@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{
-    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, OpOperandKind,
-    Opcode,
+    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, Opcode,
+    OperandKind,
 };
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
@@ -165,12 +165,10 @@ impl FunctionPass for EmitAssemblyPass {
                             &BinaryOpKind::Xor => "xor",
                         };
                         match src2 {
-                            &OpOperandKind::Register(src2) => {
-                                self.emit_binop_reg_reg(op, dst, src2)
-                            }
-                            &OpOperandKind::ImmI8(imm) => self.emit_binop_reg_imm8(op, dst, imm),
-                            &OpOperandKind::ImmI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
-                            &OpOperandKind::ImmI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
+                            &OperandKind::Register(src2) => self.emit_binop_reg_reg(op, dst, src2),
+                            &OperandKind::ImmI8(imm) => self.emit_binop_reg_imm8(op, dst, imm),
+                            &OperandKind::ImmI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
+                            &OperandKind::ImmI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
                         }
                     }
                     &Load {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
-use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, OpOperandKind, Opcode};
+use machineir::opcode::{BinaryOpKind, JumpCondKind, OffsetKind, Opcode, OperandKind};
 use machineir::typ::Type;
 use pass::FunctionPass;
 
@@ -89,7 +89,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         iter.insert_before(load_instr);
 
                         let new_src2 = match src2 {
-                            &OpOperandKind::Register(vreg) => {
+                            &OperandKind::Register(vreg) => {
                                 let index = match kind {
                                     &BinaryOpKind::Shl
                                     | &BinaryOpKind::Shr
@@ -100,11 +100,11 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 let load_instr =
                                     self.create_load_instr(basic_block, preg, vreg, function);
                                 iter.insert_before(load_instr);
-                                OpOperandKind::Register(preg)
+                                OperandKind::Register(preg)
                             }
-                            &OpOperandKind::ImmI8(_) => src2.clone(),
-                            &OpOperandKind::ImmI32(_) => src2.clone(),
-                            &OpOperandKind::ImmI64(_) => src2.clone(),
+                            &OperandKind::ImmI8(_) => src2.clone(),
+                            &OperandKind::ImmI32(_) => src2.clone(),
+                            &OperandKind::ImmI64(_) => src2.clone(),
                         };
 
                         let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
