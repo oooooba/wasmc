@@ -9,7 +9,6 @@ use machineir::opcode::{
     BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, OpOperandKind,
     Opcode,
 };
-use machineir::operand::{Operand, OperandKind};
 use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
@@ -18,20 +17,34 @@ use wasmir::types::{Functype, Resulttype, Valtype};
 use wasmir::{Importdesc, Typeidx};
 
 #[derive(Debug)]
+enum StackElem {
+    Value(RegisterHandle),
+    Label(BasicBlockHandle),
+}
+
+#[derive(Debug)]
 struct OperandStack {
-    stack: Vec<Operand>,
+    stack: Vec<StackElem>,
 }
 
 impl OperandStack {
-    pub fn new() -> OperandStack {
+    fn new() -> OperandStack {
         OperandStack { stack: vec![] }
     }
 
-    fn push(&mut self, operand: Operand) {
+    fn push(&mut self, operand: StackElem) {
         self.stack.push(operand)
     }
 
-    fn pop(&mut self) -> Option<Operand> {
+    fn push_value(&mut self, value: RegisterHandle) {
+        self.push(StackElem::Value(value))
+    }
+
+    fn push_label(&mut self, label: BasicBlockHandle) {
+        self.push(StackElem::Label(label))
+    }
+
+    fn pop(&mut self) -> Option<StackElem> {
         self.stack.pop()
     }
 
@@ -41,6 +54,37 @@ impl OperandStack {
 
     fn is_empty(&self) -> bool {
         self.stack.is_empty()
+    }
+
+    fn remove_label(&mut self, basic_block: BasicBlockHandle) -> bool {
+        let mut tmp_stack = OperandStack::new();
+        let mut is_valid = false;
+        while let Some(operand) = self.stack.pop() {
+            match operand {
+                StackElem::Label(bb) if bb == basic_block => {
+                    is_valid = true;
+                    break;
+                }
+                operand => tmp_stack.push(operand),
+            }
+        }
+        while let Some(operand) = tmp_stack.pop() {
+            self.push(operand);
+        }
+        is_valid
+    }
+
+    fn get_label_at(&mut self, index: usize) -> Option<BasicBlockHandle> {
+        let mut num_labels = 0;
+        for operand in self.stack.iter().rev() {
+            if let &StackElem::Label(bb) = operand {
+                num_labels += 1;
+                if index + 1 == num_labels {
+                    return Some(bb);
+                }
+            }
+        }
+        None
     }
 }
 
@@ -91,29 +135,27 @@ impl WasmToMachine {
 
     fn emit_binop(&mut self, op: &Ibinop) {
         use self::Ibinop::*;
+
         let typ = match op {
             &Add32 | &Sub32 | &Mul32 | &DivU32 | &And32 | &Or32 | &Xor32 | &Shl32 | &ShrS32
             | &ShrU32 => Type::I32,
             &Mul64 | &ShrU64 => Type::I64,
         };
-        let register = Operand::new_register(Context::create_register(typ));
-        let dst = match register.get_kind() {
-            &OperandKind::Register(reg) => reg,
-            _ => unreachable!(),
-        };
+        let dst = Context::create_register(typ);
+
         let rhs = self.operand_stack.pop().unwrap();
-        let src2 = match rhs.get_kind() {
-            &OperandKind::Register(reg) => OpOperandKind::Register(reg),
-            &OperandKind::ConstI32(n) => OpOperandKind::ImmI32(n),
-            &OperandKind::ConstI64(n) => OpOperandKind::ImmI64(n),
-            _ => unreachable!(),
+        let src2 = match rhs {
+            StackElem::Value(reg) => OpOperandKind::Register(reg),
+            StackElem::Label(_) => unreachable!(),
         };
+
         let lhs = self.operand_stack.pop().unwrap();
-        let src1 = match lhs.get_kind() {
-            &OperandKind::Register(reg) => reg,
-            _ => unreachable!(),
+        let src1 = match lhs {
+            StackElem::Value(reg) => reg,
+            StackElem::Label(_) => unreachable!(),
         };
-        self.operand_stack.push(register);
+
+        self.operand_stack.push_value(dst);
         let opcode = match op {
             &Add32 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Add,
@@ -167,21 +209,19 @@ impl WasmToMachine {
 
     fn emit_cvtop(&mut self, op: &Cvtop, dst_type: &Valtype, _src_type: &Valtype) {
         use self::Cvtop::*;
-        let src = self.operand_stack.pop().unwrap();
-        let src = *match src.get_kind() {
-            OperandKind::Register(reg) => reg,
-            _ => unreachable!(),
+
+        let src = match self.operand_stack.pop().unwrap() {
+            StackElem::Value(reg) => reg,
+            StackElem::Label(_) => unreachable!(),
         };
+
         let dst_typ = match dst_type {
             &Valtype::I32 => Type::I32,
             &Valtype::I64 => Type::I64,
         };
-        let dst = Operand::new_register(Context::create_register(dst_typ));
-        self.operand_stack.push(dst.clone());
-        let dst = *match dst.get_kind() {
-            OperandKind::Register(reg) => reg,
-            _ => unreachable!(),
-        };
+        let dst = Context::create_register(dst_typ);
+
+        self.operand_stack.push_value(dst);
         let opcode = match op {
             &Wrap => Opcode::Cast {
                 kind: CastKind::Wrap,
@@ -255,8 +295,7 @@ impl WasmToMachine {
         self.basic_block_to_continuation
             .insert(expr_block, (cont_block, result_registers));
         self.switch_current_basic_block_to(expr_block);
-        self.operand_stack
-            .push(Operand::new_label(self.current_basic_block));
+        self.operand_stack.push_label(self.current_basic_block);
         self.emit_instrs(instrs);
     }
 
@@ -269,7 +308,7 @@ impl WasmToMachine {
         replaces_registers: bool,
     ) {
         if removes_label {
-            self.remove_label(entering_block);
+            self.operand_stack.remove_label(entering_block);
         }
         let (cont_block, result_registers) = self
             .basic_block_to_continuation
@@ -338,7 +377,7 @@ impl WasmToMachine {
                     &Const::I64(i) => (Type::I64, ConstKind::ConstI64(i)),
                 };
                 let dst = Context::create_register(typ);
-                self.operand_stack.push(Operand::new_register(dst));
+                self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Const { dst, src });
             }
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
@@ -381,12 +420,12 @@ impl WasmToMachine {
                     kind: opcode::JumpCondKind::Unconditional,
                     target: JumpTargetKind::BasicBlock(body_block),
                 });
-                self.remove_label(body_block);
+                self.operand_stack.remove_label(body_block);
 
                 self.switch_current_basic_block_to(exit_block);
             }
             &WasmInstr::Br(index) => {
-                let entering_block = self.get_label_at(index.as_index());
+                let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
                 self.emit_exiting_block(
                     entering_block,
                     JumpCondKind::Unconditional,
@@ -418,8 +457,7 @@ impl WasmToMachine {
                 let index = localidx.as_index();
                 let src_base = self.local_variables[index];
                 let dst = Context::create_register(src_base.get_typ().clone());
-                let dst_reg = Operand::new_register(dst);
-                self.operand_stack.push(dst_reg);
+                self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
                     src_base,
@@ -429,7 +467,10 @@ impl WasmToMachine {
             &WasmInstr::SetLocal(ref localidx) => {
                 let index = localidx.as_index();
                 let dst_base = self.local_variables[index];
-                let src = self.operand_stack.pop().unwrap().get_as_register().unwrap();
+                let src = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
                 assert_eq!(src.get_typ(), dst_base.get_typ());
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst_base,
@@ -440,10 +481,12 @@ impl WasmToMachine {
             &WasmInstr::TeeLocal(ref localidx) => {
                 let index = localidx.as_index();
                 let dst_base = self.local_variables[index];
-                let src_reg = self.operand_stack.pop().unwrap();
-                let src = src_reg.get_as_register().unwrap();
+                let src = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
                 assert_eq!(src.get_typ(), dst_base.get_typ());
-                self.operand_stack.push(Operand::new_register(src));
+                self.operand_stack.push_value(src);
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst_base,
                     dst_offset: OffsetKind::None,
@@ -455,10 +498,9 @@ impl WasmToMachine {
             &WasmInstr::Load { ref attr, ref arg } => {
                 let offset = {
                     let offset = Context::create_register(Type::I32);
-                    let base = self.operand_stack.pop().unwrap();
-                    let base = match base.get_kind() {
-                        &OperandKind::Register(reg) => reg,
-                        _ => unreachable!(),
+                    let base = match self.operand_stack.pop().unwrap() {
+                        StackElem::Value(reg) => reg,
+                        StackElem::Label(_) => unreachable!(),
                     };
                     self.emit_on_current_basic_block(Opcode::BinaryOp {
                         kind: BinaryOpKind::Add,
@@ -502,7 +544,7 @@ impl WasmToMachine {
                         result
                     }
                 };
-                self.operand_stack.push(Operand::new_register(result));
+                self.operand_stack.push_value(result);
             }
             &WasmInstr::Store { .. } => unimplemented!(),
             &WasmInstr::Call(ref funcidx) => {
@@ -512,7 +554,10 @@ impl WasmToMachine {
                 let mut args = vec![];
                 assert!(function.get_parameter_types().len() <= self.operand_stack.len());
                 for _ in 0..function.get_parameter_types().len() {
-                    args.push(self.operand_stack.pop().unwrap().get_as_register().unwrap());
+                    match self.operand_stack.pop().unwrap() {
+                        StackElem::Value(reg) => args.push(reg),
+                        StackElem::Label(_) => unreachable!(),
+                    }
                 }
                 args.reverse();
 
@@ -525,7 +570,7 @@ impl WasmToMachine {
                 } else if function.get_result_types().len() == 1 {
                     let typ = function.get_result_types()[0].clone();
                     let result = Context::create_register(typ);
-                    self.operand_stack.push(Operand::new_register(result));
+                    self.operand_stack.push_value(result);
                     Some(result)
                 } else {
                     unreachable!()
@@ -552,8 +597,10 @@ impl WasmToMachine {
                 &WasmInstr::Itestop(ref op),
                 &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs),
             ) => {
-                let operand = self.operand_stack.pop().unwrap();
-                let reg = operand.get_as_register().unwrap();
+                let reg = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
                 let cond_kind = match op {
                     &Itestop::Eqz32 => JumpCondKind::Neq0(reg),
                 };
@@ -564,29 +611,32 @@ impl WasmToMachine {
                 let jump_cond_kind = match op {
                     &Itestop::Eqz32 => JumpCondKind::Eq0(cond_reg),
                 };
-                let entering_block = self.get_label_at(index.as_index());
+                let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
                 self.emit_exiting_block(entering_block, jump_cond_kind, false, true, false);
 
                 let new_block = Context::create_basic_block();
                 self.switch_current_basic_block_to(new_block);
             }
             (&WasmInstr::Irelop(ref op), &WasmInstr::BrIf(index)) => {
-                let rhs = self.operand_stack.pop().unwrap();
-                let rhs_reg = rhs.get_as_register().unwrap();
-                let lhs = self.operand_stack.pop().unwrap();
-                let lhs_reg = lhs.get_as_register().unwrap();
-                let cond_kind = match op {
-                    &Irelop::Eq32 => JumpCondKind::Neq(lhs_reg, rhs_reg),
-                    &Irelop::Ne32 => JumpCondKind::Eq(lhs_reg, rhs_reg),
-                    &Irelop::LtS32 => JumpCondKind::GeS(lhs_reg, rhs_reg),
-                    &Irelop::LtU32 => JumpCondKind::GeU(lhs_reg, rhs_reg),
-                    &Irelop::GtU32 => JumpCondKind::LeU(lhs_reg, rhs_reg),
-                    &Irelop::LeS32 => JumpCondKind::GtS(lhs_reg, rhs_reg),
-                    &Irelop::GeU32 => JumpCondKind::LtU(lhs_reg, rhs_reg),
+                let rhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
                 };
-                let entering_block = self.get_label_at(index.as_index());
+                let lhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let cond_kind = match op {
+                    &Irelop::Eq32 => JumpCondKind::Neq(lhs, rhs),
+                    &Irelop::Ne32 => JumpCondKind::Eq(lhs, rhs),
+                    &Irelop::LtS32 => JumpCondKind::GeS(lhs, rhs),
+                    &Irelop::LtU32 => JumpCondKind::GeU(lhs, rhs),
+                    &Irelop::GtU32 => JumpCondKind::LeU(lhs, rhs),
+                    &Irelop::LeS32 => JumpCondKind::GtS(lhs, rhs),
+                    &Irelop::GeU32 => JumpCondKind::LtU(lhs, rhs),
+                };
+                let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
                 self.emit_exiting_block(entering_block, cond_kind, false, true, false);
-
                 let new_block = Context::create_basic_block();
                 self.switch_current_basic_block_to(new_block);
             }
@@ -594,18 +644,22 @@ impl WasmToMachine {
                 &WasmInstr::Irelop(ref op),
                 &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs),
             ) => {
-                let rhs = self.operand_stack.pop().unwrap();
-                let rhs_reg = rhs.get_as_register().unwrap();
-                let lhs = self.operand_stack.pop().unwrap();
-                let lhs_reg = lhs.get_as_register().unwrap();
+                let rhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let lhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
                 let cond_kind = match op {
-                    &Irelop::Eq32 => JumpCondKind::Neq(lhs_reg, rhs_reg),
-                    &Irelop::Ne32 => JumpCondKind::Eq(lhs_reg, rhs_reg),
-                    &Irelop::LtS32 => JumpCondKind::GeS(lhs_reg, rhs_reg),
-                    &Irelop::LtU32 => JumpCondKind::GeU(lhs_reg, rhs_reg),
-                    &Irelop::GtU32 => JumpCondKind::LeU(lhs_reg, rhs_reg),
-                    &Irelop::LeS32 => JumpCondKind::GtS(lhs_reg, rhs_reg),
-                    &Irelop::GeU32 => JumpCondKind::LtU(lhs_reg, rhs_reg),
+                    &Irelop::Eq32 => JumpCondKind::Neq(lhs, rhs),
+                    &Irelop::Ne32 => JumpCondKind::Eq(lhs, rhs),
+                    &Irelop::LtS32 => JumpCondKind::GeS(lhs, rhs),
+                    &Irelop::LtU32 => JumpCondKind::GeU(lhs, rhs),
+                    &Irelop::GtU32 => JumpCondKind::LeU(lhs, rhs),
+                    &Irelop::LeS32 => JumpCondKind::GtS(lhs, rhs),
+                    &Irelop::GeU32 => JumpCondKind::LtU(lhs, rhs),
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
             }
@@ -646,36 +700,6 @@ impl WasmToMachine {
         }
     }
 
-    fn remove_label(&mut self, expr_block: BasicBlockHandle) {
-        let mut tmp_stack = OperandStack::new();
-        let mut is_valid = false;
-        while let Some(operand) = self.operand_stack.pop() {
-            if operand.get_kind() == &OperandKind::Label(expr_block) {
-                is_valid = true;
-                break;
-            }
-            tmp_stack.push(operand);
-        }
-        assert!(is_valid);
-
-        while let Some(operand) = tmp_stack.pop() {
-            self.operand_stack.push(operand);
-        }
-    }
-
-    fn get_label_at(&mut self, index: usize) -> BasicBlockHandle {
-        let mut num_labels = 0;
-        for operand in self.operand_stack.stack.iter().rev() {
-            if let &OperandKind::Label(ref bb) = operand.get_kind() {
-                num_labels += 1;
-                if index + 1 == num_labels {
-                    return *bb;
-                }
-            }
-        }
-        panic!()
-    }
-
     fn emit_transition_procedure(
         &mut self,
         opcode: Opcode,
@@ -685,20 +709,20 @@ impl WasmToMachine {
     ) {
         assert!(!(!restores_operands && replaces_registers));
         let mut tmp_operand_stack = OperandStack::new();
-        while let Some(register) = registers.pop() {
-            let mut operand = self.operand_stack.pop().unwrap();
-            if let &OperandKind::Register(src_register) = operand.get_kind() {
-                self.emit_on_current_basic_block(Opcode::Copy {
-                    dst: register,
-                    src: src_register,
-                });
-            } else {
-                panic!()
-            }
+        while let Some(dst_reg) = registers.pop() {
+            let src_reg = match self.operand_stack.pop().unwrap() {
+                StackElem::Value(reg) => reg,
+                StackElem::Label(_) => unreachable!(),
+            };
+            self.emit_on_current_basic_block(Opcode::Copy {
+                dst: dst_reg,
+                src: src_reg,
+            });
             if replaces_registers {
-                operand.set_kind(OperandKind::Register(register));
+                tmp_operand_stack.push_value(dst_reg);
+            } else {
+                tmp_operand_stack.push_value(src_reg);
             }
-            tmp_operand_stack.push(operand);
         }
 
         self.emit_on_current_basic_block(opcode);
@@ -721,18 +745,10 @@ impl WasmToMachine {
     }
 
     fn pop_conditional_register(&mut self) -> RegisterHandle {
-        match self.operand_stack.pop() {
-            Some(operand) => match operand.get_kind() {
-                &OperandKind::Register(register) => {
-                    if register.get_typ() == &Type::I32 {
-                        register
-                    } else {
-                        panic!()
-                    }
-                }
-                _ => panic!(),
-            },
-            _ => panic!(),
+        match self.operand_stack.pop().unwrap() {
+            StackElem::Value(reg) if reg.get_typ() == &Type::I32 => reg,
+            StackElem::Value(_) => unreachable!(),
+            StackElem::Label(_) => unreachable!(),
         }
     }
 
