@@ -12,7 +12,7 @@ use machineir::opcode::{
 use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
-use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, Loadattr, WasmInstr};
+use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, Loadattr, Storeattr, WasmInstr};
 use wasmir::types::{Functype, Resulttype, Valtype};
 use wasmir::{Importdesc, Typeidx};
 
@@ -546,7 +546,55 @@ impl WasmToMachine {
                 };
                 self.operand_stack.push_value(result);
             }
-            &WasmInstr::Store { .. } => unimplemented!(),
+            &WasmInstr::Store { ref attr, ref arg } => {
+                let value = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+
+                let src = match attr {
+                    &Storeattr::I32 => {
+                        assert_eq!(value.get_typ(), &Type::I32);
+                        value
+                    }
+                    &Storeattr::I64 => {
+                        assert_eq!(value.get_typ(), &Type::I64);
+                        value
+                    }
+                    &Storeattr::I32x8 => {
+                        let src = Context::create_register(Type::I8);
+                        self.emit_on_current_basic_block(Opcode::Cast {
+                            kind: CastKind::Wrap,
+                            dst: src,
+                            src: value,
+                        });
+                        src
+                    }
+                };
+
+                let offset = {
+                    let offset = Context::create_register(Type::I32);
+                    let base = match self.operand_stack.pop().unwrap() {
+                        StackElem::Value(reg) => reg,
+                        StackElem::Label(_) => unreachable!(),
+                    };
+                    self.emit_on_current_basic_block(Opcode::BinaryOp {
+                        kind: BinaryOpKind::Add,
+                        dst: offset,
+                        src1: base,
+                        src2: OperandKind::ImmI32(arg.get_offset() as u32),
+                    });
+                    offset
+                };
+
+                let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
+
+                self.emit_on_current_basic_block(Opcode::Store {
+                    dst_base: memory_variable,
+                    dst_offset: OffsetKind::Register(offset),
+                    src,
+                });
+            }
             &WasmInstr::Call(ref funcidx) => {
                 let index = funcidx.as_index();
                 let function = self.module.get_functions()[index];
