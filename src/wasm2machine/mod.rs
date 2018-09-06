@@ -415,11 +415,7 @@ impl WasmToMachine {
                     target: JumpTargetKind::BasicBlock(body_block),
                 });
 
-                self.emit_entering_block(body_block, exit_block, result_registers, instrs);
-                self.emit_on_current_basic_block(opcode::Opcode::Jump {
-                    kind: opcode::JumpCondKind::Unconditional,
-                    target: JumpTargetKind::BasicBlock(body_block),
-                });
+                self.emit_entering_block(body_block, body_block, result_registers, instrs);
                 self.operand_stack.remove_label(body_block);
 
                 self.switch_current_basic_block_to(exit_block);
