@@ -14,7 +14,7 @@ use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, Loadattr, Storeattr, WasmInstr};
 use wasmir::types::{Functype, Resulttype, Valtype};
-use wasmir::{Importdesc, Typeidx};
+use wasmir::{Importdesc, Labelidx, Typeidx};
 
 #[derive(Debug)]
 enum StackElem {
@@ -271,6 +271,13 @@ impl WasmToMachine {
         self.emit_exiting_block(else_block, JumpCondKind::Unconditional, true, true, true);
 
         self.switch_current_basic_block_to(merge_block);
+    }
+
+    fn emit_br_if(&mut self, cond_kind: opcode::JumpCondKind, index: Labelidx) {
+        let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
+        self.emit_exiting_block(entering_block, cond_kind, false, true, false);
+        let new_block = Context::create_basic_block();
+        self.switch_current_basic_block_to(new_block);
     }
 
     fn emit_return(&mut self, result_registers: &Vec<RegisterHandle>) {
@@ -655,11 +662,7 @@ impl WasmToMachine {
                 let jump_cond_kind = match op {
                     &Itestop::Eqz32 => JumpCondKind::Eq0(cond_reg),
                 };
-                let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
-                self.emit_exiting_block(entering_block, jump_cond_kind, false, true, false);
-
-                let new_block = Context::create_basic_block();
-                self.switch_current_basic_block_to(new_block);
+                self.emit_br_if(jump_cond_kind, index);
             }
             (
                 &WasmInstr::Irelop(ref op),
@@ -702,10 +705,7 @@ impl WasmToMachine {
                     &Irelop::LeS32 => JumpCondKind::LeS(lhs, rhs),
                     &Irelop::GeU32 => JumpCondKind::GeU(lhs, rhs),
                 };
-                let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
-                self.emit_exiting_block(entering_block, cond_kind, false, true, false);
-                let new_block = Context::create_basic_block();
-                self.switch_current_basic_block_to(new_block);
+                self.emit_br_if(cond_kind, index);
             }
             _ => return false,
         }
