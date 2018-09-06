@@ -441,7 +441,11 @@ impl WasmToMachine {
                 self.switch_current_basic_block_to(new_block);
                 self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
             }
-            &WasmInstr::BrIf(_) => unimplemented!(),
+            &WasmInstr::BrIf(index) => {
+                let cond_reg = self.pop_conditional_register();
+                let cond_kind = JumpCondKind::Neq0(cond_reg);
+                self.emit_br_if(cond_kind, index);
+            }
             &WasmInstr::Return => {
                 let entering_block = self.entry_block;
                 self.emit_exiting_block(
