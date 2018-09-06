@@ -665,29 +665,6 @@ impl WasmToMachine {
                 let new_block = Context::create_basic_block();
                 self.switch_current_basic_block_to(new_block);
             }
-            (&WasmInstr::Irelop(ref op), &WasmInstr::BrIf(index)) => {
-                let rhs = match self.operand_stack.pop().unwrap() {
-                    StackElem::Value(reg) => reg,
-                    StackElem::Label(_) => unreachable!(),
-                };
-                let lhs = match self.operand_stack.pop().unwrap() {
-                    StackElem::Value(reg) => reg,
-                    StackElem::Label(_) => unreachable!(),
-                };
-                let cond_kind = match op {
-                    &Irelop::Eq32 => JumpCondKind::Neq(lhs, rhs),
-                    &Irelop::Ne32 => JumpCondKind::Eq(lhs, rhs),
-                    &Irelop::LtS32 => JumpCondKind::GeS(lhs, rhs),
-                    &Irelop::LtU32 => JumpCondKind::GeU(lhs, rhs),
-                    &Irelop::GtU32 => JumpCondKind::LeU(lhs, rhs),
-                    &Irelop::LeS32 => JumpCondKind::GtS(lhs, rhs),
-                    &Irelop::GeU32 => JumpCondKind::LtU(lhs, rhs),
-                };
-                let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
-                self.emit_exiting_block(entering_block, cond_kind, false, true, false);
-                let new_block = Context::create_basic_block();
-                self.switch_current_basic_block_to(new_block);
-            }
             (
                 &WasmInstr::Irelop(ref op),
                 &WasmInstr::If(ref resulttype, ref then_instrs, ref else_instrs),
@@ -710,6 +687,29 @@ impl WasmToMachine {
                     &Irelop::GeU32 => JumpCondKind::LtU(lhs, rhs),
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
+            }
+            (&WasmInstr::Irelop(ref op), &WasmInstr::BrIf(index)) => {
+                let rhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let lhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let cond_kind = match op {
+                    &Irelop::Eq32 => JumpCondKind::Eq(lhs, rhs),
+                    &Irelop::Ne32 => JumpCondKind::Neq(lhs, rhs),
+                    &Irelop::LtS32 => JumpCondKind::LtS(lhs, rhs),
+                    &Irelop::LtU32 => JumpCondKind::LtU(lhs, rhs),
+                    &Irelop::GtU32 => JumpCondKind::GtU(lhs, rhs),
+                    &Irelop::LeS32 => JumpCondKind::LeS(lhs, rhs),
+                    &Irelop::GeU32 => JumpCondKind::GeU(lhs, rhs),
+                };
+                let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
+                self.emit_exiting_block(entering_block, cond_kind, false, true, false);
+                let new_block = Context::create_basic_block();
+                self.switch_current_basic_block_to(new_block);
             }
             _ => return false,
         }
