@@ -30,9 +30,12 @@ pub enum JumpCondKind {
     Neq0(RegisterHandle),
     Eq(RegisterHandle, RegisterHandle),
     Neq(RegisterHandle, RegisterHandle),
+    LtS(RegisterHandle, RegisterHandle),
     LtU(RegisterHandle, RegisterHandle),
+    LeS(RegisterHandle, RegisterHandle),
     LeU(RegisterHandle, RegisterHandle),
     GtS(RegisterHandle, RegisterHandle),
+    GtU(RegisterHandle, RegisterHandle),
     GeS(RegisterHandle, RegisterHandle),
     GeU(RegisterHandle, RegisterHandle),
 }

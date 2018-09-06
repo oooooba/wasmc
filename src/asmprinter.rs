@@ -263,9 +263,17 @@ impl FunctionPass for EmitAssemblyPass {
                                 self.emit_binop_reg_reg("cmp", preg1, preg2);
                                 println!("jnz label_{}", target);
                             }
+                            &LtS(preg1, preg2) => {
+                                self.emit_binop_reg_reg("cmp", preg1, preg2);
+                                println!("jl label_{}", target);
+                            }
                             &LtU(preg1, preg2) => {
                                 self.emit_binop_reg_reg("cmp", preg1, preg2);
                                 println!("jb label_{}", target);
+                            }
+                            &LeS(preg1, preg2) => {
+                                self.emit_binop_reg_reg("cmp", preg1, preg2);
+                                println!("jle label_{}", target);
                             }
                             &LeU(preg1, preg2) => {
                                 self.emit_binop_reg_reg("cmp", preg1, preg2);
@@ -274,6 +282,10 @@ impl FunctionPass for EmitAssemblyPass {
                             &GtS(preg1, preg2) => {
                                 self.emit_binop_reg_reg("cmp", preg1, preg2);
                                 println!("jg label_{}", target);
+                            }
+                            &GtU(preg1, preg2) => {
+                                self.emit_binop_reg_reg("cmp", preg1, preg2);
+                                println!("ja label_{}", target);
                             }
                             &GeS(preg1, preg2) => {
                                 self.emit_binop_reg_reg("cmp", preg1, preg2);
