@@ -389,7 +389,31 @@ impl WasmToMachine {
             }
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
             &WasmInstr::Itestop(_) => unimplemented!(),
-            &WasmInstr::Irelop(_) => unimplemented!(),
+            &WasmInstr::Irelop(ref op) => {
+                let rhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let lhs = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let cond_kind = match op {
+                    &Irelop::Eq32 => JumpCondKind::Neq(lhs, rhs),
+                    &Irelop::Ne32 => JumpCondKind::Eq(lhs, rhs),
+                    &Irelop::LtS32 => JumpCondKind::GeS(lhs, rhs),
+                    &Irelop::LtU32 => JumpCondKind::GeU(lhs, rhs),
+                    &Irelop::GtU32 => JumpCondKind::LeU(lhs, rhs),
+                    &Irelop::LeS32 => JumpCondKind::GtS(lhs, rhs),
+                    &Irelop::GeU32 => JumpCondKind::LtU(lhs, rhs),
+                };
+                self.emit_if(
+                    &Resulttype::new(Some(vec![Valtype::I32])),
+                    cond_kind,
+                    &vec![WasmInstr::Const(Const::I32(1))],
+                    &vec![WasmInstr::Const(Const::I32(0))],
+                );
+            }
             &WasmInstr::Cvtop {
                 ref op,
                 ref dst_type,
