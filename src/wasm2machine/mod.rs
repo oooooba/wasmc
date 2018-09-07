@@ -842,7 +842,6 @@ impl WasmToMachine {
     }
 
     fn declare_functions(&mut self, module: &wasmir::Module) {
-        let mut num_host_functions = 0;
         for (i, import) in module.get_imports().iter().enumerate() {
             use self::Importdesc::*;
             let typeidx = match import.get_desc() {
@@ -851,23 +850,22 @@ impl WasmToMachine {
             };
             let function = self.declare_function(module, typeidx, i);
             self.module.get_mut_functions().push(function);
-            num_host_functions += 1;
         }
         for (i, func) in module.get_funcs().iter().enumerate() {
             let typeidx = *func.get_type();
-            let function = self.declare_function(module, typeidx, num_host_functions + i);
+            let function = self.declare_function(module, typeidx, module.get_imports().len() + i);
             self.module.get_mut_functions().push(function);
         }
         assert_eq!(
             self.module.get_functions().len(),
-            num_host_functions + module.get_funcs().len()
+            module.get_imports().len() + module.get_funcs().len()
         );
     }
 
     pub fn emit(&mut self, module: &wasmir::Module) {
         self.declare_functions(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
-            let function = self.module.get_functions()[i];
+            let function = self.module.get_functions()[i + module.get_imports().len()];
             let mut local_variables = function.get_parameter_variables().clone();
             for valtype in func.get_locals().iter() {
                 let typ = WasmToMachine::map_valtype(valtype);
