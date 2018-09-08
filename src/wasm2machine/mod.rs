@@ -7,7 +7,7 @@ use context::Context;
 use machineir::opcode;
 use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
-    OffsetKind, Opcode, OperandKind,
+    Opcode, OperandKind,
 };
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -496,30 +496,28 @@ impl WasmToMachine {
             }
             &WasmInstr::SetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let dst_base = self.local_variables[index];
+                let var = self.local_variables[index];
                 let src = match self.operand_stack.pop().unwrap() {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), dst_base.get_typ());
+                assert_eq!(src.get_typ(), var.get_typ());
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst_base,
-                    dst_offset: OffsetKind::None,
+                    dst: Address::Var(var),
                     src,
                 });
             }
             &WasmInstr::TeeLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let dst_base = self.local_variables[index];
+                let var = self.local_variables[index];
                 let src = match self.operand_stack.pop().unwrap() {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), dst_base.get_typ());
+                assert_eq!(src.get_typ(), var.get_typ());
                 self.operand_stack.push_value(src);
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst_base,
-                    dst_offset: OffsetKind::None,
+                    dst: Address::Var(var),
                     src,
                 });
             }
@@ -622,8 +620,10 @@ impl WasmToMachine {
                 let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
 
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst_base: memory_variable,
-                    dst_offset: OffsetKind::Register(offset),
+                    dst: Address::RegBaseRegOffset {
+                        base: memory_variable,
+                        offset,
+                    },
                     src,
                 });
             }

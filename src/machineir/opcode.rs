@@ -168,8 +168,7 @@ pub enum Opcode {
         src: Address,
     },
     Store {
-        dst_base: RegisterHandle,
-        dst_offset: OffsetKind,
+        dst: Address,
         src: RegisterHandle,
     },
     Jump {
@@ -247,14 +246,8 @@ impl Opcode {
                 print!(" ");
                 src.print();
             }
-            &Store {
-                ref dst_base,
-                ref dst_offset,
-                ref src,
-            } => {
-                dst_base.print();
-                print!(", ");
-                dst_offset.print();
+            &Store { ref dst, src } => {
+                dst.print();
                 print!(" = ");
                 print!("store");
                 print!(" ");

@@ -4,7 +4,7 @@ use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHa
 use context::Context;
 use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
-    OffsetKind, Opcode, OperandKind,
+    Opcode, OperandKind,
 };
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
@@ -199,19 +199,15 @@ impl FunctionPass for EmitAssemblyPass {
                             }
                         }
                     }
-                    &Store {
-                        dst_base,
-                        ref dst_offset,
-                        src,
-                    } => {
+                    &Store { ref dst, src } => {
                         assert!(src.is_physical());
                         let src_name = self.register_name_map.get(&src).unwrap();
-                        let ptr_notation = dst_base.get_typ().get_ptr_notation();
-                        match dst_offset {
-                            &OffsetKind::None => {
-                                assert!(!dst_base.is_physical());
+                        let ptr_notation = src.get_typ().get_ptr_notation();
+                        match dst {
+                            &Address::Var(var) => {
+                                assert!(!var.is_physical());
                                 let region = function.get_local_region();
-                                let offset = *region.get_offset_map().get(&dst_base).unwrap();
+                                let offset = *region.get_offset_map().get(&var).unwrap();
                                 let bpr_name = self
                                     .register_name_map
                                     .get(&self.base_pointer_register)
@@ -221,12 +217,12 @@ impl FunctionPass for EmitAssemblyPass {
                                     ptr_notation, bpr_name, offset, src_name
                                 );
                             }
-                            &OffsetKind::Register(offset) => {
-                                assert!(dst_base.is_physical());
+                            &Address::RegBaseRegOffset { base, offset } => {
+                                assert!(base.is_physical());
                                 assert!(offset.is_physical());
                                 println!(
                                     "mov {} ptr [{} + {}], {}",
-                                    ptr_notation, dst_base, offset, src_name
+                                    ptr_notation, base, offset, src_name
                                 );
                             }
                         }
