@@ -6,8 +6,8 @@ use context::handle::{
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{
-    BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind,
-    Opcode, OperandKind,
+    Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
+    OffsetKind, Opcode, OperandKind,
 };
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -486,13 +486,12 @@ impl WasmToMachine {
             }
             &WasmInstr::GetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let src_base = self.local_variables[index];
-                let dst = Context::create_register(src_base.get_typ().clone());
+                let var = self.local_variables[index];
+                let dst = Context::create_register(var.get_typ().clone());
                 self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src_base,
-                    src_offset: OffsetKind::None,
+                    src: Address::Var(var),
                 });
             }
             &WasmInstr::SetLocal(ref localidx) => {
@@ -550,8 +549,10 @@ impl WasmToMachine {
                 let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src_base: memory_variable,
-                    src_offset: OffsetKind::Register(offset),
+                    src: Address::RegBaseRegOffset {
+                        base: memory_variable,
+                        offset,
+                    },
                 });
                 let result = match attr {
                     &Loadattr::I32 => dst,

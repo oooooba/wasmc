@@ -71,6 +71,33 @@ impl OffsetKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Address {
+    Var(RegisterHandle),
+    RegBaseRegOffset {
+        base: RegisterHandle,
+        offset: RegisterHandle,
+    },
+}
+
+impl Address {
+    pub fn print(&self) {
+        use self::Address::*;
+        print!("[");
+        match self {
+            &Var(reg) => {
+                reg.print();
+            }
+            &RegBaseRegOffset { base, offset } => {
+                base.print();
+                print!(" + ");
+                offset.print();
+            }
+        }
+        print!("]");
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ConstKind {
     ConstI8(u8),
     ConstI32(u32),
@@ -138,8 +165,7 @@ pub enum Opcode {
     },
     Load {
         dst: RegisterHandle,
-        src_base: RegisterHandle,
-        src_offset: OffsetKind,
+        src: Address,
     },
     Store {
         dst_base: RegisterHandle,
@@ -214,18 +240,12 @@ impl Opcode {
                 print!(", ");
                 src2.print();
             }
-            &Load {
-                ref dst,
-                ref src_base,
-                ref src_offset,
-            } => {
+            &Load { dst, ref src } => {
                 dst.print();
                 print!(" = ");
                 print!("load");
                 print!(" ");
-                src_base.print();
-                print!(", ");
-                src_offset.print();
+                src.print();
             }
             &Store {
                 ref dst_base,

@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{
-    BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind,
-    Opcode, OperandKind,
+    Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
+    OffsetKind, Opcode, OperandKind,
 };
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
@@ -171,19 +171,15 @@ impl FunctionPass for EmitAssemblyPass {
                             &OperandKind::ImmI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
                         }
                     }
-                    &Load {
-                        dst,
-                        src_base,
-                        ref src_offset,
-                    } => {
+                    &Load { dst, ref src } => {
                         assert!(dst.is_physical());
                         let dst_name = self.register_name_map.get(&dst).unwrap();
-                        let ptr_notation = src_base.get_typ().get_ptr_notation();
-                        match src_offset {
-                            &OffsetKind::None => {
-                                assert!(!src_base.is_physical());
+                        let ptr_notation = dst.get_typ().get_ptr_notation();
+                        match src {
+                            &Address::Var(var) => {
+                                assert!(!var.is_physical());
                                 let region = function.get_local_region();
-                                let offset = *region.get_offset_map().get(&src_base).unwrap();
+                                let offset = *region.get_offset_map().get(&var).unwrap();
                                 let bpr_name = self
                                     .register_name_map
                                     .get(&self.base_pointer_register)
@@ -193,12 +189,12 @@ impl FunctionPass for EmitAssemblyPass {
                                     dst_name, ptr_notation, bpr_name, offset
                                 );
                             }
-                            &OffsetKind::Register(offset) => {
-                                assert!(src_base.is_physical());
+                            &Address::RegBaseRegOffset { base, offset } => {
+                                assert!(base.is_physical());
                                 assert!(offset.is_physical());
                                 println!(
                                     "mov {}, {} ptr [{} + {}]",
-                                    dst_name, ptr_notation, src_base, offset
+                                    dst_name, ptr_notation, base, offset
                                 );
                             }
                         }
