@@ -138,6 +138,7 @@ impl OperandKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CallTargetKind {
     Function(FunctionHandle),
+    Indirect(Address),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -275,6 +276,7 @@ impl Opcode {
                 print!(" ");
                 match func {
                     &CallTargetKind::Function(f) => print!("{}", f.get_func_name()),
+                    &CallTargetKind::Indirect(ref addr) => addr.print(),
                 }
                 args.iter().for_each(|arg| {
                     print!(", ");

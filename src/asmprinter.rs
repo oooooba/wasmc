@@ -291,6 +291,29 @@ impl FunctionPass for EmitAssemblyPass {
                     }
                     &Call { ref func, .. } => match func {
                         &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
+                        &CallTargetKind::Indirect(ref addr) => {
+                            let ptr_notation = "qword";
+                            match addr {
+                                &Address::Var(var) => {
+                                    assert!(!var.is_physical());
+                                    let region = function.get_local_region();
+                                    let offset = *region.get_offset_map().get(&var).unwrap();
+                                    let bpr_name = self
+                                        .register_name_map
+                                        .get(&self.base_pointer_register)
+                                        .unwrap();
+                                    println!(
+                                        "call {} ptr [{} - {}]",
+                                        ptr_notation, bpr_name, offset
+                                    );
+                                }
+                                &Address::RegBaseRegOffset { base, offset } => {
+                                    assert!(base.is_physical());
+                                    assert!(offset.is_physical());
+                                    println!("call {} ptr [{} + {}]", ptr_notation, base, offset);
+                                }
+                            }
+                        }
                     },
                     &Return { .. } => {
                         println!("pop rbx");
