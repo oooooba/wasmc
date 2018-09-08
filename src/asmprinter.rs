@@ -294,7 +294,7 @@ impl FunctionPass for EmitAssemblyPass {
                     &Call { ref func, .. } => match func {
                         &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
                         &CallTargetKind::Indirect(ref addr) => {
-                            let ptr_notation = "qword";
+                            let ptr_notation = Type::I64.get_ptr_notation();
                             match addr {
                                 &Address::Var(var) => {
                                     assert!(!var.is_physical());
