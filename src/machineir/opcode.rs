@@ -108,6 +108,11 @@ impl OperandKind {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum CallTargetKind {
+    Function(FunctionHandle),
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Opcode {
     Debug(String),
@@ -146,7 +151,7 @@ pub enum Opcode {
         target: JumpTargetKind,
     },
     Call {
-        func: FunctionHandle,
+        func: CallTargetKind,
         result: Option<RegisterHandle>,
         args: Vec<RegisterHandle>,
     },
@@ -255,7 +260,9 @@ impl Opcode {
                 }
                 print!("call");
                 print!(" ");
-                print!("{}", func.get_func_name());
+                match func {
+                    &CallTargetKind::Function(f) => print!("{}", f.get_func_name()),
+                }
                 args.iter().for_each(|arg| {
                     print!(", ");
                     arg.print();

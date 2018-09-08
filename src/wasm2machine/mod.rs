@@ -6,8 +6,8 @@ use context::handle::{
 use context::Context;
 use machineir::opcode;
 use machineir::opcode::{
-    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, Opcode,
-    OperandKind,
+    BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind,
+    Opcode, OperandKind,
 };
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -655,7 +655,7 @@ impl WasmToMachine {
                     unreachable!()
                 };
                 self.emit_on_current_basic_block(Opcode::Call {
-                    func: function,
+                    func: CallTargetKind::Function(function),
                     result,
                     args,
                 });

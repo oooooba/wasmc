@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
 use machineir::opcode::{
-    BinaryOpKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind, Opcode,
-    OperandKind,
+    BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind, OffsetKind,
+    Opcode, OperandKind,
 };
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
@@ -297,9 +297,9 @@ impl FunctionPass for EmitAssemblyPass {
                             }
                         }
                     }
-                    &Call { ref func, .. } => {
-                        println!("call {}", func.get_func_name());
-                    }
+                    &Call { ref func, .. } => match func {
+                        &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
+                    },
                     &Return { .. } => {
                         println!("pop rbx");
                         println!("mov rsp, rbp");
