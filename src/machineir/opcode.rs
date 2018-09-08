@@ -1,6 +1,7 @@
 use std::fmt;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, RegisterHandle};
+use machineir::typ::Type;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CastKind {
@@ -77,6 +78,11 @@ pub enum Address {
         base: RegisterHandle,
         offset: RegisterHandle,
     },
+    RegBaseRegIndex {
+        base: RegisterHandle,
+        index: RegisterHandle,
+        scale: Type,
+    },
 }
 
 impl Address {
@@ -92,6 +98,7 @@ impl Address {
                 print!(" + ");
                 offset.print();
             }
+            &Address::RegBaseRegIndex { .. } => unimplemented!(),
         }
         print!("]");
     }

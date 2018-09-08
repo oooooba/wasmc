@@ -197,6 +197,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     dst_name, ptr_notation, base, offset
                                 );
                             }
+                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         }
                     }
                     &Store { ref dst, src } => {
@@ -225,6 +226,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     ptr_notation, base, offset, src_name
                                 );
                             }
+                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         }
                     }
                     &Jump {
@@ -312,6 +314,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     assert!(offset.is_physical());
                                     println!("call {} ptr [{} + {}]", ptr_notation, base, offset);
                                 }
+                                &Address::RegBaseRegIndex { .. } => unimplemented!(),
                             }
                         }
                     },

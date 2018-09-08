@@ -145,6 +145,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                     offset: new_offset,
                                 }
                             }
+                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         };
 
                         let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
@@ -188,6 +189,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                     offset: new_offset,
                                 }
                             }
+                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         };
 
                         (
