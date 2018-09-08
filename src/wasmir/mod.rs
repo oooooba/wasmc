@@ -158,6 +158,10 @@ impl Table {
     pub fn new(typ: Tabletype) -> Table {
         Table { typ }
     }
+
+    pub fn get_type(&self) -> &Tabletype {
+        &self.typ
+    }
 }
 
 #[derive(Debug)]

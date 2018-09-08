@@ -83,6 +83,10 @@ impl Tabletype {
     pub fn new(limits: Limits, elemtype: Elemtype) -> Tabletype {
         Tabletype { limits, elemtype }
     }
+
+    pub fn get_limits(&self) -> &Limits {
+        &self.limits
+    }
 }
 
 #[derive(Debug)]

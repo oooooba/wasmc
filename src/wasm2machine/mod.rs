@@ -97,6 +97,7 @@ pub struct WasmToMachine {
     current_function: FunctionHandle,
     module: ModuleHandle,
     local_variables: Vec<RegisterHandle>,
+    function_types: Vec<(Vec<Type>, Vec<Type>)>,
 }
 
 impl WasmToMachine {
@@ -107,6 +108,7 @@ impl WasmToMachine {
         let dummy_function =
             Context::create_function("".to_string(), parameter_types, result_types);
         let mut module = Context::create_module();
+
         let memory = if wasmir_module.get_mems().len() == 0 {
             Context::create_region(RegionKind::DynamicGlobal { min: 0, max: None })
         } else {
@@ -118,6 +120,25 @@ impl WasmToMachine {
             })
         };
         module.get_mut_dynamic_regions().push(memory);
+
+        let table = if wasmir_module.get_tables().len() == 0 {
+            Context::create_region(RegionKind::DynamicGlobal { min: 0, max: None })
+        } else {
+            assert_eq!(wasmir_module.get_tables().len(), 1);
+            let tab = &wasmir_module.get_tables()[0];
+            Context::create_region(RegionKind::DynamicGlobal {
+                min: tab.get_type().get_limits().get_min() as usize,
+                max: tab.get_type().get_limits().get_max().map(|i| i as usize),
+            })
+        };
+        module.get_mut_indirect_function_tables().push(table);
+
+        let function_types = wasmir_module
+            .get_types()
+            .iter()
+            .map(|functype| WasmToMachine::map_functype(functype))
+            .collect();
+
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
@@ -126,6 +147,7 @@ impl WasmToMachine {
             current_function: dummy_function,
             module,
             local_variables: vec![],
+            function_types,
         }
     }
 
@@ -661,7 +683,54 @@ impl WasmToMachine {
                     args,
                 });
             }
-            &WasmInstr::CallIndirect(..) => unimplemented!(),
+            &WasmInstr::CallIndirect(typeidx) => {
+                let index = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+
+                /* ToDo: insert some checking code
+                 * 1. check whether the index is valid or not
+                 * 2. check whether entry of table is non-NULL or not
+                 * if the result of checking is false, then invoke trap function
+                 */
+
+                let (parameter_types, result_types) =
+                    &self.function_types[typeidx.as_index()].clone();
+
+                let mut args = vec![];
+                assert!(parameter_types.len() <= self.operand_stack.len());
+                for _ in 0..parameter_types.len() {
+                    match self.operand_stack.pop().unwrap() {
+                        StackElem::Value(reg) => args.push(reg),
+                        StackElem::Label(_) => unreachable!(),
+                    }
+                }
+                args.reverse();
+
+                assert!(result_types.len() == 0 || result_types.len() == 1);
+                let result = if result_types.len() == 0 {
+                    None
+                } else if result_types.len() == 1 {
+                    let typ = result_types[0].clone();
+                    let result = Context::create_register(typ);
+                    self.operand_stack.push_value(result);
+                    Some(result)
+                } else {
+                    unreachable!()
+                };
+
+                let table_variable = self.module.get_indirect_function_tables()[0].get_variable();
+                self.emit_on_current_basic_block(Opcode::Call {
+                    func: CallTargetKind::Indirect(Address::RegBaseRegIndex {
+                        base: table_variable,
+                        index: index,
+                        scale: Type::I64, // ToDo: fix to use pointer type
+                    }),
+                    result,
+                    args,
+                });
+            }
             &WasmInstr::Drop => {
                 assert!(!self.operand_stack.is_empty());
                 self.operand_stack.pop();

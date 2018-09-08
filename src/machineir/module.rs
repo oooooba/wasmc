@@ -5,6 +5,7 @@ pub struct Module {
     handle: ModuleHandle,
     functions: Vec<FunctionHandle>,
     dynamic_regions: Vec<RegionHandle>,
+    indirect_function_tables: Vec<RegionHandle>,
 }
 
 impl Module {
@@ -13,6 +14,7 @@ impl Module {
             handle: handle,
             functions: vec![],
             dynamic_regions: vec![],
+            indirect_function_tables: vec![],
         }
     }
 
@@ -34,5 +36,13 @@ impl Module {
 
     pub fn get_mut_dynamic_regions(&mut self) -> &mut Vec<RegionHandle> {
         &mut self.dynamic_regions
+    }
+
+    pub fn get_indirect_function_tables(&self) -> &Vec<RegionHandle> {
+        &self.indirect_function_tables
+    }
+
+    pub fn get_mut_indirect_function_tables(&mut self) -> &mut Vec<RegionHandle> {
+        &mut self.indirect_function_tables
     }
 }
