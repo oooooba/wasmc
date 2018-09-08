@@ -923,14 +923,8 @@ impl WasmToMachine {
         }
     }
 
-    fn declare_function(
-        &self,
-        module: &wasmir::Module,
-        typeidx: Typeidx,
-        i: usize,
-    ) -> FunctionHandle {
-        let functype = &module.get_types()[typeidx.as_index()];
-        let (parameter_types, result_types) = WasmToMachine::map_functype(&functype);
+    fn declare_function(&self, typeidx: Typeidx, i: usize) -> FunctionHandle {
+        let (parameter_types, result_types) = self.function_types[typeidx.as_index()].clone();
         let func_name = format!("f_{}", i);
         Context::create_function(func_name, parameter_types, result_types)
     }
@@ -942,12 +936,12 @@ impl WasmToMachine {
                 &Func(typeidx) => typeidx,
                 _ => continue,
             };
-            let function = self.declare_function(module, typeidx, i);
+            let function = self.declare_function(typeidx, i);
             self.module.get_mut_functions().push(function);
         }
         for (i, func) in module.get_funcs().iter().enumerate() {
             let typeidx = *func.get_type();
-            let function = self.declare_function(module, typeidx, module.get_imports().len() + i);
+            let function = self.declare_function(typeidx, module.get_imports().len() + i);
             self.module.get_mut_functions().push(function);
         }
         assert_eq!(
