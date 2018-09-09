@@ -73,7 +73,7 @@ impl FunctionPass for EmitAssemblyPass {
             println!("push rbx");
 
             // store parameter registers to memory
-            assert!(function.get_parameter_types().len() < self.argument_registers.len());
+            assert!(function.get_parameter_types().len() <= self.argument_registers.len());
             assert_eq!(
                 function.get_parameter_types().len(),
                 function.get_parameter_variables().len()
