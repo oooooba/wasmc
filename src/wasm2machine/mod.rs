@@ -557,7 +557,16 @@ impl WasmToMachine {
                     src,
                 });
             }
-            &WasmInstr::GetGlobal(..) => unimplemented!(),
+            &WasmInstr::GetGlobal(globalidx) => {
+                let index = globalidx.as_index();
+                let var = self.global_variables[index].0;
+                let dst = Context::create_register(var.get_typ().clone());
+                self.operand_stack.push_value(dst);
+                self.emit_on_current_basic_block(Opcode::Load {
+                    dst,
+                    src: Address::Var(var),
+                });
+            }
             &WasmInstr::SetGlobal(..) => unimplemented!(),
             &WasmInstr::Load { ref attr, ref arg } => {
                 let offset = {
