@@ -735,7 +735,55 @@ impl WasmToMachine {
                 assert!(!self.operand_stack.is_empty());
                 self.operand_stack.pop();
             }
-            &WasmInstr::Select => unimplemented!(),
+            &WasmInstr::Select => {
+                let cond = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                assert_eq!(cond.get_typ(), &Type::I32);
+                let val_false = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let val_true = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                assert_eq!(val_true.get_typ(), val_false.get_typ());
+
+                let result = Context::create_register(val_true.get_typ().clone());
+                let bb_true = Context::create_basic_block();
+                let bb_false = Context::create_basic_block();
+                let bb_merge = Context::create_basic_block();
+
+                self.emit_on_current_basic_block(Opcode::Jump {
+                    kind: JumpCondKind::Eq0(cond),
+                    target: JumpTargetKind::BasicBlock(bb_true),
+                });
+
+                self.switch_current_basic_block_to(bb_true);
+                self.emit_on_current_basic_block(Opcode::Copy {
+                    dst: result,
+                    src: val_true,
+                });
+                self.emit_on_current_basic_block(Opcode::Jump {
+                    kind: JumpCondKind::Unconditional,
+                    target: JumpTargetKind::BasicBlock(bb_merge),
+                });
+
+                self.switch_current_basic_block_to(bb_false);
+                self.emit_on_current_basic_block(Opcode::Copy {
+                    dst: result,
+                    src: val_false,
+                });
+                self.emit_on_current_basic_block(Opcode::Jump {
+                    kind: JumpCondKind::Unconditional,
+                    target: JumpTargetKind::BasicBlock(bb_merge),
+                });
+
+                self.switch_current_basic_block_to(bb_merge);
+                self.operand_stack.push_value(result);
+            }
         };
         true
     }
