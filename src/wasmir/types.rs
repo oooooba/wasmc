@@ -108,4 +108,12 @@ impl Globaltype {
             valtype,
         }
     }
+
+    pub fn mutability(&self) -> &Mut {
+        &self.mutability
+    }
+
+    pub fn valtype(&self) -> &Valtype {
+        &self.valtype
+    }
 }

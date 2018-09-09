@@ -3,6 +3,7 @@ use std::fmt;
 
 use context::handle::{RegionHandle, RegisterHandle};
 use context::Context;
+use machineir::opcode::Opcode;
 use machineir::typ::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,6 +19,7 @@ pub struct Region {
     kind: RegionKind,
     variable: RegisterHandle,
     offset_map: HashMap<RegisterHandle, usize>,
+    initial_value_map: HashMap<RegisterHandle, Opcode>,
 }
 
 impl Region {
@@ -28,6 +30,7 @@ impl Region {
             kind,
             variable,
             offset_map: HashMap::new(),
+            initial_value_map: HashMap::new(),
         }
     }
 
@@ -45,6 +48,10 @@ impl Region {
 
     pub fn get_mut_offset_map(&mut self) -> &mut HashMap<RegisterHandle, usize> {
         &mut self.offset_map
+    }
+
+    pub fn get_mut_initial_value_map(&mut self) -> &mut HashMap<RegisterHandle, Opcode> {
+        &mut self.initial_value_map
     }
 
     pub fn get_variable(&self) -> RegisterHandle {

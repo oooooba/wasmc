@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
 };
 use context::Context;
 use machineir::opcode;
@@ -13,7 +13,7 @@ use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, Loadattr, Storeattr, WasmInstr};
-use wasmir::types::{Functype, Resulttype, Valtype};
+use wasmir::types::{Functype, Mut, Resulttype, Valtype};
 use wasmir::{Importdesc, Labelidx, Typeidx};
 
 #[derive(Debug)]
@@ -97,6 +97,7 @@ pub struct WasmToMachine {
     current_function: FunctionHandle,
     module: ModuleHandle,
     local_variables: Vec<RegisterHandle>,
+    global_variables: Vec<(RegisterHandle, RegionHandle)>,
     function_types: Vec<(Vec<Type>, Vec<Type>)>,
 }
 
@@ -108,6 +109,18 @@ impl WasmToMachine {
         let dummy_function =
             Context::create_function("".to_string(), parameter_types, result_types);
         let mut module = Context::create_module();
+
+        let mut global_variables = vec![];
+        for global in wasmir_module.get_globals().iter() {
+            let typ = WasmToMachine::map_valtype(global.get_type().valtype());
+            let var = Context::create_register(typ);
+            let mut region = match global.get_type().mutability() {
+                &Mut::Var => module.get_mutable_global_variable_region(),
+                &Mut::Const => module.get_const_global_variable_region(),
+            };
+            region.get_mut_offset_map().insert(var, 0);
+            global_variables.push((var, region));
+        }
 
         let memory = if wasmir_module.get_mems().len() == 0 {
             Context::create_region(RegionKind::DynamicGlobal { min: 0, max: None })
@@ -147,6 +160,7 @@ impl WasmToMachine {
             current_function: dummy_function,
             module,
             local_variables: vec![],
+            global_variables,
             function_types,
         }
     }
@@ -998,8 +1012,32 @@ impl WasmToMachine {
         );
     }
 
+    fn initialize_global_variables(&mut self, module: &wasmir::Module) {
+        for (i, global) in module.get_globals().iter().enumerate() {
+            let expr = global.get_init();
+            assert_eq!(expr.get_instr_sequences().len(), 1);
+            match &expr.get_instr_sequences()[0] {
+                &WasmInstr::Const(ref cst) => {
+                    let (typ, src) = match cst {
+                        &Const::I32(i) => (Type::I32, ConstKind::ConstI32(i)),
+                        &Const::I64(i) => (Type::I64, ConstKind::ConstI64(i)),
+                    };
+                    let dst = self.global_variables[i].0;
+                    assert_eq!(&typ, dst.get_typ());
+                    let val = Opcode::Const { dst, src };
+                    self.global_variables[i]
+                        .1
+                        .get_mut_initial_value_map()
+                        .insert(dst, val);
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
     pub fn emit(&mut self, module: &wasmir::Module) {
         self.declare_functions(module);
+        self.initialize_global_variables(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
             let function = self.module.get_functions()[i + module.get_imports().len()];
             let mut local_variables = function.get_parameter_variables().clone();

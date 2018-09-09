@@ -105,6 +105,14 @@ impl Global {
     pub fn new(typ: Globaltype, init: Expr) -> Global {
         Global { typ, init }
     }
+
+    pub fn get_type(&self) -> &Globaltype {
+        &self.typ
+    }
+
+    pub fn get_init(&self) -> &Expr {
+        &self.init
+    }
 }
 
 #[derive(Debug)]
