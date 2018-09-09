@@ -132,13 +132,21 @@ impl FunctionPass for EmitAssemblyPass {
                         match kind {
                             &CastKind::Wrap => println!("# UnaryOpKind::Wrap"),
                             &CastKind::ZeroExtension | &CastKind::SignExtension => {
-                                assert_eq!(dst.get_typ(), &Type::I64);
-                                assert_eq!(src.get_typ(), &Type::I32);
+                                assert!(dst.get_typ().get_size() > src.get_typ().get_size());
                                 match kind {
                                     &CastKind::ZeroExtension => {
                                         println!("# UnaryOpKind::ZeroExtension")
                                     }
-                                    &CastKind::SignExtension => println!("cdqe"),
+                                    &CastKind::SignExtension => {
+                                        match (dst.get_typ(), src.get_typ()) {
+                                            (&Type::I64, &Type::I32) => println!("cdqe"),
+                                            (&Type::I32, &Type::I8) => {
+                                                println!("cbw");
+                                                println!("cwde");
+                                            }
+                                            _ => unimplemented!(),
+                                        }
+                                    }
                                     _ => panic!(),
                                 }
                             }
