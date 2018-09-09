@@ -62,6 +62,10 @@ impl MainPass {
         reg_ebx.set_physical();
         let mut reg_rbx = Context::create_register(Type::I64);
         reg_rbx.set_physical();
+        let mut reg_ecx = Context::create_register(Type::I32);
+        reg_ecx.set_physical();
+        let mut reg_rcx = Context::create_register(Type::I64);
+        reg_rcx.set_physical();
         let mut reg_cl = Context::create_register(Type::I8);
         reg_cl.set_physical();
         let mut reg_edx = Context::create_register(Type::I32);
@@ -76,6 +80,14 @@ impl MainPass {
         reg_esi.set_physical();
         let mut reg_rsi = Context::create_register(Type::I64);
         reg_rsi.set_physical();
+        let mut reg_r8d = Context::create_register(Type::I32);
+        reg_r8d.set_physical();
+        let mut reg_r8 = Context::create_register(Type::I64);
+        reg_r8.set_physical();
+        let mut reg_r9d = Context::create_register(Type::I32);
+        reg_r9d.set_physical();
+        let mut reg_r9 = Context::create_register(Type::I64);
+        reg_r9.set_physical();
         let mut reg_rbp = Context::create_register(Type::I64);
         reg_rbp.set_physical();
         let mut reg_rsp = Context::create_register(Type::I64);
@@ -95,6 +107,9 @@ impl MainPass {
             HashMap::from_iter(vec![(Type::I32, reg_edi), (Type::I64, reg_rdi)]),
             HashMap::from_iter(vec![(Type::I32, reg_esi), (Type::I64, reg_rsi)]),
             HashMap::from_iter(vec![(Type::I32, reg_edx), (Type::I64, reg_rdx)]),
+            HashMap::from_iter(vec![(Type::I32, reg_ecx), (Type::I64, reg_rcx)]),
+            HashMap::from_iter(vec![(Type::I32, reg_r8d), (Type::I64, reg_r8)]),
+            HashMap::from_iter(vec![(Type::I32, reg_r9d), (Type::I64, reg_r9)]),
         ];
 
         let result_register = HashMap::from_iter(vec![
@@ -109,6 +124,8 @@ impl MainPass {
             (reg_rax, "rax"),
             (reg_ebx, "ebx"),
             (reg_rbx, "rbx"),
+            (reg_ecx, "ecx"),
+            (reg_rcx, "rcx"),
             (reg_cl, "cl"),
             (reg_edx, "edx"),
             (reg_rdx, "rdx"),
@@ -116,6 +133,10 @@ impl MainPass {
             (reg_rdi, "rdi"),
             (reg_esi, "esi"),
             (reg_rsi, "rsi"),
+            (reg_r8d, "r8d"),
+            (reg_r8, "r8"),
+            (reg_r9d, "r9d"),
+            (reg_r9, "r9"),
             (reg_rbp, "rbp"),
             (reg_rsp, "rsp"),
         ]);
