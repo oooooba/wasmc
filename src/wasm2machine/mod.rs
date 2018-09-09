@@ -567,7 +567,19 @@ impl WasmToMachine {
                     src: Address::Var(var),
                 });
             }
-            &WasmInstr::SetGlobal(..) => unimplemented!(),
+            &WasmInstr::SetGlobal(globalidx) => {
+                let index = globalidx.as_index();
+                let var = self.global_variables[index].0;
+                let src = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                assert_eq!(src.get_typ(), var.get_typ());
+                self.emit_on_current_basic_block(Opcode::Store {
+                    dst: Address::Var(var),
+                    src,
+                });
+            }
             &WasmInstr::Load { ref attr, ref arg } => {
                 let offset = {
                     let offset = Context::create_register(Type::I32);
