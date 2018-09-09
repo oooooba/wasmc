@@ -759,7 +759,7 @@ impl WasmToMachine {
                 self.emit_on_current_basic_block(Opcode::Call {
                     func: CallTargetKind::Indirect(Address::RegBaseRegIndex {
                         base: table_variable,
-                        index: index,
+                        index,
                         scale: Type::I64, // ToDo: fix to use pointer type
                     }),
                     result,
