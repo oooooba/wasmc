@@ -4,6 +4,7 @@ use context::handle::{
     BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
 };
 use context::Context;
+use machineir::function::Linkage;
 use machineir::opcode;
 use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
@@ -1006,10 +1007,10 @@ impl WasmToMachine {
         }
     }
 
-    fn declare_function(&self, typeidx: Typeidx, i: usize) -> FunctionHandle {
+    fn declare_function(&self, typeidx: Typeidx, i: usize, linkage: Linkage) -> FunctionHandle {
         let (parameter_types, result_types) = self.function_types[typeidx.as_index()].clone();
         let func_name = format!("f_{}", i);
-        Context::create_function(func_name, parameter_types, result_types)
+        Context::create_function(func_name, parameter_types, result_types).set_linkage(linkage)
     }
 
     fn declare_functions(&mut self, module: &wasmir::Module) {
@@ -1019,12 +1020,13 @@ impl WasmToMachine {
                 &Func(typeidx) => typeidx,
                 _ => continue,
             };
-            let function = self.declare_function(typeidx, i);
+            let function = self.declare_function(typeidx, i, Linkage::Import);
             self.module.get_mut_functions().push(function);
         }
         for (i, func) in module.get_funcs().iter().enumerate() {
             let typeidx = *func.get_type();
-            let function = self.declare_function(typeidx, module.get_imports().len() + i);
+            let function =
+                self.declare_function(typeidx, module.get_imports().len() + i, Linkage::Export);
             self.module.get_mut_functions().push(function);
         }
         assert_eq!(

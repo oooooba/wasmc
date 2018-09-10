@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
 use context::Context;
+use machineir::function::Linkage;
 use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
     Opcode, OperandKind,
@@ -54,6 +55,13 @@ pub struct EmitAssemblyPass {
 impl FunctionPass for EmitAssemblyPass {
     fn do_action(&mut self, mut function: FunctionHandle) {
         {
+            match function.get_linkage() {
+                &Linkage::Export => println!(".global {}", function.get_func_name()),
+                &Linkage::Import => return,
+                &Linkage::Private => (),
+            }
+            println!("{}:", function.get_func_name());
+
             let len_buffer = function.get_local_region().calculate_variable_offset();
 
             let base_pointer_register = self
@@ -65,8 +73,6 @@ impl FunctionPass for EmitAssemblyPass {
                 .get(&self.stack_pointer_register)
                 .unwrap();
 
-            println!(".global {}", function.get_func_name());
-            println!("{}:", function.get_func_name());
             println!("push {}", base_pointer_register);
             println!("mov {}, {}", base_pointer_register, stack_pointer_register);
             println!("sub {}, {}", stack_pointer_register, len_buffer);

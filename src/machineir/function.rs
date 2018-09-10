@@ -6,6 +6,13 @@ use context::Context;
 use machineir::region::RegionKind;
 use machineir::typ::Type;
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Linkage {
+    Export,
+    Import,
+    Private,
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function {
     handle: FunctionHandle,
@@ -15,6 +22,7 @@ pub struct Function {
     parameter_variables: Vec<RegisterHandle>,
     result_types: Vec<Type>,
     local_region: RegionHandle,
+    linkage: Linkage,
 }
 
 impl Function {
@@ -39,6 +47,7 @@ impl Function {
             parameter_variables,
             result_types,
             local_region: region,
+            linkage: Linkage::Private,
         }
     }
 
@@ -72,6 +81,15 @@ impl Function {
 
     pub fn get_local_region(&self) -> RegionHandle {
         self.local_region
+    }
+
+    pub fn get_linkage(&self) -> &Linkage {
+        &self.linkage
+    }
+
+    pub fn set_linkage(&mut self, linkage: Linkage) -> FunctionHandle {
+        self.linkage = linkage;
+        self.handle
     }
 
     pub fn print(&self) {
