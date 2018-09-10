@@ -1,7 +1,19 @@
+use std::fmt;
+
 #[derive(Debug, Clone)]
 pub enum Valtype {
     I32,
     I64,
+}
+
+impl fmt::Display for Valtype {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::Valtype::*;
+        match self {
+            &I32 => write!(f, "Valtype::I32"),
+            &I64 => write!(f, "Valtype::I64"),
+        }
+    }
 }
 
 #[derive(Debug)]
