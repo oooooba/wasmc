@@ -200,9 +200,11 @@ impl FunctionPass for EmitAssemblyPass {
                             &Address::RegBaseRegOffset { base, offset } => {
                                 assert!(base.is_physical());
                                 assert!(offset.is_physical());
+                                let base_name = self.register_name_map.get(&base).unwrap();
+                                let offset_name = self.register_name_map.get(&offset).unwrap();
                                 println!(
                                     "mov {}, {} ptr [{} + {}]",
-                                    dst_name, ptr_notation, base, offset
+                                    dst_name, ptr_notation, base_name, offset_name
                                 );
                             }
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
@@ -229,9 +231,11 @@ impl FunctionPass for EmitAssemblyPass {
                             &Address::RegBaseRegOffset { base, offset } => {
                                 assert!(base.is_physical());
                                 assert!(offset.is_physical());
+                                let base_name = self.register_name_map.get(&base).unwrap();
+                                let offset_name = self.register_name_map.get(&offset).unwrap();
                                 println!(
                                     "mov {} ptr [{} + {}], {}",
-                                    ptr_notation, base, offset, src_name
+                                    ptr_notation, base_name, offset_name, src_name
                                 );
                             }
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
