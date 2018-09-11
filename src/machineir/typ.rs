@@ -3,6 +3,7 @@ pub enum Type {
     I8,
     I32,
     I64,
+    Pointer,
 }
 
 impl Type {
@@ -12,6 +13,7 @@ impl Type {
             &I8 => 1,
             &I32 => 4,
             &I64 => 8,
+            &Pointer => 8,
         }
     }
 
@@ -20,6 +22,7 @@ impl Type {
             &Type::I8 => "byte",
             &Type::I32 => "dword",
             &Type::I64 => "qword",
+            &Type::Pointer => "qword",
         }
     }
 }

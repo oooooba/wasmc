@@ -761,7 +761,7 @@ impl WasmToMachine {
                     func: CallTargetKind::Indirect(Address::RegBaseRegIndex {
                         base: table_variable,
                         index,
-                        scale: Type::I64, // ToDo: fix to use pointer type
+                        scale: Type::Pointer,
                     }),
                     result,
                     args,
