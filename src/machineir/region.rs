@@ -24,7 +24,7 @@ pub struct Region {
 
 impl Region {
     pub fn new(handle: RegionHandle, kind: RegionKind) -> Region {
-        let variable = Context::create_register(Type::I8);
+        let variable = Context::create_register(Type::Pointer);
         Region {
             handle,
             kind,
