@@ -295,7 +295,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 result: new_result,
                                 args: new_args,
                             }),
-                            1,
+                            new_result.is_some() as usize,
                         )
                     }
                     &Opcode::Return {
