@@ -98,9 +98,19 @@ impl MainPass {
                 (Type::I8, reg_al),
                 (Type::I32, reg_eax),
                 (Type::I64, reg_rax),
+                (Type::Pointer, reg_rax),
             ]),
-            HashMap::from_iter(vec![(Type::I32, reg_ebx), (Type::I64, reg_rbx)]),
-            HashMap::from_iter(vec![(Type::I8, reg_cl)]),
+            HashMap::from_iter(vec![
+                (Type::I32, reg_ebx),
+                (Type::I64, reg_rbx),
+                (Type::Pointer, reg_rbx),
+            ]),
+            HashMap::from_iter(vec![
+                (Type::I8, reg_cl),
+                (Type::I32, reg_ecx),
+                (Type::I64, reg_rcx),
+                (Type::Pointer, reg_rcx),
+            ]),
         ];
 
         let argument_registers = vec![

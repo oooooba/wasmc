@@ -363,8 +363,10 @@ impl SimpleRegisterAllocationPass {
     ) -> InstrHandle {
         assert!(preg.is_physical());
         assert!(!vreg.is_physical());
-        let typ = vreg.get_typ().clone();
-        assert_eq!(&typ, preg.get_typ());
+        let typ = vreg.get_typ();
+        if typ != &Type::Pointer {
+            assert_eq!(typ, preg.get_typ());
+        }
         self.allocate_memory_for_virtual_register(vreg, function);
         Context::create_instr(
             Opcode::Load {
