@@ -98,7 +98,17 @@ impl Address {
                 print!(" + ");
                 offset.print();
             }
-            &Address::RegBaseRegIndex { .. } => unimplemented!(),
+            &RegBaseRegIndex {
+                base,
+                index,
+                ref scale,
+            } => {
+                base.print();
+                print!(" + ");
+                index.print();
+                print!(" * ");
+                print!("{}", scale.get_ptr_notation());
+            }
         }
         print!("]");
     }

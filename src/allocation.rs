@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
-use machineir::opcode::{Address, BinaryOpKind, JumpCondKind, Opcode, OperandKind};
+use machineir::opcode::{Address, BinaryOpKind, CallTargetKind, JumpCondKind, Opcode, OperandKind};
 use machineir::typ::Type;
 use pass::FunctionPass;
 
@@ -270,6 +270,69 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         ref result,
                         ref args,
                     } => {
+                        let new_func = match func {
+                            f @ &CallTargetKind::Function(_) => f.clone(),
+                            &CallTargetKind::Indirect(ref addr) => {
+                                let new_addr = match addr {
+                                    v @ &Address::Var(_) => v.clone(),
+                                    &Address::RegBaseRegOffset { base, offset } => {
+                                        let new_base = self.allocate_physical_register(base, 0);
+                                        let load_instr = self.create_load_instr(
+                                            basic_block,
+                                            new_base,
+                                            base,
+                                            function,
+                                        );
+                                        iter.insert_before(load_instr);
+
+                                        let new_offset = self.allocate_physical_register(offset, 1);
+                                        let load_instr = self.create_load_instr(
+                                            basic_block,
+                                            new_offset,
+                                            offset,
+                                            function,
+                                        );
+                                        iter.insert_before(load_instr);
+
+                                        Address::RegBaseRegOffset {
+                                            base: new_base,
+                                            offset: new_offset,
+                                        }
+                                    }
+                                    &Address::RegBaseRegIndex {
+                                        base,
+                                        index,
+                                        ref scale,
+                                    } => {
+                                        let new_base = self.allocate_physical_register(base, 0);
+                                        let load_instr = self.create_load_instr(
+                                            basic_block,
+                                            new_base,
+                                            base,
+                                            function,
+                                        );
+                                        iter.insert_before(load_instr);
+
+                                        let new_index = self.allocate_physical_register(index, 1);
+                                        let load_instr = self.create_load_instr(
+                                            basic_block,
+                                            new_index,
+                                            index,
+                                            function,
+                                        );
+                                        iter.insert_before(load_instr);
+
+                                        Address::RegBaseRegIndex {
+                                            base: new_base,
+                                            index: new_index,
+                                            scale: scale.clone(),
+                                        }
+                                    }
+                                };
+                                CallTargetKind::Indirect(new_addr)
+                            }
+                        };
+
                         let mut new_args = vec![];
                         for (i, vreg) in args.iter().enumerate() {
                             let preg = self.allocate_physical_argument_register(*vreg, i);
@@ -291,7 +354,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         (
                             Some(Opcode::Call {
-                                func: func.clone(),
+                                func: new_func,
                                 result: new_result,
                                 args: new_args,
                             }),

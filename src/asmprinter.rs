@@ -332,7 +332,24 @@ impl FunctionPass for EmitAssemblyPass {
                                     assert!(offset.is_physical());
                                     println!("call {} ptr [{} + {}]", ptr_notation, base, offset);
                                 }
-                                &Address::RegBaseRegIndex { .. } => unimplemented!(),
+                                &Address::RegBaseRegIndex {
+                                    base,
+                                    index,
+                                    ref scale,
+                                } => {
+                                    assert!(base.is_physical());
+                                    assert!(index.is_physical());
+                                    let base_name = self.register_name_map.get(&base).unwrap();
+                                    let index_name = self.register_name_map.get(&index).unwrap();
+                                    println!(
+                                        "lea {}, [{} + {} * {}]",
+                                        base_name,
+                                        base_name,
+                                        index_name,
+                                        scale.get_size()
+                                    );
+                                    println!("call {}", base_name);
+                                }
                             }
                         }
                     },
