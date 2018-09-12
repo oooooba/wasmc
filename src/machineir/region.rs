@@ -16,6 +16,7 @@ pub enum RegionKind {
 #[derive(PartialEq, Eq, Debug)]
 pub struct Region {
     handle: RegionHandle,
+    name: String,
     kind: RegionKind,
     variable: RegisterHandle,
     offset_map: HashMap<RegisterHandle, usize>,
@@ -27,6 +28,7 @@ impl Region {
         let variable = Context::create_register(Type::Pointer);
         Region {
             handle,
+            name: format!("region_{}", handle),
             kind,
             variable,
             offset_map: HashMap::new(),
@@ -36,6 +38,10 @@ impl Region {
 
     pub fn get_handle(&self) -> &RegionHandle {
         &self.handle
+    }
+
+    pub fn get_name(&self) -> &String {
+        &self.name
     }
 
     pub fn get_kind(&self) -> &RegionKind {
