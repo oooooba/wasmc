@@ -35,6 +35,8 @@ impl ModulePass for ModuleInitPass {
     fn do_action(&mut self, _module: ModuleHandle) {
         println!(".intel_syntax noprefix");
         println!();
+        println!(".text");
+        println!();
     }
 }
 
