@@ -1,7 +1,9 @@
 use std::collections::VecDeque;
 use std::fmt;
 
-use context::handle::{BasicBlockHandle, FunctionHandle, RegionHandle, RegisterHandle};
+use context::handle::{
+    BasicBlockHandle, FunctionHandle, ModuleHandle, RegionHandle, RegisterHandle,
+};
 use context::Context;
 use machineir::region::RegionKind;
 use machineir::typ::Type;
@@ -23,6 +25,7 @@ pub struct Function {
     result_types: Vec<Type>,
     local_region: RegionHandle,
     linkage: Linkage,
+    module: ModuleHandle,
 }
 
 impl Function {
@@ -31,6 +34,7 @@ impl Function {
         func_name: String,
         parameter_types: Vec<Type>,
         result_types: Vec<Type>,
+        module: ModuleHandle,
     ) -> Function {
         let mut region = Context::create_region(RegionKind::Local);
         let mut parameter_variables = vec![];
@@ -48,6 +52,7 @@ impl Function {
             result_types,
             local_region: region,
             linkage: Linkage::Private,
+            module,
         }
     }
 
@@ -90,6 +95,10 @@ impl Function {
     pub fn set_linkage(&mut self, linkage: Linkage) -> FunctionHandle {
         self.linkage = linkage;
         self.handle
+    }
+
+    pub fn get_module(&self) -> ModuleHandle {
+        self.module
     }
 
     pub fn print(&self) {

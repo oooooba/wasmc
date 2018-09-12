@@ -104,12 +104,13 @@ pub struct WasmToMachine {
 
 impl WasmToMachine {
     pub fn new(wasmir_module: &wasmir::Module) -> WasmToMachine {
+        let mut module = Context::create_module();
+
         let dummy_block = Context::create_basic_block();
         let (parameter_types, result_types) =
             WasmToMachine::map_functype(&Functype::new(vec![], vec![]));
         let dummy_function =
-            Context::create_function("".to_string(), parameter_types, result_types);
-        let mut module = Context::create_module();
+            Context::create_function("".to_string(), parameter_types, result_types, module);
 
         let mut global_variables = vec![];
         for global in wasmir_module.get_globals().iter() {
@@ -1010,7 +1011,8 @@ impl WasmToMachine {
     fn declare_function(&self, typeidx: Typeidx, i: usize, linkage: Linkage) -> FunctionHandle {
         let (parameter_types, result_types) = self.function_types[typeidx.as_index()].clone();
         let func_name = format!("f_{}", i);
-        Context::create_function(func_name, parameter_types, result_types).set_linkage(linkage)
+        Context::create_function(func_name, parameter_types, result_types, self.module)
+            .set_linkage(linkage)
     }
 
     fn declare_functions(&mut self, module: &wasmir::Module) {
