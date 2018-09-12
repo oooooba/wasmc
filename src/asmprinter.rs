@@ -263,16 +263,56 @@ impl FunctionPass for EmitAssemblyPass {
                         match dst {
                             &Address::Var(var) => {
                                 assert!(!var.is_physical());
-                                let region = function.get_local_region();
-                                let offset = *region.get_offset_map().get(&var).unwrap();
-                                let bpr_name = self
-                                    .register_name_map
-                                    .get(&self.base_pointer_register)
-                                    .unwrap();
-                                println!(
-                                    "mov {} ptr [{} - {}], {}",
-                                    ptr_notation, bpr_name, offset, src_name
-                                );
+                                if function
+                                    .get_local_region()
+                                    .get_offset_map()
+                                    .contains_key(&var)
+                                {
+                                    let region = function.get_local_region();
+                                    let offset = *region.get_offset_map().get(&var).unwrap();
+                                    let bpr_name = self
+                                        .register_name_map
+                                        .get(&self.base_pointer_register)
+                                        .unwrap();
+                                    println!(
+                                        "mov {} ptr [{} - {}], {}",
+                                        ptr_notation, bpr_name, offset, src_name
+                                    );
+                                } else if function
+                                    .get_module()
+                                    .get_mutable_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&var)
+                                {
+                                    let region =
+                                        function.get_module().get_mutable_global_variable_region();
+                                    let offset = *region.get_offset_map().get(&var).unwrap();
+                                    println!(
+                                        "mov {} ptr [{} + {}], {}",
+                                        ptr_notation,
+                                        region.get_name(),
+                                        offset,
+                                        src_name
+                                    );
+                                } else if function
+                                    .get_module()
+                                    .get_const_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&var)
+                                {
+                                    let region =
+                                        function.get_module().get_const_global_variable_region();
+                                    let offset = *region.get_offset_map().get(&var).unwrap();
+                                    println!(
+                                        "mov {} ptr [{} + {}], {}",
+                                        ptr_notation,
+                                        region.get_name(),
+                                        offset,
+                                        src_name
+                                    );
+                                } else {
+                                    unreachable!()
+                                }
                             }
                             &Address::RegBaseRegOffset { base, offset } => {
                                 assert!(base.is_physical());
