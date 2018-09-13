@@ -733,10 +733,16 @@ impl WasmToMachine {
                 });
             }
             &WasmInstr::CallIndirect(typeidx) => {
-                let index = match self.operand_stack.pop().unwrap() {
+                let tmp_index = match self.operand_stack.pop().unwrap() {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
+                let index = Context::create_register(Type::I64);
+                self.emit_on_current_basic_block(Opcode::Cast {
+                    kind: CastKind::SignExtension,
+                    dst: index,
+                    src: tmp_index,
+                });
 
                 /* ToDo: insert some checking code
                  * 1. check whether the index is valid or not
