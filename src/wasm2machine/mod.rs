@@ -584,16 +584,22 @@ impl WasmToMachine {
             }
             &WasmInstr::Load { ref attr, ref arg } => {
                 let offset = {
-                    let offset = Context::create_register(Type::I32);
                     let base = match self.operand_stack.pop().unwrap() {
                         StackElem::Value(reg) => reg,
                         StackElem::Label(_) => unreachable!(),
                     };
+                    let tmp = Context::create_register(Type::I64);
+                    self.emit_on_current_basic_block(Opcode::Cast {
+                        kind: CastKind::SignExtension,
+                        dst: tmp,
+                        src: base,
+                    });
+                    let offset = Context::create_register(Type::I64);
                     self.emit_on_current_basic_block(Opcode::BinaryOp {
                         kind: BinaryOpKind::Add,
                         dst: offset,
-                        src1: base,
-                        src2: OperandKind::ImmI32(arg.get_offset() as u32),
+                        src1: tmp,
+                        src2: OperandKind::ImmI64(arg.get_offset() as i64 as u64),
                     });
                     offset
                 };
@@ -662,16 +668,22 @@ impl WasmToMachine {
                 };
 
                 let offset = {
-                    let offset = Context::create_register(Type::I32);
                     let base = match self.operand_stack.pop().unwrap() {
                         StackElem::Value(reg) => reg,
                         StackElem::Label(_) => unreachable!(),
                     };
+                    let tmp = Context::create_register(Type::I64);
+                    self.emit_on_current_basic_block(Opcode::Cast {
+                        kind: CastKind::SignExtension,
+                        dst: tmp,
+                        src: base,
+                    });
+                    let offset = Context::create_register(Type::I64);
                     self.emit_on_current_basic_block(Opcode::BinaryOp {
                         kind: BinaryOpKind::Add,
                         dst: offset,
-                        src1: base,
-                        src2: OperandKind::ImmI32(arg.get_offset() as u32),
+                        src1: tmp,
+                        src2: OperandKind::ImmI64(arg.get_offset() as i64 as u64),
                     });
                     offset
                 };
