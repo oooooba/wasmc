@@ -36,11 +36,11 @@ impl Module {
         &mut self.functions
     }
 
-    pub fn get_mutable_global_variable_region(&mut self) -> RegionHandle {
+    pub fn get_mutable_global_variable_region(&self) -> RegionHandle {
         self.mutable_global_variable_region
     }
 
-    pub fn get_const_global_variable_region(&mut self) -> RegionHandle {
+    pub fn get_const_global_variable_region(&self) -> RegionHandle {
         self.const_global_variable_region
     }
 
