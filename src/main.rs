@@ -25,6 +25,7 @@ pub struct MainPass {
     result_register: HashMap<Type, RegisterHandle>,
     base_pointer_register: RegisterHandle,
     stack_pointer_register: RegisterHandle,
+    instruction_pointer_register: RegisterHandle,
     register_name_map: HashMap<RegisterHandle, &'static str>,
 }
 
@@ -45,6 +46,7 @@ impl FunctionPass for MainPass {
             self.register_name_map.clone(),
             self.base_pointer_register,
             self.stack_pointer_register,
+            self.instruction_pointer_register,
             self.argument_registers.clone(),
         ));
     }
@@ -92,6 +94,8 @@ impl MainPass {
         reg_rbp.set_physical();
         let mut reg_rsp = Context::create_register(Type::I64);
         reg_rsp.set_physical();
+        let mut reg_rip = Context::create_register(Type::Pointer);
+        reg_rip.set_physical();
 
         let registers = vec![
             HashMap::from_iter(vec![
@@ -149,6 +153,7 @@ impl MainPass {
             (reg_r9, "r9"),
             (reg_rbp, "rbp"),
             (reg_rsp, "rsp"),
+            (reg_rip, "rip"),
         ]);
 
         Box::new(MainPass {
@@ -157,6 +162,7 @@ impl MainPass {
             result_register,
             base_pointer_register: reg_rbp,
             stack_pointer_register: reg_rsp,
+            instruction_pointer_register: reg_rip,
             register_name_map,
         })
     }

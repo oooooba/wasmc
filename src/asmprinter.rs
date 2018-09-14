@@ -58,6 +58,7 @@ pub struct EmitAssemblyPass {
     register_name_map: HashMap<RegisterHandle, &'static str>,
     base_pointer_register: RegisterHandle,
     stack_pointer_register: RegisterHandle,
+    instruction_pointer_register: RegisterHandle,
     argument_registers: Vec<HashMap<Type, RegisterHandle>>,
 }
 
@@ -225,10 +226,15 @@ impl FunctionPass for EmitAssemblyPass {
                                     let region =
                                         function.get_module().get_mutable_global_variable_region();
                                     let offset = *region.get_offset_map().get(&var).unwrap();
+                                    let ipr_name = self
+                                        .register_name_map
+                                        .get(&self.instruction_pointer_register)
+                                        .unwrap();
                                     println!(
-                                        "mov {}, {} ptr [{} + {}]",
+                                        "mov {}, {} ptr [{} + {} + {}]",
                                         dst_name,
                                         ptr_notation,
+                                        ipr_name,
                                         region.get_name(),
                                         offset
                                     );
@@ -241,10 +247,15 @@ impl FunctionPass for EmitAssemblyPass {
                                     let region =
                                         function.get_module().get_const_global_variable_region();
                                     let offset = *region.get_offset_map().get(&var).unwrap();
+                                    let ipr_name = self
+                                        .register_name_map
+                                        .get(&self.instruction_pointer_register)
+                                        .unwrap();
                                     println!(
-                                        "mov {}, {} ptr [{} + {}]",
+                                        "mov {}, {} ptr [{} + {} + {}]",
                                         dst_name,
                                         ptr_notation,
+                                        ipr_name,
                                         region.get_name(),
                                         offset
                                     );
@@ -296,9 +307,14 @@ impl FunctionPass for EmitAssemblyPass {
                                     let region =
                                         function.get_module().get_mutable_global_variable_region();
                                     let offset = *region.get_offset_map().get(&var).unwrap();
+                                    let ipr_name = self
+                                        .register_name_map
+                                        .get(&self.instruction_pointer_register)
+                                        .unwrap();
                                     println!(
-                                        "mov {} ptr [{} + {}], {}",
+                                        "mov {} ptr [{} + {} + {}], {}",
                                         ptr_notation,
+                                        ipr_name,
                                         region.get_name(),
                                         offset,
                                         src_name
@@ -312,9 +328,14 @@ impl FunctionPass for EmitAssemblyPass {
                                     let region =
                                         function.get_module().get_const_global_variable_region();
                                     let offset = *region.get_offset_map().get(&var).unwrap();
+                                    let ipr_name = self
+                                        .register_name_map
+                                        .get(&self.instruction_pointer_register)
+                                        .unwrap();
                                     println!(
-                                        "mov {} ptr [{} + {}], {}",
+                                        "mov {} ptr [{} + {} + {}], {}",
                                         ptr_notation,
+                                        ipr_name,
                                         region.get_name(),
                                         offset,
                                         src_name
@@ -460,12 +481,14 @@ impl EmitAssemblyPass {
         physical_register_name_map: HashMap<RegisterHandle, &'static str>,
         base_pointer_register: RegisterHandle,
         stack_pointer_register: RegisterHandle,
+        instruction_pointer_register: RegisterHandle,
         argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     ) -> Box<EmitAssemblyPass> {
         Box::new(EmitAssemblyPass {
             register_name_map: physical_register_name_map,
             base_pointer_register,
             stack_pointer_register,
+            instruction_pointer_register,
             argument_registers,
         })
     }
