@@ -32,8 +32,15 @@ impl InsertBasicBlockLabelPass {
 pub struct ModuleInitPass {}
 
 impl ModulePass for ModuleInitPass {
-    fn do_action(&mut self, _module: ModuleHandle) {
+    fn do_action(&mut self, module: ModuleHandle) {
         println!(".intel_syntax noprefix");
+        println!();
+        println!(".data");
+        println!(".align {}", Type::Pointer.get_size());
+        println!(
+            "{}:",
+            module.get_mutable_global_variable_region().get_name()
+        );
         println!();
         println!(".text");
         println!();
