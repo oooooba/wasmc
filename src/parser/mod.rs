@@ -61,6 +61,7 @@ enum BinaryOpcode {
     I32GtS = 0x4A,
     I32GtU = 0x4B,
     I32LeS = 0x4C,
+    I32LeU = 0x4D,
     I32GeU = 0x4F,
     I32Clz = 0x67,
     I32Add = 0x6A,
@@ -235,7 +236,9 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     Some(InstructionEntry {
         opcode: BinaryOpcode::I32LeS,
     }),
-    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::I32LeU,
+    }),
     None,
     Some(InstructionEntry {
         opcode: BinaryOpcode::I32GeU,
@@ -732,6 +735,7 @@ fn parse_instrs(
             I32GtS => (WasmInstr::Irelop(Irelop::GtS32), 0),
             I32GtU => (WasmInstr::Irelop(Irelop::GtU32), 0),
             I32LeS => (WasmInstr::Irelop(Irelop::LeS32), 0),
+            I32LeU => (WasmInstr::Irelop(Irelop::LeU32), 0),
             I32GeU => (WasmInstr::Irelop(Irelop::GeU32), 0),
             I32Clz => (WasmInstr::Iunop(Iunop::Clz32), 0),
             I32Add => (WasmInstr::Ibinop(Ibinop::Add32), 0),

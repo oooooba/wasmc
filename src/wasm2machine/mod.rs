@@ -451,6 +451,7 @@ impl WasmToMachine {
                     &Irelop::GtS32 => JumpCondKind::LeS(lhs, rhs),
                     &Irelop::GtU32 => JumpCondKind::LeU(lhs, rhs),
                     &Irelop::LeS32 => JumpCondKind::GtS(lhs, rhs),
+                    &Irelop::LeU32 => JumpCondKind::GtU(lhs, rhs),
                     &Irelop::GeU32 => JumpCondKind::LtU(lhs, rhs),
                 };
                 self.emit_if(
@@ -894,6 +895,7 @@ impl WasmToMachine {
                     &Irelop::GtS32 => JumpCondKind::LeS(lhs, rhs),
                     &Irelop::GtU32 => JumpCondKind::LeU(lhs, rhs),
                     &Irelop::LeS32 => JumpCondKind::GtS(lhs, rhs),
+                    &Irelop::LeU32 => JumpCondKind::GtU(lhs, rhs),
                     &Irelop::GeU32 => JumpCondKind::LtU(lhs, rhs),
                 };
                 self.emit_if(resulttype, cond_kind, then_instrs, else_instrs);
@@ -915,6 +917,7 @@ impl WasmToMachine {
                     &Irelop::GtS32 => JumpCondKind::GtS(lhs, rhs),
                     &Irelop::GtU32 => JumpCondKind::GtU(lhs, rhs),
                     &Irelop::LeS32 => JumpCondKind::LeS(lhs, rhs),
+                    &Irelop::LeU32 => JumpCondKind::LeU(lhs, rhs),
                     &Irelop::GeU32 => JumpCondKind::GeU(lhs, rhs),
                 };
                 self.emit_br_if(cond_kind, index);
