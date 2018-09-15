@@ -1037,7 +1037,7 @@ impl WasmToMachine {
             .set_linkage(linkage)
     }
 
-    fn declare_functions(&mut self, module: &wasmir::Module) {
+    fn declare_functions(&mut self, module: &wasmir::Module) -> (usize, usize) {
         for import in module.get_imports().iter() {
             use self::Importdesc::*;
             let typeidx = match import.get_desc() {
@@ -1048,19 +1048,20 @@ impl WasmToMachine {
                 self.declare_function(import.get_name().to_string(), typeidx, Linkage::Import);
             self.module.get_mut_functions().push(function);
         }
+        let num_import_functions = self.module.get_functions().len();
+
         for (i, func) in module.get_funcs().iter().enumerate() {
             let typeidx = *func.get_type();
             let function = self.declare_function(
-                format!("f_{}", module.get_imports().len() + i),
+                format!("f_{}", num_import_functions + i),
                 typeidx,
                 Linkage::Export,
             );
             self.module.get_mut_functions().push(function);
         }
-        assert_eq!(
-            self.module.get_functions().len(),
-            module.get_imports().len() + module.get_funcs().len()
-        );
+        let num_define_functions = self.module.get_functions().len() - num_import_functions;
+
+        (num_import_functions, num_define_functions)
     }
 
     fn initialize_global_variables(&mut self, module: &wasmir::Module) {
@@ -1087,10 +1088,10 @@ impl WasmToMachine {
     }
 
     pub fn emit(&mut self, module: &wasmir::Module) {
-        self.declare_functions(module);
+        let (num_import_functions, _) = self.declare_functions(module);
         self.initialize_global_variables(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
-            let function = self.module.get_functions()[i + module.get_imports().len()];
+            let function = self.module.get_functions()[num_import_functions + i];
             let mut local_variables = function.get_parameter_variables().clone();
             for valtype in func.get_locals().iter() {
                 let typ = WasmToMachine::map_valtype(valtype);
