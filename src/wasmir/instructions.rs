@@ -22,6 +22,7 @@ impl fmt::Display for Const {
 #[derive(Debug)]
 pub enum Iunop {
     Clz32,
+    Ctz32,
 }
 
 impl fmt::Display for Iunop {
@@ -29,6 +30,7 @@ impl fmt::Display for Iunop {
         use self::Iunop::*;
         match self {
             &Clz32 => write!(f, "Iunop::Clz32"),
+            &Ctz32 => write!(f, "Iunop::Ctz32"),
         }
     }
 }
