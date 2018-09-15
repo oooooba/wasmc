@@ -389,7 +389,8 @@ fn decode_by_signed_leb128(
 ) -> Result<(isize, usize), ParserErrorKind> {
     assert!(nbits == 32 || nbits == 64);
     let (n, consumed) = decode_by_unsigned_leb128(reader, nbits)?;
-    let sign_bit = 1 << (consumed * 7 - 1);
+    let n = n as i128;
+    let sign_bit = 1i128 << (consumed * 7 - 1);
     let mask = (sign_bit << 1) - 1;
     let masked_n = n & mask;
     let sign_extended_masked_n = if n & sign_bit != 0 {
