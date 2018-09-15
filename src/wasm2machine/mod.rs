@@ -458,6 +458,7 @@ impl WasmToMachine {
                 ref dst_type,
                 ref src_type,
             } => self.emit_cvtop(op, dst_type, src_type),
+            &WasmInstr::Unreachable => unimplemented!(),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 let expr_block = Context::create_basic_block();

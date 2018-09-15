@@ -190,6 +190,7 @@ pub enum WasmInstr {
         dst_type: Valtype,
         src_type: Valtype,
     },
+    Unreachable,
     Block(Resulttype, Vec<WasmInstr>),
     If(Resulttype, Vec<WasmInstr>, Vec<WasmInstr>),
     Loop(Resulttype, Vec<WasmInstr>),

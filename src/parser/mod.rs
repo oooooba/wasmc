@@ -28,6 +28,7 @@ pub enum ParserErrorKind {
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum BinaryOpcode {
+    Unreachable = 0x00,
     Block = 0x02,
     Loop = 0x03,
     End = 0x0B,
@@ -81,7 +82,9 @@ struct InstructionEntry {
 
 static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     // 0x00 - 0x07
-    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::Unreachable,
+    }),
     None,
     Some(InstructionEntry {
         opcode: BinaryOpcode::Block,
@@ -610,6 +613,7 @@ fn parse_instrs(
             None => unimplemented!("opcode: 0x{:02X}", b),
         };
         let (instr, c) = match opcode {
+            Unreachable => (WasmInstr::Unreachable, 0),
             Block => {
                 let (resulttype, c_r) = parse_blocktype(reader)?;
                 let (instrs, c_i) = parse_instrs(reader, BinaryOpcode::End)?;
