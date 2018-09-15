@@ -707,8 +707,12 @@ fn parse_instrs(
                     p.1,
                 )
             })?,
-            I32Const => parse_i32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0 as u32)), p.1))?,
-            I64Const => parse_i64(reader).map(|p| (WasmInstr::Const(Const::I64(p.0 as u64)), p.1))?,
+            I32Const => {
+                parse_i32(reader).map(|p| (WasmInstr::Const(Const::I32(p.0 as u32)), p.1))?
+            }
+            I64Const => {
+                parse_i64(reader).map(|p| (WasmInstr::Const(Const::I64(p.0 as u64)), p.1))?
+            }
             I32Eqz => (WasmInstr::Itestop(Itestop::Eqz32), 0),
             I32Eq => (WasmInstr::Irelop(Irelop::Eq32), 0),
             I32Ne => (WasmInstr::Irelop(Irelop::Ne32), 0),
