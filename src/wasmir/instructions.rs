@@ -20,6 +20,20 @@ impl fmt::Display for Const {
 }
 
 #[derive(Debug)]
+pub enum Iunop {
+    Clz32,
+}
+
+impl fmt::Display for Iunop {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::Iunop::*;
+        match self {
+            &Clz32 => write!(f, "Iunop::Clz32"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum Ibinop {
     Add32,
     Sub32,
@@ -182,6 +196,7 @@ impl fmt::Display for Storeattr {
 #[derive(Debug)]
 pub enum WasmInstr {
     Const(Const),
+    Iunop(Iunop),
     Ibinop(Ibinop),
     Itestop(Itestop),
     Irelop(Irelop),

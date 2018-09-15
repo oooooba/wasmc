@@ -2,7 +2,7 @@ use std::io::Read;
 use std::str;
 
 use wasmir::instructions::{
-    Const, Cvtop, Expr, Ibinop, Irelop, Itestop, Loadattr, Memarg, Storeattr, WasmInstr,
+    Const, Cvtop, Expr, Ibinop, Irelop, Itestop, Iunop, Loadattr, Memarg, Storeattr, WasmInstr,
 };
 use wasmir::types::{
     Elemtype, Functype, Globaltype, Limits, Memtype, Mut, Resulttype, Tabletype, Valtype,
@@ -62,6 +62,7 @@ enum BinaryOpcode {
     I32GtU = 0x4B,
     I32LeS = 0x4C,
     I32GeU = 0x4F,
+    I32Clz = 0x67,
     I32Add = 0x6A,
     I32Sub = 0x6B,
     I32Mul = 0x6C,
@@ -265,7 +266,9 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     None,
     None,
     None,
-    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::I32Clz,
+    }),
     // 0x68 - 0x6F
     None,
     None,
@@ -730,6 +733,7 @@ fn parse_instrs(
             I32GtU => (WasmInstr::Irelop(Irelop::GtU32), 0),
             I32LeS => (WasmInstr::Irelop(Irelop::LeS32), 0),
             I32GeU => (WasmInstr::Irelop(Irelop::GeU32), 0),
+            I32Clz => (WasmInstr::Iunop(Iunop::Clz32), 0),
             I32Add => (WasmInstr::Ibinop(Ibinop::Add32), 0),
             I32Sub => (WasmInstr::Ibinop(Ibinop::Sub32), 0),
             I32Mul => (WasmInstr::Ibinop(Ibinop::Mul32), 0),

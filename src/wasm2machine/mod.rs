@@ -13,7 +13,9 @@ use machineir::opcode::{
 use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
-use wasmir::instructions::{Const, Cvtop, Ibinop, Irelop, Itestop, Loadattr, Storeattr, WasmInstr};
+use wasmir::instructions::{
+    Const, Cvtop, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
+};
 use wasmir::types::{Functype, Mut, Resulttype, Valtype};
 use wasmir::{Importdesc, Labelidx, Typeidx};
 
@@ -169,6 +171,10 @@ impl WasmToMachine {
 
     pub fn finalize(self) -> ModuleHandle {
         self.module
+    }
+
+    fn emit_unop(&mut self, _op: &Iunop) {
+        unimplemented!()
     }
 
     fn emit_binop(&mut self, op: &Ibinop) {
@@ -425,6 +431,7 @@ impl WasmToMachine {
                 self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Const { dst, src });
             }
+            &WasmInstr::Iunop(ref op) => self.emit_unop(op),
             &WasmInstr::Ibinop(ref op) => self.emit_binop(op),
             &WasmInstr::Itestop(_) => unimplemented!(),
             &WasmInstr::Irelop(ref op) => {
