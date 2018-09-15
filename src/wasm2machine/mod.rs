@@ -1026,27 +1026,35 @@ impl WasmToMachine {
         }
     }
 
-    fn declare_function(&self, typeidx: Typeidx, i: usize, linkage: Linkage) -> FunctionHandle {
+    fn declare_function(
+        &self,
+        func_name: String,
+        typeidx: Typeidx,
+        linkage: Linkage,
+    ) -> FunctionHandle {
         let (parameter_types, result_types) = self.function_types[typeidx.as_index()].clone();
-        let func_name = format!("f_{}", i);
         Context::create_function(func_name, parameter_types, result_types, self.module)
             .set_linkage(linkage)
     }
 
     fn declare_functions(&mut self, module: &wasmir::Module) {
-        for (i, import) in module.get_imports().iter().enumerate() {
+        for import in module.get_imports().iter() {
             use self::Importdesc::*;
             let typeidx = match import.get_desc() {
                 &Func(typeidx) => typeidx,
                 _ => continue,
             };
-            let function = self.declare_function(typeidx, i, Linkage::Import);
+            let function =
+                self.declare_function(import.get_name().to_string(), typeidx, Linkage::Import);
             self.module.get_mut_functions().push(function);
         }
         for (i, func) in module.get_funcs().iter().enumerate() {
             let typeidx = *func.get_type();
-            let function =
-                self.declare_function(typeidx, module.get_imports().len() + i, Linkage::Export);
+            let function = self.declare_function(
+                format!("f_{}", module.get_imports().len() + i),
+                typeidx,
+                Linkage::Export,
+            );
             self.module.get_mut_functions().push(function);
         }
         assert_eq!(

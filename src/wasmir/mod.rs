@@ -227,6 +227,10 @@ impl Import {
         Import { module, name, desc }
     }
 
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+
     pub fn get_desc(&self) -> &Importdesc {
         &self.desc
     }
