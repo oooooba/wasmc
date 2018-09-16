@@ -17,7 +17,7 @@ use wasmir::instructions::{
     Const, Cvtop, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
 };
 use wasmir::types::{Functype, Mut, Resulttype, Valtype};
-use wasmir::{Importdesc, Labelidx, Typeidx};
+use wasmir::{Exportdesc, Importdesc, Labelidx, Typeidx};
 
 #[derive(Debug)]
 enum StackElem {
@@ -146,7 +146,7 @@ impl WasmToMachine {
             WasmToMachine::declare_function(
                 format!("f_{}", num_import_functions + i),
                 typeidx,
-                Linkage::Export,
+                Linkage::Private,
                 function_types,
                 machine_module,
             );
@@ -209,6 +209,18 @@ impl WasmToMachine {
 
         let (num_import_functions, _) =
             WasmToMachine::declare_functions(wasmir_module, &function_types, module);
+
+        for export in wasmir_module.get_exports().iter() {
+            match export.get_desc() {
+                &Exportdesc::Func(funcidx) => {
+                    let index = funcidx.as_index();
+                    module.get_mut_functions()[index]
+                        .set_func_name(export.get_name().clone())
+                        .set_linkage(Linkage::Export);
+                }
+                _ => continue,
+            }
+        }
 
         WasmToMachine {
             operand_stack: OperandStack::new(),

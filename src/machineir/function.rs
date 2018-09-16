@@ -64,6 +64,11 @@ impl Function {
         &self.func_name
     }
 
+    pub fn set_func_name(&mut self, func_name: String) -> FunctionHandle {
+        self.func_name = func_name;
+        self.handle
+    }
+
     pub fn get_basic_blocks(&self) -> &VecDeque<BasicBlockHandle> {
         &self.basic_blocks
     }

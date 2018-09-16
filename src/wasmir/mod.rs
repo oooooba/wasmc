@@ -205,6 +205,14 @@ impl Export {
     pub fn new(name: String, desc: Exportdesc) -> Export {
         Export { name, desc }
     }
+
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+
+    pub fn get_desc(&self) -> &Exportdesc {
+        &self.desc
+    }
 }
 
 #[derive(Debug)]
