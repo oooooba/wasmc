@@ -183,7 +183,7 @@ impl WasmToMachine {
         let typ = match op {
             &Add32 | &Sub32 | &Mul32 | &DivU32 | &And32 | &Or32 | &Xor32 | &Shl32 | &ShrS32
             | &ShrU32 => Type::I32,
-            &Mul64 | &ShrU64 => Type::I64,
+            &Mul64 | &Shl64 | &ShrU64 => Type::I64,
         };
         let dst = Context::create_register(typ);
 
@@ -246,6 +246,7 @@ impl WasmToMachine {
             &Shl32 => self.emit_shift_opcode_helper(BinaryOpKind::Shl, dst, src1, src2, 32),
             &ShrS32 => self.emit_shift_opcode_helper(BinaryOpKind::Sar, dst, src1, src2, 32),
             &ShrU32 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, dst, src1, src2, 32),
+            &Shl64 => self.emit_shift_opcode_helper(BinaryOpKind::Shl, dst, src1, src2, 64),
             &ShrU64 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, dst, src1, src2, 64),
         };
         self.emit_on_current_basic_block(opcode);

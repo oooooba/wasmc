@@ -48,6 +48,7 @@ pub enum Ibinop {
     Shl32,
     ShrS32,
     ShrU32,
+    Shl64,
     ShrU64,
 }
 
@@ -66,6 +67,7 @@ impl fmt::Display for Ibinop {
             &Shl32 => write!(f, "Ibinop::Shl32"),
             &ShrS32 => write!(f, "Ibinop::ShrS32"),
             &ShrU32 => write!(f, "Ibinop::ShrU32"),
+            &Shl64 => write!(f, "Ibinop::Shl64"),
             &ShrU64 => write!(f, "Ibinop::ShrU64"),
         }
     }
