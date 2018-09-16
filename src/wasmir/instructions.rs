@@ -95,6 +95,7 @@ pub enum Irelop {
     GtU32,
     LeS32,
     LeU32,
+    GeS32,
     GeU32,
 }
 
@@ -110,6 +111,7 @@ impl fmt::Display for Irelop {
             &GtU32 => write!(f, "Irelop::GtU32"),
             &LeS32 => write!(f, "Irelop::LeS32"),
             &LeU32 => write!(f, "Irelop::LeU32"),
+            &GeS32 => write!(f, "Irelop::GeS32"),
             &GeU32 => write!(f, "Irelop::GeU32"),
         }
     }
