@@ -183,7 +183,7 @@ impl WasmToMachine {
         let typ = match op {
             &Add32 | &Sub32 | &Mul32 | &DivU32 | &And32 | &Or32 | &Xor32 | &Shl32 | &ShrS32
             | &ShrU32 => Type::I32,
-            &Mul64 | &Shl64 | &ShrU64 => Type::I64,
+            &Mul64 | &Or64 | &Shl64 | &ShrU64 => Type::I64,
         };
         let dst = Context::create_register(typ);
 
@@ -231,7 +231,7 @@ impl WasmToMachine {
                 src1,
                 src2,
             },
-            &Or32 => Opcode::BinaryOp {
+            &Or32 | &Or64 => Opcode::BinaryOp {
                 kind: opcode::BinaryOpKind::Or,
                 dst,
                 src1,
