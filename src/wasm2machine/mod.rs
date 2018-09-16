@@ -102,9 +102,60 @@ pub struct WasmToMachine {
     local_variables: Vec<RegisterHandle>,
     global_variables: Vec<(RegisterHandle, RegionHandle)>,
     function_types: Vec<(Vec<Type>, Vec<Type>)>,
+    num_import_functions: usize,
 }
 
 impl WasmToMachine {
+    fn declare_function(
+        func_name: String,
+        typeidx: Typeidx,
+        linkage: Linkage,
+        function_types: &Vec<(Vec<Type>, Vec<Type>)>,
+        mut machine_module: ModuleHandle,
+    ) {
+        let (parameter_types, result_types) = function_types[typeidx.as_index()].clone();
+        let function =
+            Context::create_function(func_name, parameter_types, result_types, machine_module)
+                .set_linkage(linkage);
+        machine_module.get_mut_functions().push(function);
+    }
+
+    fn declare_functions(
+        wasm_module: &wasmir::Module,
+        function_types: &Vec<(Vec<Type>, Vec<Type>)>,
+        machine_module: ModuleHandle,
+    ) -> (usize, usize) {
+        for import in wasm_module.get_imports().iter() {
+            use self::Importdesc::*;
+            let typeidx = match import.get_desc() {
+                &Func(typeidx) => typeidx,
+                _ => continue,
+            };
+            WasmToMachine::declare_function(
+                import.get_name().to_string(),
+                typeidx,
+                Linkage::Import,
+                function_types,
+                machine_module,
+            );
+        }
+        let num_import_functions = machine_module.get_functions().len();
+
+        for (i, func) in wasm_module.get_funcs().iter().enumerate() {
+            let typeidx = *func.get_type();
+            WasmToMachine::declare_function(
+                format!("f_{}", num_import_functions + i),
+                typeidx,
+                Linkage::Export,
+                function_types,
+                machine_module,
+            );
+        }
+        let num_define_functions = machine_module.get_functions().len() - num_import_functions;
+
+        (num_import_functions, num_define_functions)
+    }
+
     pub fn new(wasmir_module: &wasmir::Module) -> WasmToMachine {
         let mut module = Context::create_module();
 
@@ -156,6 +207,9 @@ impl WasmToMachine {
             .map(|functype| WasmToMachine::map_functype(functype))
             .collect();
 
+        let (num_import_functions, _) =
+            WasmToMachine::declare_functions(wasmir_module, &function_types, module);
+
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
@@ -166,6 +220,7 @@ impl WasmToMachine {
             local_variables: vec![],
             global_variables,
             function_types,
+            num_import_functions,
         }
     }
 
@@ -1062,44 +1117,6 @@ impl WasmToMachine {
         }
     }
 
-    fn declare_function(
-        &self,
-        func_name: String,
-        typeidx: Typeidx,
-        linkage: Linkage,
-    ) -> FunctionHandle {
-        let (parameter_types, result_types) = self.function_types[typeidx.as_index()].clone();
-        Context::create_function(func_name, parameter_types, result_types, self.module)
-            .set_linkage(linkage)
-    }
-
-    fn declare_functions(&mut self, module: &wasmir::Module) -> (usize, usize) {
-        for import in module.get_imports().iter() {
-            use self::Importdesc::*;
-            let typeidx = match import.get_desc() {
-                &Func(typeidx) => typeidx,
-                _ => continue,
-            };
-            let function =
-                self.declare_function(import.get_name().to_string(), typeidx, Linkage::Import);
-            self.module.get_mut_functions().push(function);
-        }
-        let num_import_functions = self.module.get_functions().len();
-
-        for (i, func) in module.get_funcs().iter().enumerate() {
-            let typeidx = *func.get_type();
-            let function = self.declare_function(
-                format!("f_{}", num_import_functions + i),
-                typeidx,
-                Linkage::Export,
-            );
-            self.module.get_mut_functions().push(function);
-        }
-        let num_define_functions = self.module.get_functions().len() - num_import_functions;
-
-        (num_import_functions, num_define_functions)
-    }
-
     fn initialize_global_variables(&mut self, module: &wasmir::Module) {
         for (i, global) in module.get_globals().iter().enumerate() {
             let expr = global.get_init();
@@ -1124,10 +1141,9 @@ impl WasmToMachine {
     }
 
     pub fn emit(&mut self, module: &wasmir::Module) {
-        let (num_import_functions, _) = self.declare_functions(module);
         self.initialize_global_variables(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
-            let function = self.module.get_functions()[num_import_functions + i];
+            let function = self.module.get_functions()[self.num_import_functions + i];
             let mut local_variables = function.get_parameter_variables().clone();
             for valtype in func.get_locals().iter() {
                 let typ = WasmToMachine::map_valtype(valtype);
