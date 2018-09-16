@@ -79,6 +79,7 @@ enum BinaryOpcode {
     I32ShrU = 0x76,
     I64ShrU = 0x88,
     I32WrapI64 = 0xA7,
+    I64ExtendUI32 = 0xAD,
 }
 
 struct InstructionEntry {
@@ -377,6 +378,17 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     Some(InstructionEntry {
         opcode: BinaryOpcode::I32WrapI64,
     }),
+    // 0xA8 - 0xAF
+    None,
+    None,
+    None,
+    None,
+    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::I64ExtendUI32,
+    }),
+    None,
+    None,
 ];
 
 fn decode_by_unsigned_leb128(
@@ -770,6 +782,14 @@ fn parse_instrs(
                     op: Cvtop::Wrap,
                     dst_type: Valtype::I32,
                     src_type: Valtype::I64,
+                },
+                0,
+            ),
+            I64ExtendUI32 => (
+                WasmInstr::Cvtop {
+                    op: Cvtop::ExtendU,
+                    dst_type: Valtype::I64,
+                    src_type: Valtype::I32,
                 },
                 0,
             ),
