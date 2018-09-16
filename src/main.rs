@@ -17,7 +17,7 @@ use wasmc::wasm2machine::WasmToMachine;
 use wasmc::wasmir;
 use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
 use wasmc::wasmir::types::{Functype, Resulttype, Valtype};
-use wasmc::wasmir::{Labelidx, Module};
+use wasmc::wasmir::{Export, Exportdesc, Funcidx, Labelidx, Module};
 
 pub struct MainPass {
     registers: Vec<HashMap<Type, RegisterHandle>>,
@@ -297,7 +297,13 @@ fn create_test_wasm_ir() -> Module {
         vec![],
         vec![],
         vec![],
-        vec![],
+        vec![
+            Export::new("f_0".to_string(), Exportdesc::Func(Funcidx::new(0))),
+            Export::new("f_1".to_string(), Exportdesc::Func(Funcidx::new(1))),
+            Export::new("f_2".to_string(), Exportdesc::Func(Funcidx::new(2))),
+            Export::new("f_3".to_string(), Exportdesc::Func(Funcidx::new(3))),
+            Export::new("f_4".to_string(), Exportdesc::Func(Funcidx::new(4))),
+        ],
         vec![],
         vec![],
     )
