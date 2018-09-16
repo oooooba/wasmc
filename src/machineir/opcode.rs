@@ -39,6 +39,7 @@ pub enum JumpCondKind {
     GtU(RegisterHandle, RegisterHandle),
     GeS(RegisterHandle, RegisterHandle),
     GeU(RegisterHandle, RegisterHandle),
+    Table(Vec<BasicBlockHandle>, RegisterHandle),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

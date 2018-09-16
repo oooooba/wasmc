@@ -417,6 +417,14 @@ impl FunctionPass for EmitAssemblyPass {
                                 self.emit_binop_reg_reg("cmp", preg1, preg2);
                                 println!("jae label_{}", target);
                             }
+                            &Table(ref table, preg) => {
+                                // ToDo: fix
+                                for (i, basic_block) in table.iter().enumerate() {
+                                    self.emit_binop_reg_imm64("cmp", preg, i as u64);
+                                    println!("jz label_{}", basic_block);
+                                }
+                                println!("jmp label_{}", target);
+                            }
                         }
                     }
                     &Call { ref func, .. } => match func {

@@ -518,6 +518,24 @@ impl WasmToMachine {
                 let cond_kind = JumpCondKind::Neq0(cond_reg);
                 self.emit_br_if(cond_kind, index);
             }
+            &WasmInstr::BrTable { ref table, default } => {
+                let index = match self.operand_stack.pop().unwrap() {
+                    StackElem::Value(reg) => reg,
+                    StackElem::Label(_) => unreachable!(),
+                };
+                let blocks = table
+                    .iter()
+                    .map(|labelidx| {
+                        self.operand_stack
+                            .get_label_at(labelidx.as_index())
+                            .unwrap()
+                    }).collect();
+                let default_block = self.operand_stack.get_label_at(default.as_index()).unwrap();
+                self.emit_on_current_basic_block(Opcode::Jump {
+                    kind: JumpCondKind::Table(blocks, index),
+                    target: JumpTargetKind::BasicBlock(default_block),
+                });
+            }
             &WasmInstr::Return => {
                 let entering_block = self.entry_block;
                 self.emit_exiting_block(

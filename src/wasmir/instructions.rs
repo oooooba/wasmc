@@ -215,6 +215,10 @@ pub enum WasmInstr {
     Loop(Resulttype, Vec<WasmInstr>),
     Br(Labelidx),
     BrIf(Labelidx),
+    BrTable {
+        table: Vec<Labelidx>,
+        default: Labelidx,
+    },
     Return,
     GetLocal(Localidx),
     SetLocal(Localidx),

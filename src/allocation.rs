@@ -255,6 +255,14 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                     _ => unreachable!(),
                                 }
                             }
+                            &Table(ref table, index) => {
+                                assert!(!index.is_physical());
+                                let preg = self.allocate_physical_register(index, 0);
+                                let load_instr =
+                                    self.create_load_instr(basic_block, preg, index, function);
+                                iter.insert_before(load_instr);
+                                Table(table.clone(), preg)
+                            }
                         };
 
                         (

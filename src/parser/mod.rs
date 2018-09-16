@@ -34,6 +34,7 @@ enum BinaryOpcode {
     End = 0x0B,
     Br = 0x0C,
     BrIf = 0x0D,
+    BrTable = 0x0E,
     Return = 0x0F,
     Call = 0x10,
     CallIndirect = 0x11,
@@ -112,7 +113,9 @@ static INSTRUCTION_TABLE: &'static [Option<InstructionEntry>] = &[
     Some(InstructionEntry {
         opcode: BinaryOpcode::BrIf,
     }),
-    None,
+    Some(InstructionEntry {
+        opcode: BinaryOpcode::BrTable,
+    }),
     Some(InstructionEntry {
         opcode: BinaryOpcode::Return,
     }),
@@ -641,6 +644,11 @@ fn parse_instrs(
             },
             Br => parse_labelidx(reader).map(|p| (WasmInstr::Br(p.0), p.1))?,
             BrIf => parse_labelidx(reader).map(|p| (WasmInstr::BrIf(p.0), p.1))?,
+            BrTable => {
+                let (table, c_t) = parse_vector(reader, parse_labelidx)?;
+                let (default, c_d) = parse_labelidx(reader)?;
+                (WasmInstr::BrTable { table, default }, c_t + c_d)
+            }
             Return => (WasmInstr::Return, 0),
             Call => parse_funcidx(reader).map(|p| (WasmInstr::Call(p.0), p.1))?,
             CallIndirect => {
