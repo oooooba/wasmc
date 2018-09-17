@@ -8,7 +8,6 @@ pub struct Register {
     handle: RegisterHandle,
     typ: Type,
     is_physical: bool,
-    offset: usize, // only used when is_physical is false, ToDo: fix
 }
 
 impl Register {
@@ -17,7 +16,6 @@ impl Register {
             handle,
             typ,
             is_physical: false,
-            offset: 0,
         }
     }
 
@@ -35,14 +33,6 @@ impl Register {
 
     pub fn is_physical(&self) -> bool {
         self.is_physical
-    }
-
-    pub fn get_offset(&self) -> usize {
-        self.offset
-    }
-
-    pub fn set_offset(&mut self, offset: usize) {
-        self.offset = offset;
     }
 
     pub fn print(&self) {
