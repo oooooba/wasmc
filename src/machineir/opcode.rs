@@ -19,9 +19,9 @@ pub enum BinaryOpKind {
     And,
     Or,
     Xor,
-    Shl,
-    Shr,
-    Sar,
+    Sll,
+    Srl,
+    Sra,
 }
 
 #[derive(Debug, PartialEq, Eq)]

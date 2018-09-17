@@ -310,11 +310,11 @@ impl WasmToMachine {
                 src1,
                 src2,
             },
-            &Shl32 => self.emit_shift_opcode_helper(BinaryOpKind::Shl, dst, src1, src2, 32),
-            &ShrS32 => self.emit_shift_opcode_helper(BinaryOpKind::Sar, dst, src1, src2, 32),
-            &ShrU32 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, dst, src1, src2, 32),
-            &Shl64 => self.emit_shift_opcode_helper(BinaryOpKind::Shl, dst, src1, src2, 64),
-            &ShrU64 => self.emit_shift_opcode_helper(BinaryOpKind::Shr, dst, src1, src2, 64),
+            &Shl32 => self.emit_shift_opcode_helper(BinaryOpKind::Sll, dst, src1, src2, 32),
+            &ShrS32 => self.emit_shift_opcode_helper(BinaryOpKind::Sra, dst, src1, src2, 32),
+            &ShrU32 => self.emit_shift_opcode_helper(BinaryOpKind::Srl, dst, src1, src2, 32),
+            &Shl64 => self.emit_shift_opcode_helper(BinaryOpKind::Sll, dst, src1, src2, 64),
+            &ShrU64 => self.emit_shift_opcode_helper(BinaryOpKind::Srl, dst, src1, src2, 64),
         };
         self.emit_on_current_basic_block(opcode);
     }
@@ -454,7 +454,7 @@ impl WasmToMachine {
         src_num_shift: OperandKind,
         num_shift_limit: usize,
     ) -> Opcode {
-        assert!(op == BinaryOpKind::Shl || op == BinaryOpKind::Shr || op == BinaryOpKind::Sar);
+        assert!(op == BinaryOpKind::Sll || op == BinaryOpKind::Srl || op == BinaryOpKind::Sra);
         assert!(num_shift_limit == 32 || num_shift_limit == 64);
 
         let src_num_shift = match src_num_shift {
