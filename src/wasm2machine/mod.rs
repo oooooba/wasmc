@@ -481,7 +481,7 @@ impl WasmToMachine {
         };
 
         Opcode::BinaryOp {
-            kind: BinaryOpKind::Shl,
+            kind: op,
             dst,
             src1: src_target,
             src2: src_num_shift,
