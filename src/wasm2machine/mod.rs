@@ -189,6 +189,30 @@ impl WasmToMachine {
         };
         module.get_mut_dynamic_regions().push(memory);
 
+        for data in wasmir_module.get_data().iter() {
+            let mut mem = module.get_mut_dynamic_regions()[data.get_data().as_index()];
+            let offset = data.get_offset();
+            assert_eq!(offset.get_instr_sequences().len(), 1);
+            let offset = match &offset.get_instr_sequences()[0] {
+                &WasmInstr::Const(ref cst) => match cst {
+                    &Const::I32(i) => i as usize,
+                    &Const::I64(i) => i as usize,
+                },
+                _ => unreachable!(),
+            };
+            for (i, &init) in data.get_init().iter().enumerate() {
+                let var = Context::create_register(Type::I8);
+                mem.get_mut_initial_value_map().insert(
+                    var,
+                    Opcode::Const {
+                        dst: var,
+                        src: ConstKind::ConstI8(init),
+                    },
+                );
+                mem.get_mut_offset_map().insert(var, offset + i);
+            }
+        }
+
         let table = if wasmir_module.get_tables().len() == 0 {
             Context::create_region(RegionKind::DynamicGlobal { min: 0, max: None })
         } else {

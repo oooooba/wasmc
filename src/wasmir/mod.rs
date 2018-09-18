@@ -255,6 +255,18 @@ impl Data {
     pub fn new(data: Memidx, offset: Expr, init: Vec<u8>) -> Data {
         Data { data, offset, init }
     }
+
+    pub fn get_data(&self) -> Memidx {
+        self.data
+    }
+
+    pub fn get_offset(&self) -> &Expr {
+        &self.offset
+    }
+
+    pub fn get_init(&self) -> &Vec<u8> {
+        &self.init
+    }
 }
 
 #[derive(Debug)]
