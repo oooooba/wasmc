@@ -60,7 +60,6 @@ impl ModulePass for ModuleInitPass {
         }
         println!();
         println!(".text");
-        println!();
     }
 }
 
@@ -82,6 +81,7 @@ pub struct EmitAssemblyPass {
 impl FunctionPass for EmitAssemblyPass {
     fn do_action(&mut self, mut function: FunctionHandle) {
         {
+            println!();
             match function.get_linkage() {
                 &Linkage::Export => println!(".global {}", function.get_func_name()),
                 &Linkage::Import => return,
