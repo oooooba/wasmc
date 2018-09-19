@@ -56,6 +56,10 @@ impl Region {
         &mut self.offset_map
     }
 
+    pub fn get_initial_value_map(&self) -> &HashMap<RegisterHandle, Opcode> {
+        &self.initial_value_map
+    }
+
     pub fn get_mut_initial_value_map(&mut self) -> &mut HashMap<RegisterHandle, Opcode> {
         &mut self.initial_value_map
     }

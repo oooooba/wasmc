@@ -37,10 +37,27 @@ impl ModulePass for ModuleInitPass {
         println!();
         println!(".data");
         println!(".align {}", Type::Pointer.get_size());
-        println!(
-            "{}:",
-            module.get_mutable_global_variable_region().get_name()
-        );
+        let bss_region = module.get_dynamic_regions()[0];
+        println!("{}:", bss_region.get_name());
+        let mut bss_inits: Vec<(RegisterHandle, usize)> =
+            bss_region.get_offset_map().clone().into_iter().collect();
+        bss_inits.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+        let mut prev_offset = 0;
+        for (var, offset) in bss_inits.into_iter() {
+            for _ in 0..(offset - prev_offset - 1) {
+                println!(".{} {}", Type::I8.get_ptr_notation(), 0);
+            }
+            let opc = bss_region.get_initial_value_map().get(&var).unwrap();
+            let value = match opc {
+                &Opcode::Const {
+                    src: ConstKind::ConstI8(i),
+                    ..
+                } => i,
+                _ => unreachable!(),
+            };
+            println!(".{} {}", var.get_typ().get_ptr_notation(), value);
+            prev_offset = offset;
+        }
         println!();
         println!(".text");
         println!();
