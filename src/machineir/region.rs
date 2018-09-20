@@ -44,6 +44,11 @@ impl Region {
         &self.name
     }
 
+    pub fn set_name(&mut self, name: String) -> RegionHandle {
+        self.name = name;
+        self.handle
+    }
+
     pub fn get_kind(&self) -> &RegionKind {
         &self.kind
     }

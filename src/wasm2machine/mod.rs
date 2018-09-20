@@ -242,6 +242,10 @@ impl WasmToMachine {
                         .set_func_name(export.get_name().clone())
                         .set_linkage(Linkage::Export);
                 }
+                &Exportdesc::Mem(memidx) => {
+                    let index = memidx.as_index();
+                    module.get_mut_dynamic_regions()[index].set_name(export.get_name().clone());
+                }
                 _ => continue,
             }
         }
