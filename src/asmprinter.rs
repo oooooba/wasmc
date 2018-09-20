@@ -38,6 +38,7 @@ impl ModulePass for ModuleInitPass {
         println!(".data");
         println!(".align {}", Type::Pointer.get_size());
         let bss_region = module.get_dynamic_regions()[0];
+        println!(".global {}", bss_region.get_name());
         println!("{}:", bss_region.get_name());
         let mut bss_inits: Vec<(RegisterHandle, usize)> =
             bss_region.get_offset_map().clone().into_iter().collect();
