@@ -27,8 +27,9 @@ impl Register {
         &self.typ
     }
 
-    pub fn set_physical(&mut self) {
+    pub fn set_physical(&mut self) -> RegisterHandle {
         self.is_physical = true;
+        self.handle
     }
 
     pub fn is_physical(&self) -> bool {

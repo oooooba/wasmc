@@ -54,48 +54,27 @@ impl FunctionPass for MainPass {
 
 impl MainPass {
     pub fn create() -> Box<MainPass> {
-        let mut reg_al = Context::create_register(Type::I8);
-        reg_al.set_physical();
-        let mut reg_eax = Context::create_register(Type::I32);
-        reg_eax.set_physical();
-        let mut reg_rax = Context::create_register(Type::I64);
-        reg_rax.set_physical();
-        let mut reg_ebx = Context::create_register(Type::I32);
-        reg_ebx.set_physical();
-        let mut reg_rbx = Context::create_register(Type::I64);
-        reg_rbx.set_physical();
-        let mut reg_ecx = Context::create_register(Type::I32);
-        reg_ecx.set_physical();
-        let mut reg_rcx = Context::create_register(Type::I64);
-        reg_rcx.set_physical();
-        let mut reg_cl = Context::create_register(Type::I8);
-        reg_cl.set_physical();
-        let mut reg_edx = Context::create_register(Type::I32);
-        reg_edx.set_physical();
-        let mut reg_rdx = Context::create_register(Type::I64);
-        reg_rdx.set_physical();
-        let mut reg_edi = Context::create_register(Type::I32);
-        reg_edi.set_physical();
-        let mut reg_rdi = Context::create_register(Type::I64);
-        reg_rdi.set_physical();
-        let mut reg_esi = Context::create_register(Type::I32);
-        reg_esi.set_physical();
-        let mut reg_rsi = Context::create_register(Type::I64);
-        reg_rsi.set_physical();
-        let mut reg_r8d = Context::create_register(Type::I32);
-        reg_r8d.set_physical();
-        let mut reg_r8 = Context::create_register(Type::I64);
-        reg_r8.set_physical();
-        let mut reg_r9d = Context::create_register(Type::I32);
-        reg_r9d.set_physical();
-        let mut reg_r9 = Context::create_register(Type::I64);
-        reg_r9.set_physical();
-        let mut reg_rbp = Context::create_register(Type::I64);
-        reg_rbp.set_physical();
-        let mut reg_rsp = Context::create_register(Type::I64);
-        reg_rsp.set_physical();
-        let mut reg_rip = Context::create_register(Type::Pointer);
-        reg_rip.set_physical();
+        let reg_al = Context::create_register(Type::I8).set_physical();
+        let reg_eax = Context::create_register(Type::I32).set_physical();
+        let reg_rax = Context::create_register(Type::I64).set_physical();
+        let reg_ebx = Context::create_register(Type::I32).set_physical();
+        let reg_rbx = Context::create_register(Type::I64).set_physical();
+        let reg_ecx = Context::create_register(Type::I32).set_physical();
+        let reg_rcx = Context::create_register(Type::I64).set_physical();
+        let reg_cl = Context::create_register(Type::I8).set_physical();
+        let reg_edx = Context::create_register(Type::I32).set_physical();
+        let reg_rdx = Context::create_register(Type::I64).set_physical();
+        let reg_edi = Context::create_register(Type::I32).set_physical();
+        let reg_rdi = Context::create_register(Type::I64).set_physical();
+        let reg_esi = Context::create_register(Type::I32).set_physical();
+        let reg_rsi = Context::create_register(Type::I64).set_physical();
+        let reg_r8d = Context::create_register(Type::I32).set_physical();
+        let reg_r8 = Context::create_register(Type::I64).set_physical();
+        let reg_r9d = Context::create_register(Type::I32).set_physical();
+        let reg_r9 = Context::create_register(Type::I64).set_physical();
+        let reg_rbp = Context::create_register(Type::I64).set_physical();
+        let reg_rsp = Context::create_register(Type::I64).set_physical();
+        let reg_rip = Context::create_register(Type::Pointer).set_physical();
 
         let registers = vec![
             HashMap::from_iter(vec![
