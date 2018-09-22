@@ -125,6 +125,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     &Opcode::Load { dst, ref src } => {
                         let new_src = match src {
                             address @ &Address::Var(_) => address.clone(),
+                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
                             &Address::RegBaseRegOffset { base, offset } => {
                                 let new_base = self.allocate_physical_register(base, 0);
                                 let load_instr =
@@ -169,6 +170,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_dst = match dst {
                             address @ &Address::Var(_) => address.clone(),
+                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
                             &Address::RegBaseRegOffset { base, offset } => {
                                 let new_base = self.allocate_physical_register(base, 1);
                                 let load_instr =
@@ -283,6 +285,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                             &CallTargetKind::Indirect(ref addr) => {
                                 let new_addr = match addr {
                                     v @ &Address::Var(_) => v.clone(),
+                                    address @ &Address::RegBaseImmOffset { .. } => address.clone(),
                                     &Address::RegBaseRegOffset { base, offset } => {
                                         let new_base = self.allocate_physical_register(base, 0);
                                         let load_instr = self.create_load_instr(

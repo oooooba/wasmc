@@ -281,6 +281,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     unreachable!()
                                 }
                             }
+                            &Address::RegBaseImmOffset { .. } => unimplemented!(),
                             &Address::RegBaseRegOffset { base, offset } => {
                                 assert!(base.is_physical());
                                 assert!(offset.is_physical());
@@ -362,6 +363,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     unreachable!()
                                 }
                             }
+                            &Address::RegBaseImmOffset { .. } => unimplemented!(),
                             &Address::RegBaseRegOffset { base, offset } => {
                                 assert!(base.is_physical());
                                 assert!(offset.is_physical());
@@ -463,6 +465,7 @@ impl FunctionPass for EmitAssemblyPass {
                                         ptr_notation, bpr_name, offset
                                     );
                                 }
+                                &Address::RegBaseImmOffset { .. } => unimplemented!(),
                                 &Address::RegBaseRegOffset { base, offset } => {
                                     assert!(base.is_physical());
                                     assert!(offset.is_physical());

@@ -75,6 +75,10 @@ impl OffsetKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Address {
     Var(RegisterHandle),
+    RegBaseImmOffset {
+        base: RegisterHandle,
+        offset: isize,
+    },
     RegBaseRegOffset {
         base: RegisterHandle,
         offset: RegisterHandle,
@@ -93,6 +97,15 @@ impl Address {
         match self {
             &Var(reg) => {
                 reg.print();
+            }
+            &RegBaseImmOffset { base, offset } => {
+                base.print();
+                let (offset, op) = if offset < 0 {
+                    (-offset as usize, "-")
+                } else {
+                    (offset as usize, "+")
+                };
+                print!(" {} {}", op, offset);
             }
             &RegBaseRegOffset { base, offset } => {
                 base.print();
