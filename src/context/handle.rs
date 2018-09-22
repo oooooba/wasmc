@@ -7,7 +7,6 @@ use machineir::instruction::Instr;
 use machineir::module::Module;
 use machineir::region::Region;
 use machineir::register::Register;
-use pass::PassKind;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
 pub struct RegisterHandle(usize);
@@ -311,53 +310,6 @@ impl DerefMut for ModuleHandle {
 }
 
 impl fmt::Display for ModuleHandle {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
-pub struct PassHandle(usize);
-
-impl PassHandle {
-    pub(super) fn new(id: usize) -> Self {
-        PassHandle(id)
-    }
-
-    pub fn get(&self) -> &PassKind {
-        unsafe { super::CONTEXT.passes.as_ref().unwrap().get(self).unwrap() }
-    }
-
-    pub fn get_mut(&mut self) -> &mut PassKind {
-        unsafe {
-            super::CONTEXT
-                .passes
-                .as_mut()
-                .unwrap()
-                .get_mut(self)
-                .unwrap()
-        }
-    }
-
-    pub fn print(&self) {
-        print!("pass{}", self.0);
-    }
-}
-
-impl Deref for PassHandle {
-    type Target = PassKind;
-    fn deref(&self) -> &PassKind {
-        self.get()
-    }
-}
-
-impl DerefMut for PassHandle {
-    fn deref_mut(&mut self) -> &mut PassKind {
-        self.get_mut()
-    }
-}
-
-impl fmt::Display for PassHandle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }

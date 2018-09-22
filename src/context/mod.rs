@@ -3,8 +3,7 @@ pub mod handle;
 use std::collections::BTreeMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, PassHandle, RegionHandle,
-    RegisterHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
 };
 use machineir::basicblock::BasicBlock;
 use machineir::function::Function;
@@ -14,7 +13,6 @@ use machineir::opcode::Opcode;
 use machineir::region::{Region, RegionKind};
 use machineir::register::Register;
 use machineir::typ::Type;
-use pass::PassKind;
 
 #[derive(Debug)]
 pub struct Context {
@@ -30,8 +28,6 @@ pub struct Context {
     num_created_regions: usize,
     modules: Option<BTreeMap<ModuleHandle, Module>>,
     num_created_modules: usize,
-    passes: Option<BTreeMap<PassHandle, PassKind>>,
-    num_created_passes: usize,
 }
 
 static mut CONTEXT: Context = Context {
@@ -47,8 +43,6 @@ static mut CONTEXT: Context = Context {
     num_created_regions: 0,
     modules: None,
     num_created_modules: 0,
-    passes: None,
-    num_created_passes: 0,
 };
 
 impl Context {
@@ -60,7 +54,6 @@ impl Context {
             CONTEXT.functions = Some(BTreeMap::new());
             CONTEXT.regions = Some(BTreeMap::new());
             CONTEXT.modules = Some(BTreeMap::new());
-            CONTEXT.passes = Some(BTreeMap::new());
         }
     }
 
@@ -135,16 +128,6 @@ impl Context {
             let handle = ModuleHandle::new(id);
             let module = Module::new(handle);
             CONTEXT.modules.as_mut().unwrap().insert(handle, module);
-            handle
-        }
-    }
-
-    pub fn create_pass(pass: PassKind) -> PassHandle {
-        unsafe {
-            let id = CONTEXT.num_created_passes;
-            CONTEXT.num_created_passes += 1;
-            let handle = PassHandle::new(id);
-            CONTEXT.passes.as_mut().unwrap().insert(handle, pass);
             handle
         }
     }
