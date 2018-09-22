@@ -386,6 +386,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                         )
                     }
                     &Opcode::Return { .. } => (None, 0),
+                    &Opcode::AddressOf { .. } => unimplemented!(),
                 };
 
                 if let Some(new_opcode) = new_opcode {

@@ -495,6 +495,7 @@ impl FunctionPass for EmitAssemblyPass {
                         println!("pop rbp");
                         println!("ret");
                     }
+                    &AddressOf { .. } => unimplemented!(),
                 }
                 iter.advance();
             }

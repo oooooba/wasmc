@@ -202,6 +202,10 @@ pub enum Opcode {
     Return {
         result: Option<RegisterHandle>,
     },
+    AddressOf {
+        dst: RegisterHandle,
+        location: Address,
+    },
 }
 
 impl Opcode {
@@ -308,6 +312,13 @@ impl Opcode {
                     res.print();
                 }
             }
+            &AddressOf { dst, ref location } => {
+                dst.print();
+                print!(" = ");
+                print!("addressof");
+                print!(" &");
+                location.print();
+            }
         }
     }
 }
@@ -342,6 +353,7 @@ impl fmt::Display for Opcode {
             &Jump { .. } => unimplemented!(),
             &Call { .. } => unimplemented!(),
             &Return { .. } => unimplemented!(),
+            &AddressOf { .. } => unimplemented!(),
         }
     }
 }
