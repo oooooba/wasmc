@@ -23,8 +23,8 @@ impl BasicBlockPass for InsertBasicBlockLabelPass {
 }
 
 impl InsertBasicBlockLabelPass {
-    pub fn create() -> Box<InsertBasicBlockLabelPass> {
-        Box::new(InsertBasicBlockLabelPass {})
+    pub fn new() -> InsertBasicBlockLabelPass {
+        InsertBasicBlockLabelPass {}
     }
 }
 
@@ -507,20 +507,20 @@ impl FunctionPass for EmitAssemblyPass {
 }
 
 impl EmitAssemblyPass {
-    pub fn create(
+    pub fn new(
         physical_register_name_map: HashMap<RegisterHandle, &'static str>,
         base_pointer_register: RegisterHandle,
         stack_pointer_register: RegisterHandle,
         instruction_pointer_register: RegisterHandle,
         argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    ) -> Box<EmitAssemblyPass> {
-        Box::new(EmitAssemblyPass {
+    ) -> EmitAssemblyPass {
+        EmitAssemblyPass {
             register_name_map: physical_register_name_map,
             base_pointer_register,
             stack_pointer_register,
             instruction_pointer_register,
             argument_registers,
-        })
+        }
     }
 
     fn emit_binop_reg_reg(&mut self, op: &'static str, dst: RegisterHandle, src: RegisterHandle) {

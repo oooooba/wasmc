@@ -1,7 +1,7 @@
 use context::handle::{FunctionHandle, ModuleHandle, RegionHandle};
 use context::Context;
 use machineir::region::RegionKind;
-use pass::ModulePass;
+use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Module {
@@ -63,5 +63,17 @@ impl Module {
 
     pub fn apply_module_pass(&self, module_pass: &mut dyn ModulePass) {
         module_pass.do_action(self.handle)
+    }
+
+    pub fn apply_function_pass(&self, function_pass: &mut dyn FunctionPass) {
+        for function in &self.functions {
+            function.apply_function_pass(function_pass);
+        }
+    }
+
+    pub fn apply_basic_block_pass(&self, basic_block_pass: &mut dyn BasicBlockPass) {
+        for function in &self.functions {
+            function.apply_basic_block_pass(basic_block_pass);
+        }
     }
 }

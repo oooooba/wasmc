@@ -407,17 +407,17 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 }
 
 impl SimpleRegisterAllocationPass {
-    pub fn create(
+    pub fn new(
         physical_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_result_register: HashMap<Type, RegisterHandle>,
-    ) -> Box<SimpleRegisterAllocationPass> {
-        Box::new(SimpleRegisterAllocationPass {
+    ) -> SimpleRegisterAllocationPass {
+        SimpleRegisterAllocationPass {
             physical_registers,
             physical_argument_registers,
             physical_result_register,
             virtual_register_indexes: HashMap::new(),
-        })
+        }
     }
 
     fn allocate_memory_for_virtual_register(&self, vreg: RegisterHandle, function: FunctionHandle) {

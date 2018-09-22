@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use std::fmt;
 
 use context::handle::{BasicBlockHandle, InstrHandle};
+use pass::BasicBlockPass;
 
 pub struct Iterator {
     basic_block: BasicBlockHandle,
@@ -109,5 +110,9 @@ impl BasicBlock {
             instr.get().print();
             println!();
         }
+    }
+
+    pub fn apply_basic_block_pass(&self, basic_block_pass: &mut dyn BasicBlockPass) {
+        basic_block_pass.do_action(self.handle)
     }
 }

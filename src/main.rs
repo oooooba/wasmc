@@ -12,7 +12,7 @@ use wasmc::context::handle::{ModuleHandle, RegisterHandle};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::parser;
-use wasmc::pass::{ModulePass, PassManager};
+use wasmc::pass::ModulePass;
 use wasmc::wasm2machine::WasmToMachine;
 use wasmc::wasmir;
 use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
@@ -31,21 +31,19 @@ pub struct MainPass {
 
 impl ModulePass for MainPass {
     fn do_action(&mut self, module: ModuleHandle) {
-        let mut pass_manager = PassManager::new();
-        pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(
+        module.apply_function_pass(&mut SimpleRegisterAllocationPass::new(
             self.registers.clone(),
             self.argument_registers.clone(),
             self.result_register.clone(),
         ));
-        pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
-        pass_manager.add_function_pass(EmitAssemblyPass::create(
+        module.apply_basic_block_pass(&mut InsertBasicBlockLabelPass::new());
+        module.apply_function_pass(&mut EmitAssemblyPass::new(
             self.register_name_map.clone(),
             self.base_pointer_register,
             self.stack_pointer_register,
             self.instruction_pointer_register,
             self.argument_registers.clone(),
         ));
-        pass_manager.run(module);
     }
 }
 
