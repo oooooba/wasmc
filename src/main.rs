@@ -8,11 +8,11 @@ use std::iter::FromIterator;
 
 use wasmc::allocation::SimpleRegisterAllocationPass;
 use wasmc::asmprinter::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitPass};
-use wasmc::context::handle::{FunctionHandle, ModuleHandle, RegisterHandle};
+use wasmc::context::handle::{ModuleHandle, RegisterHandle};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::parser;
-use wasmc::pass::{FunctionPass, ModulePass, PassManager};
+use wasmc::pass::{ModulePass, PassManager};
 use wasmc::wasm2machine::WasmToMachine;
 use wasmc::wasmir;
 use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
@@ -46,29 +46,6 @@ impl ModulePass for MainPass {
             self.argument_registers.clone(),
         ));
         pass_manager.run(module);
-    }
-}
-
-impl FunctionPass for MainPass {
-    fn initialize(&mut self, pass_manager: &mut PassManager) {
-        pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(
-            self.registers.clone(),
-            self.argument_registers.clone(),
-            self.result_register.clone(),
-        ));
-    }
-
-    fn do_action(&mut self, _function: FunctionHandle) {}
-
-    fn finalize(&mut self, pass_manager: &mut PassManager) {
-        pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
-        pass_manager.add_function_pass(EmitAssemblyPass::create(
-            self.register_name_map.clone(),
-            self.base_pointer_register,
-            self.stack_pointer_register,
-            self.instruction_pointer_register,
-            self.argument_registers.clone(),
-        ));
     }
 }
 
