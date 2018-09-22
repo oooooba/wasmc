@@ -12,7 +12,7 @@ use wasmc::context::handle::{FunctionHandle, ModuleHandle, RegisterHandle};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
 use wasmc::parser;
-use wasmc::pass::{FunctionPass, PassManager};
+use wasmc::pass::{FunctionPass, ModulePass, PassManager};
 use wasmc::wasm2machine::WasmToMachine;
 use wasmc::wasmir;
 use wasmc::wasmir::instructions::{Const, Cvtop, Expr, Ibinop, Irelop, Itestop, WasmInstr};
@@ -27,6 +27,26 @@ pub struct MainPass {
     stack_pointer_register: RegisterHandle,
     instruction_pointer_register: RegisterHandle,
     register_name_map: HashMap<RegisterHandle, &'static str>,
+}
+
+impl ModulePass for MainPass {
+    fn do_action(&mut self, module: ModuleHandle) {
+        let mut pass_manager = PassManager::new();
+        pass_manager.add_function_pass(SimpleRegisterAllocationPass::create(
+            self.registers.clone(),
+            self.argument_registers.clone(),
+            self.result_register.clone(),
+        ));
+        pass_manager.add_basic_block_pass(InsertBasicBlockLabelPass::create());
+        pass_manager.add_function_pass(EmitAssemblyPass::create(
+            self.register_name_map.clone(),
+            self.base_pointer_register,
+            self.stack_pointer_register,
+            self.instruction_pointer_register,
+            self.argument_registers.clone(),
+        ));
+        pass_manager.run(module);
+    }
 }
 
 impl FunctionPass for MainPass {
@@ -53,7 +73,7 @@ impl FunctionPass for MainPass {
 }
 
 impl MainPass {
-    pub fn create() -> Box<MainPass> {
+    pub fn new() -> MainPass {
         let reg_al = Context::create_register(Type::I8).set_physical();
         let reg_eax = Context::create_register(Type::I32).set_physical();
         let reg_rax = Context::create_register(Type::I64).set_physical();
@@ -135,7 +155,7 @@ impl MainPass {
             (reg_rip, "rip"),
         ]);
 
-        Box::new(MainPass {
+        MainPass {
             registers,
             argument_registers,
             result_register,
@@ -143,7 +163,7 @@ impl MainPass {
             stack_pointer_register: reg_rsp,
             instruction_pointer_register: reg_rip,
             register_name_map,
-        })
+        }
     }
 }
 
@@ -295,10 +315,8 @@ fn lower_wasm_ir_to_machine_ir(module: &Module) -> ModuleHandle {
 }
 
 fn emit_x86_assembly(module: ModuleHandle) {
-    let mut pass_manager = PassManager::new();
-    pass_manager.add_module_pass(ModuleInitPass::create());
-    pass_manager.add_function_pass(MainPass::create());
-    pass_manager.run(module);
+    module.apply_module_pass(&mut ModuleInitPass::new());
+    module.apply_module_pass(&mut MainPass::new());
 }
 
 fn main() {

@@ -1,6 +1,7 @@
 use context::handle::{FunctionHandle, ModuleHandle, RegionHandle};
 use context::Context;
 use machineir::region::RegionKind;
+use pass::ModulePass;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Module {
@@ -58,5 +59,9 @@ impl Module {
 
     pub fn get_mut_indirect_function_tables(&mut self) -> &mut Vec<RegionHandle> {
         &mut self.indirect_function_tables
+    }
+
+    pub fn apply_module_pass(&self, module_pass: &mut dyn ModulePass) {
+        module_pass.do_action(self.handle)
     }
 }

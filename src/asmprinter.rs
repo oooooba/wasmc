@@ -65,8 +65,8 @@ impl ModulePass for ModuleInitPass {
 }
 
 impl ModuleInitPass {
-    pub fn create() -> Box<ModuleInitPass> {
-        Box::new(ModuleInitPass {})
+    pub fn new() -> ModuleInitPass {
+        ModuleInitPass {}
     }
 }
 
