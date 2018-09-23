@@ -11,7 +11,6 @@ pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_result_register: HashMap<Type, RegisterHandle>,
-    virtual_register_indexes: HashMap<RegisterHandle, usize>,
 }
 
 impl FunctionPass for SimpleRegisterAllocationPass {
@@ -406,7 +405,6 @@ impl SimpleRegisterAllocationPass {
             physical_registers,
             physical_argument_registers,
             physical_result_register,
-            virtual_register_indexes: HashMap::new(),
         }
     }
 
