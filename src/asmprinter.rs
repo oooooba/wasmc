@@ -283,6 +283,7 @@ impl FunctionPass for EmitAssemblyPass {
                             }
                             &Address::VarBaseRegOffset { .. } => unimplemented!(),
                             &Address::RegBaseImmOffset { .. } => unimplemented!(),
+                            &Address::RegBaseRegOffset { .. } => unimplemented!(),
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         }
                     }
@@ -356,6 +357,7 @@ impl FunctionPass for EmitAssemblyPass {
                             }
                             &Address::VarBaseRegOffset { .. } => unimplemented!(),
                             &Address::RegBaseImmOffset { .. } => unimplemented!(),
+                            &Address::RegBaseRegOffset { .. } => unimplemented!(),
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         }
                     }
@@ -453,6 +455,7 @@ impl FunctionPass for EmitAssemblyPass {
                                     println!("call {} ptr [{} + {}]", ptr_notation, base, offset);
                                 }
                                 &Address::RegBaseImmOffset { .. } => unimplemented!(),
+                                &Address::RegBaseRegOffset { .. } => unimplemented!(),
                                 &Address::RegBaseRegIndex {
                                     base,
                                     index,

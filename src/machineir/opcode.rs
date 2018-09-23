@@ -83,6 +83,10 @@ pub enum Address {
         base: RegisterHandle,
         offset: isize,
     },
+    RegBaseRegOffset {
+        base: RegisterHandle,
+        offset: RegisterHandle,
+    },
     RegBaseRegIndex {
         base: RegisterHandle,
         index: RegisterHandle,
@@ -99,6 +103,11 @@ impl Address {
                 reg.print();
             }
             &VarBaseRegOffset { base, offset } => {
+                base.print();
+                print!(" + ");
+                offset.print();
+            }
+            &RegBaseRegOffset { base, offset } => {
                 base.print();
                 print!(" + ");
                 offset.print();
