@@ -11,6 +11,7 @@ pub struct MemoryAccessInstrInsertionPass<'a> {
     physical_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
     physical_result_register: &'a HashMap<Type, RegisterHandle>,
+    virtual_to_physical_map: HashMap<RegisterHandle, RegisterHandle>,
 }
 
 impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
@@ -404,6 +405,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
             physical_argument_registers: &simple_register_allocation_pass
                 .physical_argument_registers,
             physical_result_register: &simple_register_allocation_pass.physical_result_register,
+            virtual_to_physical_map: HashMap::new(),
         }
     }
 
@@ -482,6 +484,25 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
 }
 
 #[derive(Debug)]
+pub struct RegisterAssignmentPass {
+    virtual_to_physical_map: HashMap<RegisterHandle, RegisterHandle>,
+}
+
+impl FunctionPass for RegisterAssignmentPass {
+    fn do_action(&mut self, _function: FunctionHandle) {}
+}
+
+impl RegisterAssignmentPass {
+    pub fn new(
+        virtual_to_physical_map: HashMap<RegisterHandle, RegisterHandle>,
+    ) -> RegisterAssignmentPass {
+        RegisterAssignmentPass {
+            virtual_to_physical_map,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
@@ -490,7 +511,11 @@ pub struct SimpleRegisterAllocationPass {
 
 impl FunctionPass for SimpleRegisterAllocationPass {
     fn do_action(&mut self, function: FunctionHandle) {
-        function.apply_function_pass(&mut MemoryAccessInstrInsertionPass::new(self));
+        let mut memory_access_instr_insertion_pass = MemoryAccessInstrInsertionPass::new(self);
+        function.apply_function_pass(&mut memory_access_instr_insertion_pass);
+        function.apply_function_pass(&mut RegisterAssignmentPass::new(
+            memory_access_instr_insertion_pass.virtual_to_physical_map,
+        ));
     }
 }
 
