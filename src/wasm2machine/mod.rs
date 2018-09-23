@@ -1195,8 +1195,8 @@ impl WasmToMachine {
                 local_variables.push(var);
             }
 
-            let entry_block = Context::create_basic_block(self.current_function);
-            let exit_block = Context::create_basic_block(self.current_function);
+            let entry_block = Context::create_basic_block(function);
+            let exit_block = Context::create_basic_block(function);
 
             let dummy_func = self.current_function;
             let dummy_block = self.current_basic_block;
