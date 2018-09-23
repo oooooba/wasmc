@@ -7,13 +7,13 @@ use machineir::typ::Type;
 use pass::FunctionPass;
 
 #[derive(Debug)]
-pub struct SimpleRegisterAllocationPass {
-    physical_registers: Vec<HashMap<Type, RegisterHandle>>,
-    physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    physical_result_register: HashMap<Type, RegisterHandle>,
+pub struct MemoryAccessInstrInsertionPass<'a> {
+    physical_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+    physical_argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+    physical_result_register: &'a HashMap<Type, RegisterHandle>,
 }
 
-impl FunctionPass for SimpleRegisterAllocationPass {
+impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
     fn do_action(&mut self, mut function: FunctionHandle) {
         for basic_block_i in 0..function.get_mut_basic_blocks().len() {
             let mut basic_block = function.get_mut_basic_blocks()[basic_block_i];
@@ -395,16 +395,15 @@ impl FunctionPass for SimpleRegisterAllocationPass {
     }
 }
 
-impl SimpleRegisterAllocationPass {
+impl<'a> MemoryAccessInstrInsertionPass<'a> {
     pub fn new(
-        physical_registers: Vec<HashMap<Type, RegisterHandle>>,
-        physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-        physical_result_register: HashMap<Type, RegisterHandle>,
-    ) -> SimpleRegisterAllocationPass {
-        SimpleRegisterAllocationPass {
-            physical_registers,
-            physical_argument_registers,
-            physical_result_register,
+        simple_register_allocation_pass: &'a SimpleRegisterAllocationPass,
+    ) -> MemoryAccessInstrInsertionPass<'a> {
+        MemoryAccessInstrInsertionPass {
+            physical_registers: &simple_register_allocation_pass.physical_registers,
+            physical_argument_registers: &simple_register_allocation_pass
+                .physical_argument_registers,
+            physical_result_register: &simple_register_allocation_pass.physical_result_register,
         }
     }
 
@@ -479,5 +478,32 @@ impl SimpleRegisterAllocationPass {
             .unwrap();
         assert!(preg.is_physical());
         preg
+    }
+}
+
+#[derive(Debug)]
+pub struct SimpleRegisterAllocationPass {
+    physical_registers: Vec<HashMap<Type, RegisterHandle>>,
+    physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
+    physical_result_register: HashMap<Type, RegisterHandle>,
+}
+
+impl FunctionPass for SimpleRegisterAllocationPass {
+    fn do_action(&mut self, function: FunctionHandle) {
+        function.apply_function_pass(&mut MemoryAccessInstrInsertionPass::new(self));
+    }
+}
+
+impl SimpleRegisterAllocationPass {
+    pub fn new(
+        physical_registers: Vec<HashMap<Type, RegisterHandle>>,
+        physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
+        physical_result_register: HashMap<Type, RegisterHandle>,
+    ) -> SimpleRegisterAllocationPass {
+        SimpleRegisterAllocationPass {
+            physical_registers,
+            physical_argument_registers,
+            physical_result_register,
+        }
     }
 }
