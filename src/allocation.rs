@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
@@ -11,7 +11,6 @@ pub struct MemoryAccessInstrInsertionPass<'a> {
     physical_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
     physical_result_register: &'a HashMap<Type, RegisterHandle>,
-    virtual_to_physical_map: HashMap<RegisterHandle, RegisterHandle>,
 }
 
 impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
@@ -19,379 +18,341 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
         for basic_block_i in 0..function.get_mut_basic_blocks().len() {
             let mut basic_block = function.get_mut_basic_blocks()[basic_block_i];
 
-            let mut iter = basic_block.iterator();
-            while let Some(mut instr) = iter.get() {
-                let (new_opcode, num_advance) = match instr.get_opcode() {
-                    &Opcode::Debug(..) => (None, 0),
-                    &Opcode::Label(..) => (None, 0),
-                    &Opcode::Copy { dst, src } => {
-                        let new_src = self.allocate_physical_register(src, 0);
-                        let load_instr =
-                            self.create_load_instr(basic_block, new_src, src, function);
-                        iter.insert_before(load_instr);
-
-                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
-                        let store_instr =
-                            self.create_store_instr(basic_block, dst, new_dst, function);
-                        iter.insert_after(store_instr);
-
-                        (
-                            Some(Opcode::Copy {
-                                dst: new_dst,
-                                src: new_src,
-                            }),
-                            1,
-                        )
+            let mut new_instrs = VecDeque::new();
+            for instr in basic_block.get_instrs() {
+                let instr = *instr;
+                match instr.clone().get_mut_opcode() {
+                    &mut Opcode::Debug(..) => new_instrs.push_back(instr),
+                    &mut Opcode::Label(..) => new_instrs.push_back(instr),
+                    &mut Opcode::Copy { dst, src } => {
+                        let p_tmp = *self.physical_result_register.get(dst.get_typ()).unwrap();
+                        new_instrs.push_back(self.create_load_instr_for_src_reg(
+                            basic_block,
+                            p_tmp,
+                            src,
+                        ));
+                        new_instrs.push_back(self.create_store_instr_for_dst_reg(
+                            basic_block,
+                            dst,
+                            p_tmp,
+                        ));
                     }
-                    &Opcode::Const { dst, ref src } => {
-                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
-                        let store_instr =
-                            self.create_store_instr(basic_block, dst, new_dst, function);
-                        iter.insert_after(store_instr);
-
-                        (
-                            Some(Opcode::Const {
-                                dst: new_dst,
-                                src: src.clone(),
-                            }),
-                            1,
-                        )
+                    &mut Opcode::Const { ref mut dst, .. } => {
+                        let v_dst = *dst;
+                        let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
+                        *dst = p_dst;
+                        new_instrs.push_back(instr);
+                        new_instrs.push_back(self.create_store_instr_for_dst_reg(
+                            basic_block,
+                            v_dst,
+                            p_dst,
+                        ));
                     }
-                    &Opcode::Cast { ref kind, dst, src } => {
-                        let new_src = self.allocate_physical_register(src, 0);
-                        let load_instr =
-                            self.create_load_instr(basic_block, new_src, src, function);
-                        iter.insert_before(load_instr);
-
-                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
-                        let store_instr =
-                            self.create_store_instr(basic_block, dst, new_dst, function);
-                        iter.insert_after(store_instr);
-
-                        (
-                            Some(Opcode::Cast {
-                                kind: kind.clone(),
-                                dst: new_dst,
-                                src: new_src,
-                            }),
-                            1,
-                        )
-                    }
-                    &Opcode::BinaryOp {
-                        ref kind,
-                        dst,
-                        src1,
-                        ref src2,
+                    &mut Opcode::Cast {
+                        ref mut dst,
+                        ref mut src,
+                        ..
                     } => {
-                        let new_src1 = self.allocate_physical_register(src1, 0);
-                        let load_instr =
-                            self.create_load_instr(basic_block, new_src1, src1, function);
-                        iter.insert_before(load_instr);
+                        let v_src = *src;
+                        let p_src = self.allocate_physical_register(v_src, 0);
+                        *src = p_src;
+                        new_instrs.push_back(self.create_load_instr_for_src_reg(
+                            basic_block,
+                            p_src,
+                            v_src,
+                        ));
 
-                        let new_src2 = match src2 {
-                            &OperandKind::Register(vreg) => {
+                        let v_dst = *dst;
+                        let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
+                        *dst = p_dst;
+                        new_instrs.push_back(instr);
+                        new_instrs.push_back(self.create_store_instr_for_dst_reg(
+                            basic_block,
+                            v_dst,
+                            p_dst,
+                        ));
+                    }
+                    &mut Opcode::BinaryOp {
+                        ref kind,
+                        ref mut dst,
+                        ref mut src1,
+                        ref mut src2,
+                    } => {
+                        let v_src1 = *src1;
+                        let p_src1 = self.allocate_physical_register(v_src1, 0);
+                        *src1 = p_src1;
+                        new_instrs.push_back(self.create_load_instr_for_src_reg(
+                            basic_block,
+                            p_src1,
+                            v_src1,
+                        ));
+
+                        match src2 {
+                            &mut OperandKind::Register(ref mut src2) => {
+                                let v_src2 = *src2;
                                 let index = match kind {
                                     &BinaryOpKind::Sll
                                     | &BinaryOpKind::Srl
                                     | &BinaryOpKind::Sra => 2,
                                     _ => 1,
                                 };
-                                let preg = self.allocate_physical_register(vreg, index);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, preg, vreg, function);
-                                iter.insert_before(load_instr);
-                                OperandKind::Register(preg)
-                            }
-                            &OperandKind::ImmI8(_) => src2.clone(),
-                            &OperandKind::ImmI32(_) => src2.clone(),
-                            &OperandKind::ImmI64(_) => src2.clone(),
-                        };
-
-                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
-                        let store_instr =
-                            self.create_store_instr(basic_block, dst, new_dst, function);
-                        iter.insert_after(store_instr);
-
-                        (
-                            Some(Opcode::BinaryOp {
-                                kind: kind.clone(),
-                                dst: new_dst,
-                                src1: new_src1,
-                                src2: new_src2,
-                            }),
-                            1,
-                        )
-                    }
-                    &Opcode::Load { dst, ref src } => {
-                        let new_src = match src {
-                            address @ &Address::Var(_) => address.clone(),
-                            &Address::VarBaseRegOffset { base, offset } => {
-                                let new_offset = self.allocate_physical_register(offset, 1);
-                                let load_instr = self.create_load_instr(
+                                let p_src2 = self.allocate_physical_register(v_src2, index);
+                                *src2 = p_src2;
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
                                     basic_block,
-                                    new_offset,
-                                    offset,
-                                    function,
-                                );
-                                iter.insert_before(load_instr);
-
-                                Address::VarBaseRegOffset {
-                                    base,
-                                    offset: new_offset,
-                                }
+                                    p_src2,
+                                    v_src2,
+                                ));
                             }
-                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
-                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
+                            &mut OperandKind::ImmI8(_) => {}
+                            &mut OperandKind::ImmI32(_) => {}
+                            &mut OperandKind::ImmI64(_) => {}
                         };
 
-                        let new_dst = *self.physical_result_register.get(dst.get_typ()).unwrap();
-                        let store_instr =
-                            self.create_store_instr(basic_block, dst, new_dst, function);
-                        iter.insert_after(store_instr);
-
-                        (
-                            Some(Opcode::Load {
-                                dst: new_dst,
-                                src: new_src,
-                            }),
-                            1,
-                        )
+                        let v_dst = *dst;
+                        let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
+                        *dst = p_dst;
+                        new_instrs.push_back(instr);
+                        new_instrs.push_back(self.create_store_instr_for_dst_reg(
+                            basic_block,
+                            v_dst,
+                            p_dst,
+                        ));
                     }
-                    &Opcode::Store { ref dst, src } => {
-                        let new_src = self.allocate_physical_register(src, 0);
-                        let load_instr =
-                            self.create_load_instr(basic_block, new_src, src, function);
-                        iter.insert_before(load_instr);
-
-                        let new_dst = match dst {
-                            address @ &Address::Var(_) => address.clone(),
-                            &Address::VarBaseRegOffset { base, offset } => {
-                                let new_offset = self.allocate_physical_register(offset, 2);
-                                let load_instr = self.create_load_instr(
+                    &mut Opcode::Load {
+                        ref mut dst,
+                        ref mut src,
+                    } => {
+                        match src {
+                            &mut Address::Var(_) => {}
+                            &mut Address::VarBaseRegOffset {
+                                base: v_base,
+                                offset: v_offset,
+                            } => {
+                                let p_base =
+                                    *self.physical_registers[0].get(&Type::Pointer).unwrap();
+                                new_instrs.push_back(self.create_addressof_instr_for_virtual_reg(
                                     basic_block,
-                                    new_offset,
-                                    offset,
-                                    function,
-                                );
-                                iter.insert_before(load_instr);
+                                    p_base,
+                                    v_base,
+                                ));
 
-                                Address::VarBaseRegOffset {
-                                    base,
-                                    offset: new_offset,
-                                }
-                            }
-                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
-                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
-                        };
+                                let p_offset = self.allocate_physical_register(v_offset, 1);
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                    basic_block,
+                                    p_offset,
+                                    v_offset,
+                                ));
 
-                        (
-                            Some(Opcode::Store {
-                                dst: new_dst,
-                                src: new_src,
-                            }),
-                            0,
-                        )
-                    }
-                    &Opcode::Jump {
-                        ref kind,
-                        ref target,
-                    } => {
-                        use self::JumpCondKind::*;
-                        let new_cond_kind = match kind {
-                            &Unconditional => Unconditional,
-                            &Eq0(reg) | &Neq0(reg) => {
-                                assert!(!reg.is_physical());
-                                let preg = self.allocate_physical_register(reg, 0);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, preg, reg, function);
-                                iter.insert_before(load_instr);
-                                match kind {
-                                    &Eq0(_) => Eq0(preg),
-                                    &Neq0(_) => Neq0(preg),
-                                    _ => unreachable!(),
-                                }
-                            }
-                            &Eq(reg1, reg2)
-                            | &Neq(reg1, reg2)
-                            | &LtS(reg1, reg2)
-                            | &LtU(reg1, reg2)
-                            | &LeS(reg1, reg2)
-                            | &LeU(reg1, reg2)
-                            | &GtS(reg1, reg2)
-                            | &GtU(reg1, reg2)
-                            | &GeS(reg1, reg2)
-                            | &GeU(reg1, reg2) => {
-                                assert!(!reg1.is_physical());
-                                let preg1 = self.allocate_physical_register(reg1, 0);
-                                let load_instr1 =
-                                    self.create_load_instr(basic_block, preg1, reg1, function);
-                                iter.insert_before(load_instr1);
-
-                                assert!(!reg2.is_physical());
-                                let preg2 = self.allocate_physical_register(reg2, 1);
-                                let load_instr2 =
-                                    self.create_load_instr(basic_block, preg2, reg2, function);
-                                iter.insert_before(load_instr2);
-
-                                match kind {
-                                    &Eq(_, _) => Eq(preg1, preg2),
-                                    &Neq(_, _) => Neq(preg1, preg2),
-                                    &LtS(_, _) => LtS(preg1, preg2),
-                                    &LtU(_, _) => LtU(preg1, preg2),
-                                    &LeS(_, _) => LeS(preg1, preg2),
-                                    &LeU(_, _) => LeU(preg1, preg2),
-                                    &GtS(_, _) => GtS(preg1, preg2),
-                                    &GtU(_, _) => GtU(preg1, preg2),
-                                    &GeS(_, _) => GeS(preg1, preg2),
-                                    &GeU(_, _) => GeU(preg1, preg2),
-                                    _ => unreachable!(),
-                                }
-                            }
-                            &Table(ref table, index) => {
-                                assert!(!index.is_physical());
-                                let preg = self.allocate_physical_register(index, 0);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, preg, index, function);
-                                iter.insert_before(load_instr);
-                                Table(table.clone(), preg)
-                            }
-                        };
-
-                        (
-                            Some(Opcode::Jump {
-                                kind: new_cond_kind,
-                                target: target.clone(),
-                            }),
-                            0,
-                        )
-                    }
-                    &Opcode::Call {
-                        ref func,
-                        ref result,
-                        ref args,
-                    } => {
-                        let new_func = match func {
-                            f @ &CallTargetKind::Function(_) => f.clone(),
-                            &CallTargetKind::Indirect(ref addr) => {
-                                let new_addr = match addr {
-                                    v @ &Address::Var(_) => v.clone(),
-                                    address @ &Address::RegBaseImmOffset { .. } => address.clone(),
-                                    &Address::VarBaseRegOffset { base, offset } => {
-                                        let new_base = self.allocate_physical_register(base, 0);
-                                        let load_instr = self.create_load_instr(
-                                            basic_block,
-                                            new_base,
-                                            base,
-                                            function,
-                                        );
-                                        iter.insert_before(load_instr);
-
-                                        let new_offset = self.allocate_physical_register(offset, 1);
-                                        let load_instr = self.create_load_instr(
-                                            basic_block,
-                                            new_offset,
-                                            offset,
-                                            function,
-                                        );
-                                        iter.insert_before(load_instr);
-
-                                        Address::VarBaseRegOffset {
-                                            base: new_base,
-                                            offset: new_offset,
-                                        }
-                                    }
-                                    &Address::RegBaseRegIndex {
-                                        base,
-                                        index,
-                                        ref scale,
-                                    } => {
-                                        let new_base = self.allocate_physical_register(base, 0);
-                                        let load_instr = self.create_load_instr(
-                                            basic_block,
-                                            new_base,
-                                            base,
-                                            function,
-                                        );
-                                        iter.insert_before(load_instr);
-
-                                        let new_index = self.allocate_physical_register(index, 1);
-                                        let load_instr = self.create_load_instr(
-                                            basic_block,
-                                            new_index,
-                                            index,
-                                            function,
-                                        );
-                                        iter.insert_before(load_instr);
-
-                                        Address::RegBaseRegIndex {
-                                            base: new_base,
-                                            index: new_index,
-                                            scale: scale.clone(),
-                                        }
-                                    }
+                                *src = Address::RegBaseRegOffset {
+                                    base: p_base,
+                                    offset: p_offset,
                                 };
-                                CallTargetKind::Indirect(new_addr)
                             }
+                            &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
                         };
 
-                        let mut new_args = vec![];
-                        for (i, vreg) in args.iter().enumerate() {
-                            let preg = self.allocate_physical_argument_register(*vreg, i);
-                            let load_instr =
-                                self.create_load_instr(basic_block, preg, *vreg, function);
-                            iter.insert_before(load_instr);
-                            new_args.push(preg);
+                        let v_dst = *dst;
+                        let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
+                        *dst = p_dst;
+                        new_instrs.push_back(instr);
+                        new_instrs.push_back(self.create_store_instr_for_dst_reg(
+                            basic_block,
+                            v_dst,
+                            p_dst,
+                        ));
+                    }
+                    &mut Opcode::Store {
+                        ref mut dst,
+                        ref mut src,
+                    } => {
+                        let v_src = *src;
+                        let p_src = *self.physical_result_register.get(v_src.get_typ()).unwrap();
+                        *src = p_src;
+                        new_instrs.push_back(self.create_load_instr_for_src_reg(
+                            basic_block,
+                            v_src,
+                            p_src,
+                        ));
+
+                        match dst {
+                            &mut Address::Var(_) => {}
+                            &mut Address::VarBaseRegOffset {
+                                base: v_base,
+                                offset: v_offset,
+                            } => {
+                                let p_base =
+                                    *self.physical_registers[1].get(&Type::Pointer).unwrap();
+                                new_instrs.push_back(self.create_addressof_instr_for_virtual_reg(
+                                    basic_block,
+                                    p_base,
+                                    v_base,
+                                ));
+
+                                let p_offset = self.allocate_physical_register(v_offset, 2);
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                    basic_block,
+                                    p_offset,
+                                    v_offset,
+                                ));
+
+                                *dst = Address::RegBaseRegOffset {
+                                    base: p_base,
+                                    offset: p_offset,
+                                };
+                            }
+                            &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
+                        };
+                        new_instrs.push_back(instr);
+                    }
+                    &mut Opcode::Jump { ref mut kind, .. } => {
+                        use self::JumpCondKind::*;
+                        match kind {
+                            &mut Unconditional => {}
+                            &mut Eq0(ref mut cond) | &mut Neq0(ref mut cond) => {
+                                assert!(!cond.is_physical());
+                                let v_cond = *cond;
+                                let p_cond = self.allocate_physical_register(v_cond, 0);
+                                *cond = p_cond;
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                    basic_block,
+                                    p_cond,
+                                    v_cond,
+                                ));
+                            }
+                            &mut Eq(ref mut lhs, ref mut rhs)
+                            | &mut Neq(ref mut lhs, ref mut rhs)
+                            | &mut LtS(ref mut lhs, ref mut rhs)
+                            | &mut LtU(ref mut lhs, ref mut rhs)
+                            | &mut LeS(ref mut lhs, ref mut rhs)
+                            | &mut LeU(ref mut lhs, ref mut rhs)
+                            | &mut GtS(ref mut lhs, ref mut rhs)
+                            | &mut GtU(ref mut lhs, ref mut rhs)
+                            | &mut GeS(ref mut lhs, ref mut rhs)
+                            | &mut GeU(ref mut lhs, ref mut rhs) => {
+                                assert!(!lhs.is_physical());
+                                let v_lhs = *lhs;
+                                let p_lhs = self.allocate_physical_register(v_lhs, 0);
+                                *lhs = p_lhs;
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                    basic_block,
+                                    p_lhs,
+                                    v_lhs,
+                                ));
+
+                                assert!(!rhs.is_physical());
+                                let v_rhs = *rhs;
+                                let p_rhs = self.allocate_physical_register(v_rhs, 1);
+                                *rhs = p_rhs;
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                    basic_block,
+                                    p_rhs,
+                                    v_rhs,
+                                ));
+                            }
+                            &mut Table(_, ref mut index) => {
+                                assert!(!index.is_physical());
+                                let v_index = *index;
+                                let p_index = self.allocate_physical_register(v_index, 0);
+                                *index = p_index;
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                    basic_block,
+                                    p_index,
+                                    v_index,
+                                ));
+                            }
+                        }
+                        new_instrs.push_back(instr);
+                    }
+                    &mut Opcode::Call {
+                        ref mut func,
+                        ref mut result,
+                        ref mut args,
+                    } => {
+                        match func {
+                            &mut CallTargetKind::Function(_) => {}
+                            &mut CallTargetKind::Indirect(ref mut addr) => match addr {
+                                &mut Address::Var(_) => {}
+                                &mut Address::VarBaseRegOffset { .. } => {}
+                                &mut Address::RegBaseImmOffset { .. } => {}
+                                &mut Address::RegBaseRegOffset { .. } => {}
+                                &mut Address::RegBaseRegIndex {
+                                    ref mut base,
+                                    ref mut index,
+                                    ..
+                                } => {
+                                    let v_base = *base;
+                                    let p_base = self.allocate_physical_register(v_base, 0);
+                                    *base = p_base;
+                                    new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                        basic_block,
+                                        p_base,
+                                        v_base,
+                                    ));
+
+                                    let v_index = *index;
+                                    let p_index = self.allocate_physical_register(v_index, 1);
+                                    *index = p_index;
+                                    new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                        basic_block,
+                                        p_index,
+                                        v_index,
+                                    ));
+                                }
+                            },
                         }
 
-                        let new_result = if let &Some(vreg) = result {
-                            let preg = *self.physical_result_register.get(vreg.get_typ()).unwrap();
-                            let store_instr =
-                                self.create_store_instr(basic_block, vreg, preg, function);
-                            iter.insert_after(store_instr);
-                            Some(preg)
-                        } else {
-                            None
-                        };
+                        for i in 0..args.len() {
+                            let v_arg = args[i];
+                            let p_arg = self.allocate_physical_argument_register(v_arg, i);
+                            args[i] = v_arg;
+                            new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                basic_block,
+                                p_arg,
+                                v_arg,
+                            ));
+                        }
 
-                        (
-                            Some(Opcode::Call {
-                                func: new_func,
-                                result: new_result,
-                                args: new_args,
-                            }),
-                            new_result.is_some() as usize,
-                        )
+                        new_instrs.push_back(instr);
+
+                        if let &mut Some(ref mut result) = result {
+                            let v_result = *result;
+                            let p_result = *self
+                                .physical_result_register
+                                .get(v_result.get_typ())
+                                .unwrap();
+                            *result = p_result;
+                            new_instrs.push_back(self.create_store_instr_for_dst_reg(
+                                basic_block,
+                                v_result,
+                                p_result,
+                            ));
+                        }
                     }
-                    &Opcode::Return {
-                        result: Some(result),
-                    } => {
-                        let new_result =
-                            *self.physical_result_register.get(result.get_typ()).unwrap();
-                        let load_instr =
-                            self.create_load_instr(basic_block, new_result, result, function);
-                        iter.insert_before(load_instr);
-
-                        (
-                            Some(Opcode::Return {
-                                result: Some(new_result),
-                            }),
-                            0,
-                        )
+                    &mut Opcode::Return { ref mut result } => {
+                        if let &mut Some(ref mut result) = result {
+                            let v_result = *result;
+                            let p_result = *self
+                                .physical_result_register
+                                .get(v_result.get_typ())
+                                .unwrap();
+                            *result = p_result;
+                            new_instrs.push_back(instr);
+                            new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                basic_block,
+                                p_result,
+                                v_result,
+                            ));
+                        }
                     }
-                    &Opcode::Return { .. } => (None, 0),
-                    &Opcode::AddressOf { .. } => unimplemented!(),
-                };
-
-                if let Some(new_opcode) = new_opcode {
-                    instr.set_opcode(new_opcode);
-                }
-
-                iter.advance(); // current instr to next instr
-                for _ in 0..num_advance {
-                    // skip inserted instrs
-                    iter.advance();
+                    &mut Opcode::AddressOf { .. } => unimplemented!(),
                 }
             }
+            basic_block.set_instrs(new_instrs);
         }
     }
 }
@@ -405,33 +366,20 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
             physical_argument_registers: &simple_register_allocation_pass
                 .physical_argument_registers,
             physical_result_register: &simple_register_allocation_pass.physical_result_register,
-            virtual_to_physical_map: HashMap::new(),
         }
     }
 
-    fn allocate_memory_for_virtual_register(&self, vreg: RegisterHandle, function: FunctionHandle) {
-        assert!(!vreg.is_physical());
-        let mut region = function.get_local_region();
-        if region.get_mut_offset_map().contains_key(&vreg) {
-            return;
-        }
-        region.get_mut_offset_map().insert(vreg, 0);
-    }
-
-    fn create_load_instr(
+    fn create_load_instr_for_src_reg(
         &mut self,
         basic_block: BasicBlockHandle,
         preg: RegisterHandle,
         vreg: RegisterHandle,
-        function: FunctionHandle,
     ) -> InstrHandle {
         assert!(preg.is_physical());
         assert!(!vreg.is_physical());
-        let typ = vreg.get_typ();
-        if typ != &Type::Pointer {
-            assert_eq!(typ, preg.get_typ());
-        }
-        self.allocate_memory_for_virtual_register(vreg, function);
+        assert_eq!(vreg.get_typ(), preg.get_typ());
+        let mut region = basic_block.get_function().get_local_region();
+        region.get_mut_offset_map().insert(vreg, 0);
         Context::create_instr(
             Opcode::Load {
                 dst: preg,
@@ -441,18 +389,17 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         )
     }
 
-    fn create_store_instr(
+    fn create_store_instr_for_dst_reg(
         &mut self,
         basic_block: BasicBlockHandle,
         vreg: RegisterHandle,
         preg: RegisterHandle,
-        function: FunctionHandle,
     ) -> InstrHandle {
         assert!(!vreg.is_physical());
         assert!(preg.is_physical());
-        let typ = vreg.get_typ().clone();
-        assert_eq!(&typ, preg.get_typ());
-        self.allocate_memory_for_virtual_register(vreg, function);
+        assert_eq!(vreg.get_typ(), preg.get_typ());
+        let mut region = basic_block.get_function().get_local_region();
+        region.get_mut_offset_map().insert(vreg, 0);
         Context::create_instr(
             Opcode::Store {
                 dst: Address::Var(vreg),
@@ -462,7 +409,27 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         )
     }
 
-    fn allocate_physical_register(&self, vreg: RegisterHandle, index: usize) -> RegisterHandle {
+    fn create_addressof_instr_for_virtual_reg(
+        &mut self,
+        basic_block: BasicBlockHandle,
+        preg: RegisterHandle,
+        vreg: RegisterHandle,
+    ) -> InstrHandle {
+        assert!(preg.is_physical());
+        assert!(!vreg.is_physical());
+        assert_eq!(preg.get_typ(), &Type::Pointer);
+        let mut region = basic_block.get_function().get_local_region();
+        region.get_mut_offset_map().insert(vreg, 0);
+        Context::create_instr(
+            Opcode::AddressOf {
+                dst: preg,
+                location: Address::Var(vreg),
+            },
+            basic_block,
+        )
+    }
+
+    fn allocate_physical_register(&mut self, vreg: RegisterHandle, index: usize) -> RegisterHandle {
         assert!(!vreg.is_physical());
         let preg = *self.physical_registers[index].get(vreg.get_typ()).unwrap();
         assert!(preg.is_physical());
@@ -470,7 +437,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
     }
 
     fn allocate_physical_argument_register(
-        &self,
+        &mut self,
         vreg: RegisterHandle,
         index: usize,
     ) -> RegisterHandle {
@@ -484,25 +451,6 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
 }
 
 #[derive(Debug)]
-pub struct RegisterAssignmentPass {
-    virtual_to_physical_map: HashMap<RegisterHandle, RegisterHandle>,
-}
-
-impl FunctionPass for RegisterAssignmentPass {
-    fn do_action(&mut self, _function: FunctionHandle) {}
-}
-
-impl RegisterAssignmentPass {
-    pub fn new(
-        virtual_to_physical_map: HashMap<RegisterHandle, RegisterHandle>,
-    ) -> RegisterAssignmentPass {
-        RegisterAssignmentPass {
-            virtual_to_physical_map,
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
@@ -511,11 +459,7 @@ pub struct SimpleRegisterAllocationPass {
 
 impl FunctionPass for SimpleRegisterAllocationPass {
     fn do_action(&mut self, function: FunctionHandle) {
-        let mut memory_access_instr_insertion_pass = MemoryAccessInstrInsertionPass::new(self);
-        function.apply_function_pass(&mut memory_access_instr_insertion_pass);
-        function.apply_function_pass(&mut RegisterAssignmentPass::new(
-            memory_access_instr_insertion_pass.virtual_to_physical_map,
-        ));
+        function.apply_function_pass(&mut MemoryAccessInstrInsertionPass::new(self));
     }
 }
 
