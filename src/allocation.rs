@@ -125,13 +125,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                     &Opcode::Load { dst, ref src } => {
                         let new_src = match src {
                             address @ &Address::Var(_) => address.clone(),
-                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
-                            &Address::RegBaseRegOffset { base, offset } => {
-                                let new_base = self.allocate_physical_register(base, 0);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, new_base, base, function);
-                                iter.insert_before(load_instr);
-
+                            &Address::VarBaseRegOffset { base, offset } => {
                                 let new_offset = self.allocate_physical_register(offset, 1);
                                 let load_instr = self.create_load_instr(
                                     basic_block,
@@ -141,11 +135,12 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 );
                                 iter.insert_before(load_instr);
 
-                                Address::RegBaseRegOffset {
-                                    base: new_base,
+                                Address::VarBaseRegOffset {
+                                    base,
                                     offset: new_offset,
                                 }
                             }
+                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         };
 
@@ -170,13 +165,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
 
                         let new_dst = match dst {
                             address @ &Address::Var(_) => address.clone(),
-                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
-                            &Address::RegBaseRegOffset { base, offset } => {
-                                let new_base = self.allocate_physical_register(base, 1);
-                                let load_instr =
-                                    self.create_load_instr(basic_block, new_base, base, function);
-                                iter.insert_before(load_instr);
-
+                            &Address::VarBaseRegOffset { base, offset } => {
                                 let new_offset = self.allocate_physical_register(offset, 2);
                                 let load_instr = self.create_load_instr(
                                     basic_block,
@@ -186,11 +175,12 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 );
                                 iter.insert_before(load_instr);
 
-                                Address::RegBaseRegOffset {
-                                    base: new_base,
+                                Address::VarBaseRegOffset {
+                                    base,
                                     offset: new_offset,
                                 }
                             }
+                            address @ &Address::RegBaseImmOffset { .. } => address.clone(),
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         };
 
@@ -286,7 +276,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                 let new_addr = match addr {
                                     v @ &Address::Var(_) => v.clone(),
                                     address @ &Address::RegBaseImmOffset { .. } => address.clone(),
-                                    &Address::RegBaseRegOffset { base, offset } => {
+                                    &Address::VarBaseRegOffset { base, offset } => {
                                         let new_base = self.allocate_physical_register(base, 0);
                                         let load_instr = self.create_load_instr(
                                             basic_block,
@@ -305,7 +295,7 @@ impl FunctionPass for SimpleRegisterAllocationPass {
                                         );
                                         iter.insert_before(load_instr);
 
-                                        Address::RegBaseRegOffset {
+                                        Address::VarBaseRegOffset {
                                             base: new_base,
                                             offset: new_offset,
                                         }
