@@ -79,12 +79,12 @@ impl Context {
         }
     }
 
-    pub fn create_basic_block() -> BasicBlockHandle {
+    pub fn create_basic_block(function: FunctionHandle) -> BasicBlockHandle {
         unsafe {
             let id = CONTEXT.num_created_basic_blocks;
             CONTEXT.num_created_basic_blocks += 1;
             let handle = BasicBlockHandle::new(id);
-            let basic_block = BasicBlock::new(handle);
+            let basic_block = BasicBlock::new(handle, function);
             CONTEXT
                 .basic_blocks
                 .as_mut()

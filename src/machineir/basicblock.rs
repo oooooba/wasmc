@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::fmt;
 
-use context::handle::{BasicBlockHandle, InstrHandle};
+use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle};
 use pass::BasicBlockPass;
 
 pub struct Iterator {
@@ -53,6 +53,7 @@ impl Iterator {
 pub struct BasicBlock {
     handle: BasicBlockHandle,
     instrs: VecDeque<InstrHandle>,
+    function: FunctionHandle,
 }
 
 impl fmt::Display for BasicBlock {
@@ -67,10 +68,11 @@ impl fmt::Display for BasicBlock {
 }
 
 impl BasicBlock {
-    pub fn new(handle: BasicBlockHandle) -> BasicBlock {
+    pub fn new(handle: BasicBlockHandle, function: FunctionHandle) -> BasicBlock {
         BasicBlock {
             handle,
             instrs: VecDeque::new(),
+            function,
         }
     }
 
@@ -97,8 +99,17 @@ impl BasicBlock {
         &mut self.instrs
     }
 
+    pub fn set_instrs(&mut self, instrs: VecDeque<InstrHandle>) -> BasicBlockHandle {
+        self.instrs = instrs;
+        self.handle
+    }
+
     pub fn add_instr(&mut self, instr: InstrHandle) {
         self.instrs.push_back(instr)
+    }
+
+    pub fn get_function(&self) -> FunctionHandle {
+        self.function
     }
 
     pub fn print(&self) {

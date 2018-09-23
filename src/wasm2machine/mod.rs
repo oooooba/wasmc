@@ -159,11 +159,11 @@ impl WasmToMachine {
     pub fn new(wasmir_module: &wasmir::Module) -> WasmToMachine {
         let mut module = Context::create_module();
 
-        let dummy_block = Context::create_basic_block();
         let (parameter_types, result_types) =
             WasmToMachine::map_functype(&Functype::new(vec![], vec![]));
         let dummy_function =
             Context::create_function("".to_string(), parameter_types, result_types, module);
+        let dummy_block = Context::create_basic_block(dummy_function);
 
         let mut global_variables = vec![];
         for global in wasmir_module.get_globals().iter() {
@@ -390,9 +390,9 @@ impl WasmToMachine {
         else_instrs: &Vec<WasmInstr>,
     ) {
         let result_registers = WasmToMachine::setup_result_registers(resulttype);
-        let then_block = Context::create_basic_block();
-        let else_block = Context::create_basic_block();
-        let merge_block = Context::create_basic_block();
+        let then_block = Context::create_basic_block(self.current_function);
+        let else_block = Context::create_basic_block(self.current_function);
+        let merge_block = Context::create_basic_block(self.current_function);
 
         self.emit_on_current_basic_block(Opcode::Jump {
             kind: cond_kind,
@@ -416,7 +416,7 @@ impl WasmToMachine {
     fn emit_br_if(&mut self, cond_kind: opcode::JumpCondKind, index: Labelidx) {
         let entering_block = self.operand_stack.get_label_at(index.as_index()).unwrap();
         self.emit_exiting_block(entering_block, cond_kind, false, true, false);
-        let new_block = Context::create_basic_block();
+        let new_block = Context::create_basic_block(self.current_function);
         self.switch_current_basic_block_to(new_block);
     }
 
@@ -566,8 +566,8 @@ impl WasmToMachine {
             &WasmInstr::Unreachable => unimplemented!(),
             &WasmInstr::Block(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
-                let expr_block = Context::create_basic_block();
-                let cont_block = Context::create_basic_block();
+                let expr_block = Context::create_basic_block(self.current_function);
+                let cont_block = Context::create_basic_block(self.current_function);
 
                 self.emit_on_current_basic_block(opcode::Opcode::Jump {
                     kind: opcode::JumpCondKind::Unconditional,
@@ -583,8 +583,8 @@ impl WasmToMachine {
             &WasmInstr::Loop(ref resulttype, ref instrs) => {
                 let result_registers = WasmToMachine::setup_result_registers(resulttype);
                 assert_eq!(result_registers.len(), 0);
-                let body_block = Context::create_basic_block();
-                let exit_block = Context::create_basic_block();
+                let body_block = Context::create_basic_block(self.current_function);
+                let exit_block = Context::create_basic_block(self.current_function);
 
                 self.emit_on_current_basic_block(opcode::Opcode::Jump {
                     kind: opcode::JumpCondKind::Unconditional,
@@ -606,7 +606,7 @@ impl WasmToMachine {
                     false,
                 );
 
-                let new_block = Context::create_basic_block();
+                let new_block = Context::create_basic_block(self.current_function);
                 self.switch_current_basic_block_to(new_block);
                 self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
             }
@@ -643,7 +643,7 @@ impl WasmToMachine {
                     false,
                 );
 
-                let new_block = Context::create_basic_block();
+                let new_block = Context::create_basic_block(self.current_function);
                 self.switch_current_basic_block_to(new_block);
                 self.emit_on_current_basic_block(Opcode::Debug("unreachable block".to_string()));
             }
@@ -932,9 +932,9 @@ impl WasmToMachine {
                 assert_eq!(val_true.get_typ(), val_false.get_typ());
 
                 let result = Context::create_register(val_true.get_typ().clone());
-                let bb_true = Context::create_basic_block();
-                let bb_false = Context::create_basic_block();
-                let bb_merge = Context::create_basic_block();
+                let bb_true = Context::create_basic_block(self.current_function);
+                let bb_false = Context::create_basic_block(self.current_function);
+                let bb_merge = Context::create_basic_block(self.current_function);
 
                 self.emit_on_current_basic_block(Opcode::Jump {
                     kind: JumpCondKind::Eq0(cond),
@@ -1195,8 +1195,8 @@ impl WasmToMachine {
                 local_variables.push(var);
             }
 
-            let entry_block = Context::create_basic_block();
-            let exit_block = Context::create_basic_block();
+            let entry_block = Context::create_basic_block(self.current_function);
+            let exit_block = Context::create_basic_block(self.current_function);
 
             let dummy_func = self.current_function;
             let dummy_block = self.current_basic_block;
