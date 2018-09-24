@@ -195,8 +195,8 @@ impl WasmToMachine {
             assert_eq!(offset.get_instr_sequences().len(), 1);
             let offset = match &offset.get_instr_sequences()[0] {
                 &WasmInstr::Const(ref cst) => match cst {
-                    &Const::I32(i) => i as usize,
-                    &Const::I64(i) => i as usize,
+                    &Const::I32(i) => i as isize,
+                    &Const::I64(i) => i as isize,
                 },
                 _ => unreachable!(),
             };
@@ -209,7 +209,7 @@ impl WasmToMachine {
                         src: ConstKind::ConstI8(init),
                     },
                 );
-                mem.get_mut_offset_map().insert(var, offset + i);
+                mem.get_mut_offset_map().insert(var, offset + i as isize);
             }
         }
 
