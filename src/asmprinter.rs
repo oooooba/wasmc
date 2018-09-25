@@ -123,7 +123,7 @@ impl FunctionPass for EmitAssemblyPass {
                 let src_name = self.register_name_map.get(src_reg).unwrap();
                 let ptr_notation = typ.get_ptr_notation();
                 println!(
-                    "mov {} ptr [{} - {}], {}",
+                    "mov {} ptr [{} {}], {}",
                     ptr_notation, base_pointer_register, dst_offset, src_name
                 );
             }
@@ -282,7 +282,15 @@ impl FunctionPass for EmitAssemblyPass {
                                 }
                             }
                             &Address::VarBaseRegOffset { .. } => unimplemented!(),
-                            &Address::RegBaseImmOffset { .. } => unimplemented!(),
+                            &Address::RegBaseImmOffset { base, offset } => {
+                                let base_name = self.register_name_map.get(&base).unwrap();
+                                let op = if offset >= 0 { "+" } else { "-" };
+                                let offset = offset.abs();
+                                println!(
+                                    "mov {}, {} ptr [{} {} {}]",
+                                    dst_name, ptr_notation, base_name, op, offset,
+                                );
+                            }
                             &Address::RegBaseRegOffset { .. } => unimplemented!(),
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         }
@@ -356,7 +364,16 @@ impl FunctionPass for EmitAssemblyPass {
                                 }
                             }
                             &Address::VarBaseRegOffset { .. } => unimplemented!(),
-                            &Address::RegBaseImmOffset { .. } => unimplemented!(),
+                            &Address::RegBaseImmOffset { base, offset } => {
+                                let base_name = self.register_name_map.get(&base).unwrap();
+                                let op = if offset >= 0 { "+" } else { "-" };
+                                let offset = offset.abs();
+                                println!(
+                                    "mov {} ptr [{} {} {}], {}",
+                                    ptr_notation, base_name, op, offset, src_name
+                                );
+                            }
+                            //&Address::RegBaseImmOffset { .. } => unimplemented!(),
                             &Address::RegBaseRegOffset { .. } => unimplemented!(),
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         }

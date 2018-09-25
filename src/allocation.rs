@@ -451,15 +451,71 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
 }
 
 #[derive(Debug)]
+pub struct VariableAddressLoweringPass {
+    base_pointer_register: RegisterHandle,
+}
+
+impl FunctionPass for VariableAddressLoweringPass {
+    fn do_action(&mut self, function: FunctionHandle) {
+        let local_region = function.get_local_region();
+
+        for basic_block in function.get_basic_blocks() {
+            for instr in basic_block.get_instrs() {
+                let instr = *instr;
+                match instr.clone().get_mut_opcode() {
+                    &mut Opcode::Load {
+                        src: ref mut addr, ..
+                    }
+                    | &mut Opcode::Store {
+                        dst: ref mut addr, ..
+                    } => match addr {
+                        &mut Address::Var(var) => {
+                            assert!(!var.is_physical());
+                            if local_region.get_offset_map().contains_key(&var) {
+                                let offset = *local_region.get_offset_map().get(&var).unwrap();
+                                *addr = Address::RegBaseImmOffset {
+                                    base: self.base_pointer_register,
+                                    offset,
+                                };
+                            } else {
+                                unimplemented!()
+                            }
+                        }
+                        &mut Address::VarBaseRegOffset { .. } => unimplemented!(),
+                        &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
+                        &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
+                        &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
+                    },
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+impl VariableAddressLoweringPass {
+    pub fn new(base_pointer_register: RegisterHandle) -> VariableAddressLoweringPass {
+        VariableAddressLoweringPass {
+            base_pointer_register,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct SimpleRegisterAllocationPass {
     physical_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_result_register: HashMap<Type, RegisterHandle>,
+    physical_base_pointer_register: RegisterHandle,
 }
 
 impl FunctionPass for SimpleRegisterAllocationPass {
     fn do_action(&mut self, function: FunctionHandle) {
         function.apply_function_pass(&mut MemoryAccessInstrInsertionPass::new(self));
+        function.get_local_region().calculate_variable_offset();
+        function.apply_function_pass(&mut VariableAddressLoweringPass::new(
+            self.physical_base_pointer_register,
+        ))
     }
 }
 
@@ -468,11 +524,13 @@ impl SimpleRegisterAllocationPass {
         physical_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_result_register: HashMap<Type, RegisterHandle>,
+        physical_base_pointer_register: RegisterHandle,
     ) -> SimpleRegisterAllocationPass {
         SimpleRegisterAllocationPass {
             physical_registers,
             physical_argument_registers,
             physical_result_register,
+            physical_base_pointer_register,
         }
     }
 }

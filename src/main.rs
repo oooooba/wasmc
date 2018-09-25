@@ -35,6 +35,7 @@ impl ModulePass for MainPass {
             self.registers.clone(),
             self.argument_registers.clone(),
             self.result_register.clone(),
+            self.base_pointer_register,
         ));
         module.apply_basic_block_pass(&mut InsertBasicBlockLabelPass::new());
         module.apply_function_pass(&mut EmitAssemblyPass::new(

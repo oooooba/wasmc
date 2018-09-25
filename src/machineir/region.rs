@@ -78,7 +78,7 @@ impl Region {
         let mut tmp_pairs = vec![];
         let mut len_buffer = word_size;
         for var in self.offset_map.keys() {
-            tmp_pairs.push((*var, len_buffer as isize));
+            tmp_pairs.push((*var, -(len_buffer as isize)));
             let typ = var.get_typ();
             len_buffer += ((typ.get_size() + word_size - 1) / word_size) * word_size;
         }
