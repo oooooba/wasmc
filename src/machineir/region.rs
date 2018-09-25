@@ -21,6 +21,7 @@ pub struct Region {
     variable: RegisterHandle,
     offset_map: HashMap<RegisterHandle, isize>,
     initial_value_map: HashMap<RegisterHandle, Opcode>,
+    region_size: Option<usize>,
 }
 
 impl Region {
@@ -33,6 +34,7 @@ impl Region {
             variable,
             offset_map: HashMap::new(),
             initial_value_map: HashMap::new(),
+            region_size: None,
         }
     }
 
@@ -58,6 +60,7 @@ impl Region {
     }
 
     pub fn get_mut_offset_map(&mut self) -> &mut HashMap<RegisterHandle, isize> {
+        self.region_size = None;
         &mut self.offset_map
     }
 
@@ -73,6 +76,10 @@ impl Region {
         self.variable
     }
 
+    pub fn get_region_size(&self) -> &Option<usize> {
+        &self.region_size
+    }
+
     pub fn calculate_variable_offset(&mut self) -> usize {
         let word_size = 8;
         let mut tmp_pairs = vec![];
@@ -85,6 +92,7 @@ impl Region {
         for (var, offset) in tmp_pairs.into_iter() {
             self.offset_map.insert(var, offset);
         }
+        self.region_size = Some(len_buffer);
         len_buffer
     }
 }

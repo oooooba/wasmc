@@ -451,6 +451,44 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
 }
 
 #[derive(Debug)]
+pub struct FuncArgsStoreInstrInsertionPass<'a> {
+    argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+}
+
+impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
+    fn do_action(&mut self, function: FunctionHandle) {
+        assert!(function.get_parameter_types().len() <= self.argument_registers.len());
+        assert_eq!(
+            function.get_parameter_types().len(),
+            function.get_parameter_variables().len()
+        );
+        let mut store_instrs = vec![];
+        let mut entry_block = function.get_basic_blocks()[0];
+        for (i, var) in function.get_parameter_variables().iter().enumerate() {
+            let instr = Context::create_instr(
+                Opcode::Store {
+                    dst: Address::Var(*var),
+                    src: *self.argument_registers[i].get(var.get_typ()).unwrap(),
+                },
+                entry_block,
+            );
+            store_instrs.push(instr);
+        }
+        for instr in store_instrs {
+            entry_block.get_mut_instrs().push_front(instr);
+        }
+    }
+}
+
+impl<'a> FuncArgsStoreInstrInsertionPass<'a> {
+    pub fn new(
+        argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+    ) -> FuncArgsStoreInstrInsertionPass<'a> {
+        FuncArgsStoreInstrInsertionPass { argument_registers }
+    }
+}
+
+#[derive(Debug)]
 pub struct VariableAddressLoweringPass {
     base_pointer_register: RegisterHandle,
 }
@@ -512,6 +550,9 @@ pub struct SimpleRegisterAllocationPass {
 impl FunctionPass for SimpleRegisterAllocationPass {
     fn do_action(&mut self, function: FunctionHandle) {
         function.apply_function_pass(&mut MemoryAccessInstrInsertionPass::new(self));
+        function.apply_function_pass(&mut FuncArgsStoreInstrInsertionPass::new(
+            &self.physical_argument_registers,
+        ));
         function.get_local_region().calculate_variable_offset();
         function.apply_function_pass(&mut VariableAddressLoweringPass::new(
             self.physical_base_pointer_register,

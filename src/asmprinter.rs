@@ -90,8 +90,6 @@ impl FunctionPass for EmitAssemblyPass {
             }
             println!("{}:", function.get_func_name());
 
-            let len_buffer = function.get_local_region().calculate_variable_offset();
-
             let base_pointer_register = self
                 .register_name_map
                 .get(&self.base_pointer_register)
@@ -103,30 +101,12 @@ impl FunctionPass for EmitAssemblyPass {
 
             println!("push {}", base_pointer_register);
             println!("mov {}, {}", base_pointer_register, stack_pointer_register);
-            println!("sub {}, {}", stack_pointer_register, len_buffer);
-            println!("push rbx");
-
-            // store parameter registers to memory
-            assert!(function.get_parameter_types().len() <= self.argument_registers.len());
-            assert_eq!(
-                function.get_parameter_types().len(),
-                function.get_parameter_variables().len()
+            println!(
+                "sub {}, {}",
+                stack_pointer_register,
+                function.get_local_region().get_region_size().unwrap()
             );
-            for (i, var) in function.get_parameter_variables().iter().enumerate() {
-                let dst_offset = *function
-                    .get_local_region()
-                    .get_offset_map()
-                    .get(var)
-                    .unwrap();
-                let typ = var.get_typ();
-                let src_reg = self.argument_registers[i].get(typ).unwrap();
-                let src_name = self.register_name_map.get(src_reg).unwrap();
-                let ptr_notation = typ.get_ptr_notation();
-                println!(
-                    "mov {} ptr [{} {}], {}",
-                    ptr_notation, base_pointer_register, dst_offset, src_name
-                );
-            }
+            println!("push rbx");
         }
 
         for basic_block_i in 0..function.get_mut_basic_blocks().len() {
