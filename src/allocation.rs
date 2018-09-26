@@ -174,8 +174,8 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         *src = p_src;
                         new_instrs.push_back(self.create_load_instr_for_src_reg(
                             basic_block,
-                            v_src,
                             p_src,
+                            v_src,
                         ));
 
                         match dst {
