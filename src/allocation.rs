@@ -418,7 +418,6 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
     ) -> InstrHandle {
         assert!(preg.is_physical());
         assert!(!vreg.is_physical());
-        assert_eq!(preg.get_typ(), &Type::Pointer);
         let mut region = basic_block.get_function().get_local_region();
         region.get_mut_offset_map().insert(vreg, 0);
         Context::create_instr(
