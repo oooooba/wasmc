@@ -2,6 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
+use machineir::function::Linkage;
 use machineir::opcode::{Address, BinaryOpKind, CallTargetKind, JumpCondKind, Opcode, OperandKind};
 use machineir::typ::Type;
 use pass::FunctionPass;
@@ -457,6 +458,9 @@ pub struct FuncArgsStoreInstrInsertionPass<'a> {
 
 impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
     fn do_action(&mut self, function: FunctionHandle) {
+        if function.get_linkage() == &Linkage::Import {
+            return;
+        }
         assert!(function.get_parameter_types().len() <= self.argument_registers.len());
         assert_eq!(
             function.get_parameter_types().len(),
