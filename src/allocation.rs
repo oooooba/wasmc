@@ -523,9 +523,9 @@ impl FunctionPass for VariableAddressLoweringPass {
                             }
                         }
                         &mut Address::VarBaseRegOffset { .. } => unimplemented!(),
-                        &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
-                        &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
-                        &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
+                        &mut Address::RegBaseImmOffset { .. } => {}
+                        &mut Address::RegBaseRegOffset { .. } => {}
+                        &mut Address::RegBaseRegIndex { .. } => {}
                     },
                     _ => {}
                 }
