@@ -480,7 +480,48 @@ impl FunctionPass for EmitAssemblyPass {
                         println!("pop rbp");
                         println!("ret");
                     }
-                    &AddressOf { .. } => unimplemented!(),
+                    &AddressOf { dst, ref location } => match location {
+                        &Address::Var(var) => {
+                            assert!(!var.is_physical());
+                            if function
+                                .get_local_region()
+                                .get_offset_map()
+                                .contains_key(&var)
+                            {
+                                unimplemented!()
+                            } else {
+                                let ipr_name = self
+                                    .register_name_map
+                                    .get(&self.instruction_pointer_register)
+                                    .unwrap();
+                                let module = function.get_module();
+                                if module
+                                    .get_mutable_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&var)
+                                {
+                                    unimplemented!()
+                                } else if module
+                                    .get_const_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&var)
+                                {
+                                    unimplemented!()
+                                } else {
+                                    println!(
+                                        "lea {}, [{} + {}]",
+                                        dst,
+                                        ipr_name,
+                                        module.get_dynamic_regions()[0].get_name(),
+                                    );
+                                };
+                            }
+                        }
+                        &Address::VarBaseRegOffset { .. } => unreachable!(),
+                        &Address::RegBaseImmOffset { .. } => unreachable!(),
+                        &Address::RegBaseRegOffset { .. } => unreachable!(),
+                        &Address::RegBaseRegIndex { .. } => unreachable!(),
+                    },
                 }
                 iter.advance();
             }
