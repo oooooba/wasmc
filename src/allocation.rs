@@ -391,13 +391,13 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 .get(v_result.get_typ())
                                 .unwrap();
                             *result = p_result;
-                            new_instrs.push_back(instr);
                             new_instrs.push_back(self.create_load_instr_for_src_reg(
                                 basic_block,
                                 p_result,
                                 v_result,
                             ));
                         }
+                        new_instrs.push_back(instr);
                     }
                     &mut Opcode::AddressOf { .. } => unimplemented!(),
                 }
