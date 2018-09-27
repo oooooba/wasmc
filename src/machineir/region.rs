@@ -19,7 +19,7 @@ pub struct Region {
     name: String,
     kind: RegionKind,
     variable: RegisterHandle,
-    offset_map: HashMap<RegisterHandle, isize>,
+    offset_map: HashMap<RegisterHandle, usize>,
     initial_value_map: HashMap<RegisterHandle, Opcode>,
     region_size: Option<usize>,
 }
@@ -55,11 +55,11 @@ impl Region {
         &self.kind
     }
 
-    pub fn get_offset_map(&self) -> &HashMap<RegisterHandle, isize> {
+    pub fn get_offset_map(&self) -> &HashMap<RegisterHandle, usize> {
         &self.offset_map
     }
 
-    pub fn get_mut_offset_map(&mut self) -> &mut HashMap<RegisterHandle, isize> {
+    pub fn get_mut_offset_map(&mut self) -> &mut HashMap<RegisterHandle, usize> {
         self.region_size = None;
         &mut self.offset_map
     }
@@ -85,7 +85,7 @@ impl Region {
         let mut tmp_pairs = vec![];
         let mut len_buffer = word_size;
         for var in self.offset_map.keys() {
-            tmp_pairs.push((*var, -(len_buffer as isize)));
+            tmp_pairs.push((*var, len_buffer));
             let typ = var.get_typ();
             len_buffer += ((typ.get_size() + word_size - 1) / word_size) * word_size;
         }

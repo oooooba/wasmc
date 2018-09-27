@@ -567,7 +567,7 @@ impl FunctionPass for VariableAddressLoweringPass {
                                 let offset = *local_region.get_offset_map().get(&var).unwrap();
                                 *addr = Address::RegBaseImmOffset {
                                     base: self.base_pointer_register,
-                                    offset,
+                                    offset: -(offset as isize),
                                 };
                             } else {
                                 unimplemented!()

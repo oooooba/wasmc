@@ -40,7 +40,7 @@ impl ModulePass for ModuleInitPass {
         let bss_region = module.get_dynamic_regions()[0];
         println!(".global {}", bss_region.get_name());
         println!("{}:", bss_region.get_name());
-        let mut bss_inits: Vec<(RegisterHandle, isize)> =
+        let mut bss_inits: Vec<(RegisterHandle, usize)> =
             bss_region.get_offset_map().clone().into_iter().collect();
         bss_inits.sort_unstable_by(|a, b| a.1.cmp(&b.1));
         let mut start_of_zeros_offset = 0;
