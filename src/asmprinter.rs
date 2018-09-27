@@ -489,6 +489,7 @@ impl FunctionPass for EmitAssemblyPass {
                     &AddressOf { dst, ref location } => match location {
                         &Address::Var(var) => {
                             assert!(!var.is_physical());
+                            let dst_name = self.register_name_map.get(&dst).unwrap();
                             if function
                                 .get_local_region()
                                 .get_offset_map()
@@ -516,7 +517,7 @@ impl FunctionPass for EmitAssemblyPass {
                                 } else {
                                     println!(
                                         "lea {}, [{} + {}]",
-                                        dst,
+                                        dst_name,
                                         ipr_name,
                                         module.get_dynamic_regions()[0].get_name(),
                                     );
