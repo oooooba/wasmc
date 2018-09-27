@@ -353,8 +353,14 @@ impl FunctionPass for EmitAssemblyPass {
                                     ptr_notation, base_name, op, offset, src_name
                                 );
                             }
-                            //&Address::RegBaseImmOffset { .. } => unimplemented!(),
-                            &Address::RegBaseRegOffset { .. } => unimplemented!(),
+                            &Address::RegBaseRegOffset { base, offset } => {
+                                let base_name = self.register_name_map.get(&base).unwrap();
+                                let offset_name = self.register_name_map.get(&offset).unwrap();
+                                println!(
+                                    "mov {} ptr [{} + {}], {}",
+                                    ptr_notation, base_name, offset_name, src_name
+                                );
+                            }
                             &Address::RegBaseRegIndex { .. } => unimplemented!(),
                         }
                     }
