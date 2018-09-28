@@ -7,7 +7,7 @@ use context::handle::{
 use context::Context;
 use machineir::region::RegionKind;
 use machineir::typ::Type;
-use pass::{BasicBlockPass, FunctionPass};
+use pass::{BasicBlockPass, FunctionPass, InstrPass};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Linkage {
@@ -121,6 +121,12 @@ impl Function {
     pub fn apply_basic_block_pass(&self, basic_block_pass: &mut dyn BasicBlockPass) {
         for basic_block in &self.basic_blocks {
             basic_block.apply_basic_block_pass(basic_block_pass)
+        }
+    }
+
+    pub fn apply_instr_pass(&self, instr_pass: &mut dyn InstrPass) {
+        for basic_block in &self.basic_blocks {
+            basic_block.apply_instr_pass(instr_pass)
         }
     }
 }

@@ -2,6 +2,7 @@ use std::fmt;
 
 use context::handle::{BasicBlockHandle, InstrHandle};
 use machineir::opcode::Opcode;
+use pass::InstrPass;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Instr {
@@ -37,6 +38,10 @@ impl Instr {
 
     pub fn print(&self) {
         self.opcode.print();
+    }
+
+    pub fn apply_instr_pass(&self, instr_pass: &mut dyn InstrPass) {
+        instr_pass.do_action(self.handle)
     }
 }
 
