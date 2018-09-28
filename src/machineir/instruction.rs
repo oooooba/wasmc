@@ -36,6 +36,10 @@ impl Instr {
         self.opcode = opcode;
     }
 
+    pub fn get_basic_block(&self) -> BasicBlockHandle {
+        self.basic_block
+    }
+
     pub fn print(&self) {
         self.opcode.print();
     }
