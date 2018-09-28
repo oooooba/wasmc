@@ -245,60 +245,34 @@ impl FunctionPass for EmitAssemblyPass {
                         ref target,
                     } => {
                         let target = match target {
-                            JumpTargetKind::BasicBlock(bb) => bb,
+                            JumpTargetKind::BasicBlock(bb) => *bb,
                         };
                         use self::JumpCondKind::*;
                         match kind {
                             &Unconditional => {
                                 println!("jmp label_{}", target);
                             }
-                            &Eq0(preg) => {
-                                self.emit_binop_reg_reg("test", preg, preg);
-                                println!("jz label_{}", target);
-                            }
-                            &Neq0(preg) => {
-                                self.emit_binop_reg_reg("test", preg, preg);
-                                println!("jnz label_{}", target);
-                            }
-                            &Eq(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jz label_{}", target);
-                            }
+                            &Eq0(preg) => self.emit_jump("test", "jz", target, preg, preg),
+                            &Neq0(preg) => self.emit_jump("test", "jnz", target, preg, preg),
+                            &Eq(preg1, preg2) => self.emit_jump("cmp", "jz", target, preg1, preg2),
                             &Neq(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jnz label_{}", target);
+                                self.emit_jump("cmp", "jnz", target, preg1, preg2)
                             }
-                            &LtS(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jl label_{}", target);
-                            }
-                            &LtU(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jb label_{}", target);
-                            }
+                            &LtS(preg1, preg2) => self.emit_jump("cmp", "jl", target, preg1, preg2),
+                            &LtU(preg1, preg2) => self.emit_jump("cmp", "jb", target, preg1, preg2),
                             &LeS(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jle label_{}", target);
+                                self.emit_jump("cmp", "jle", target, preg1, preg2)
                             }
                             &LeU(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jbe label_{}", target);
+                                self.emit_jump("cmp", "jbe", target, preg1, preg2)
                             }
-                            &GtS(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jg label_{}", target);
-                            }
-                            &GtU(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("ja label_{}", target);
-                            }
+                            &GtS(preg1, preg2) => self.emit_jump("cmp", "jg", target, preg1, preg2),
+                            &GtU(preg1, preg2) => self.emit_jump("cmp", "ja", target, preg1, preg2),
                             &GeS(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jge label_{}", target);
+                                self.emit_jump("cmp", "jge", target, preg1, preg2)
                             }
                             &GeU(preg1, preg2) => {
-                                self.emit_binop_reg_reg("cmp", preg1, preg2);
-                                println!("jae label_{}", target);
+                                self.emit_jump("cmp", "jae", target, preg1, preg2)
                             }
                             &Table(ref table, preg) => {
                                 // ToDo: fix
@@ -444,5 +418,17 @@ impl EmitAssemblyPass {
             self.register_name_map.get(&target).unwrap(),
             imm
         );
+    }
+
+    fn emit_jump(
+        &mut self,
+        comp_op: &'static str,
+        jump_op: &'static str,
+        target: BasicBlockHandle,
+        lhs: RegisterHandle,
+        rhs: RegisterHandle,
+    ) {
+        self.emit_binop_reg_reg(comp_op, lhs, rhs);
+        println!("{} label_{}", jump_op, target);
     }
 }
