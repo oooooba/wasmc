@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use context::handle::{BasicBlockHandle, FunctionHandle, ModuleHandle, RegisterHandle};
+use context::handle::{
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle,
+};
 use context::Context;
 use machineir::function::Linkage;
 use machineir::opcode::{
@@ -8,7 +10,7 @@ use machineir::opcode::{
     Opcode, OperandKind,
 };
 use machineir::typ::Type;
-use pass::{BasicBlockPass, FunctionPass, ModulePass};
+use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
 
 #[derive(Debug)]
 pub struct InsertBasicBlockLabelPass {}
@@ -71,316 +73,255 @@ impl ModuleInitPass {
 }
 
 #[derive(Debug)]
-pub struct EmitAssemblyPass {
-    register_name_map: HashMap<RegisterHandle, &'static str>,
-    base_pointer_register: RegisterHandle,
-    stack_pointer_register: RegisterHandle,
+pub struct EmitX86AssemblyPass<'a> {
+    register_name_map: &'a HashMap<RegisterHandle, &'static str>,
     instruction_pointer_register: RegisterHandle,
-    argument_registers: Vec<HashMap<Type, RegisterHandle>>,
 }
 
-impl FunctionPass for EmitAssemblyPass {
-    fn do_action(&mut self, mut function: FunctionHandle) {
-        {
-            println!();
-            match function.get_linkage() {
-                &Linkage::Export => println!(".global {}", function.get_func_name()),
-                &Linkage::Import => return,
-                &Linkage::Private => (),
+impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
+    fn do_action(&mut self, instr: InstrHandle) {
+        use self::Opcode::*;
+        print!("# ");
+        instr.get().print();
+        println!();
+        match instr.get_opcode() {
+            &Debug(ref msg) => {
+                println!("# {}", msg);
             }
-            println!("{}:", function.get_func_name());
-
-            let base_pointer_register = self
-                .register_name_map
-                .get(&self.base_pointer_register)
-                .unwrap();
-            let stack_pointer_register = self
-                .register_name_map
-                .get(&self.stack_pointer_register)
-                .unwrap();
-
-            println!("push {}", base_pointer_register);
-            println!("mov {}, {}", base_pointer_register, stack_pointer_register);
-            println!(
-                "sub {}, {}",
-                stack_pointer_register,
-                function.get_local_region().get_region_size().unwrap()
-            );
-            println!("push rbx");
-        }
-
-        for basic_block_i in 0..function.get_mut_basic_blocks().len() {
-            let mut basic_block = function.get_mut_basic_blocks()[basic_block_i];
-
-            let mut iter = basic_block.iterator();
-            while let Some(mut instr) = iter.get() {
-                use self::Opcode::*;
-                print!("# ");
-                instr.get().print();
-                println!();
-                match instr.get_opcode() {
-                    &Debug(ref msg) => {
-                        println!("# {}", msg);
-                    }
-                    &Label(ref label) => {
-                        println!("{}:", label);
-                    }
-                    &Copy { dst, src } => {
-                        let dst_name = self.register_name_map.get(&dst).unwrap();
-                        let src_name = self.register_name_map.get(&src).unwrap();
-                        println!("mov {}, {}", dst_name, src_name);
-                    }
-                    &Const { dst, ref src } => {
-                        let dst_name = self.register_name_map.get(&dst).unwrap();
-                        match src {
-                            &ConstKind::ConstI8(i) => println!("mov {}, {}", dst_name, i),
-                            &ConstKind::ConstI32(i) => println!("mov {}, {}", dst_name, i),
-                            &ConstKind::ConstI64(i) => println!("mov {}, {}", dst_name, i),
-                        };
-                    }
-                    &Cast {
-                        ref kind, dst, src, ..
-                    } => {
-                        assert!(dst.is_physical());
-                        assert!(src.is_physical());
+            &Label(ref label) => {
+                println!("{}:", label);
+            }
+            &Copy { dst, src } => {
+                let dst_name = self.register_name_map.get(&dst).unwrap();
+                let src_name = self.register_name_map.get(&src).unwrap();
+                println!("mov {}, {}", dst_name, src_name);
+            }
+            &Const { dst, ref src } => {
+                let dst_name = self.register_name_map.get(&dst).unwrap();
+                match src {
+                    &ConstKind::ConstI8(i) => println!("mov {}, {}", dst_name, i),
+                    &ConstKind::ConstI32(i) => println!("mov {}, {}", dst_name, i),
+                    &ConstKind::ConstI64(i) => println!("mov {}, {}", dst_name, i),
+                };
+            }
+            &Cast {
+                ref kind, dst, src, ..
+            } => {
+                assert!(dst.is_physical());
+                assert!(src.is_physical());
+                match kind {
+                    &CastKind::Wrap => println!("# UnaryOpKind::Wrap"),
+                    &CastKind::ZeroExtension | &CastKind::SignExtension => {
+                        assert!(dst.get_typ().get_size() > src.get_typ().get_size());
                         match kind {
-                            &CastKind::Wrap => println!("# UnaryOpKind::Wrap"),
-                            &CastKind::ZeroExtension | &CastKind::SignExtension => {
-                                assert!(dst.get_typ().get_size() > src.get_typ().get_size());
-                                match kind {
-                                    &CastKind::ZeroExtension => {
-                                        println!("# UnaryOpKind::ZeroExtension")
-                                    }
-                                    &CastKind::SignExtension => {
-                                        match (dst.get_typ(), src.get_typ()) {
-                                            (&Type::I64, &Type::I32) => println!("cdqe"),
-                                            (&Type::I32, &Type::I8) => {
-                                                println!("cbw");
-                                                println!("cwde");
-                                            }
-                                            _ => unimplemented!(),
-                                        }
-                                    }
-                                    _ => panic!(),
+                            &CastKind::ZeroExtension => println!("# UnaryOpKind::ZeroExtension"),
+                            &CastKind::SignExtension => match (dst.get_typ(), src.get_typ()) {
+                                (&Type::I64, &Type::I32) => println!("cdqe"),
+                                (&Type::I32, &Type::I8) => {
+                                    println!("cbw");
+                                    println!("cwde");
                                 }
-                            }
-                        };
-                    }
-                    &BinaryOp {
-                        ref kind,
-                        dst,
-                        src1,
-                        ref src2,
-                    } => {
-                        assert_eq!(dst, src1);
-                        assert!(dst.is_physical());
-                        let op = match kind {
-                            &BinaryOpKind::Add => "add",
-                            &BinaryOpKind::Sub => "sub",
-                            &BinaryOpKind::Mul => "imul",
-                            &BinaryOpKind::Div => "idiv",
-                            &BinaryOpKind::Sll => "shl",
-                            &BinaryOpKind::Srl => "shr",
-                            &BinaryOpKind::Sra => "sar",
-                            &BinaryOpKind::And => "and",
-                            &BinaryOpKind::Or => "or",
-                            &BinaryOpKind::Xor => "xor",
-                        };
-                        match src2 {
-                            &OperandKind::Register(src2) => self.emit_binop_reg_reg(op, dst, src2),
-                            &OperandKind::ImmI8(imm) => self.emit_binop_reg_imm8(op, dst, imm),
-                            &OperandKind::ImmI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
-                            &OperandKind::ImmI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
+                                _ => unimplemented!(),
+                            },
+                            _ => panic!(),
                         }
                     }
-                    &Load { dst, ref src } => {
-                        assert!(dst.is_physical());
-                        let dst_name = self.register_name_map.get(&dst).unwrap();
-                        let ptr_notation = dst.get_typ().get_ptr_notation();
-                        match src {
-                            &Address::Var(_) => unreachable!(),
-                            &Address::VarBaseRegOffset { .. } => unreachable!(),
-                            &Address::RegBaseImmOffset { base, offset } => {
-                                let base_name = self.register_name_map.get(&base).unwrap();
-                                let op = if offset >= 0 { "+" } else { "-" };
-                                let offset = offset.abs();
-                                println!(
-                                    "mov {}, {} ptr [{} {} {}]",
-                                    dst_name, ptr_notation, base_name, op, offset,
-                                );
-                            }
-                            &Address::RegBaseRegOffset { .. } => unimplemented!(),
-                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
-                        }
-                    }
-                    &Store { ref dst, src } => {
-                        assert!(src.is_physical());
-                        let src_name = self.register_name_map.get(&src).unwrap();
-                        let ptr_notation = src.get_typ().get_ptr_notation();
-                        match dst {
-                            &Address::Var(_) => unreachable!(),
-                            &Address::VarBaseRegOffset { .. } => unreachable!(),
-                            &Address::RegBaseImmOffset { base, offset } => {
-                                let base_name = self.register_name_map.get(&base).unwrap();
-                                let op = if offset >= 0 { "+" } else { "-" };
-                                let offset = offset.abs();
-                                println!(
-                                    "mov {} ptr [{} {} {}], {}",
-                                    ptr_notation, base_name, op, offset, src_name
-                                );
-                            }
-                            &Address::RegBaseRegOffset { base, offset } => {
-                                let base_name = self.register_name_map.get(&base).unwrap();
-                                let offset_name = self.register_name_map.get(&offset).unwrap();
-                                println!(
-                                    "mov {} ptr [{} + {}], {}",
-                                    ptr_notation, base_name, offset_name, src_name
-                                );
-                            }
-                            &Address::RegBaseRegIndex { .. } => unimplemented!(),
-                        }
-                    }
-                    &Jump {
-                        ref kind,
-                        ref target,
-                    } => {
-                        let target = match target {
-                            JumpTargetKind::BasicBlock(bb) => *bb,
-                        };
-                        use self::JumpCondKind::*;
-                        match kind {
-                            &Unconditional => {
-                                println!("jmp label_{}", target);
-                            }
-                            &Eq0(preg) => self.emit_jump("test", "jz", target, preg, preg),
-                            &Neq0(preg) => self.emit_jump("test", "jnz", target, preg, preg),
-                            &Eq(preg1, preg2) => self.emit_jump("cmp", "jz", target, preg1, preg2),
-                            &Neq(preg1, preg2) => {
-                                self.emit_jump("cmp", "jnz", target, preg1, preg2)
-                            }
-                            &LtS(preg1, preg2) => self.emit_jump("cmp", "jl", target, preg1, preg2),
-                            &LtU(preg1, preg2) => self.emit_jump("cmp", "jb", target, preg1, preg2),
-                            &LeS(preg1, preg2) => {
-                                self.emit_jump("cmp", "jle", target, preg1, preg2)
-                            }
-                            &LeU(preg1, preg2) => {
-                                self.emit_jump("cmp", "jbe", target, preg1, preg2)
-                            }
-                            &GtS(preg1, preg2) => self.emit_jump("cmp", "jg", target, preg1, preg2),
-                            &GtU(preg1, preg2) => self.emit_jump("cmp", "ja", target, preg1, preg2),
-                            &GeS(preg1, preg2) => {
-                                self.emit_jump("cmp", "jge", target, preg1, preg2)
-                            }
-                            &GeU(preg1, preg2) => {
-                                self.emit_jump("cmp", "jae", target, preg1, preg2)
-                            }
-                            &Table(ref table, preg) => {
-                                // ToDo: fix
-                                for (i, basic_block) in table.iter().enumerate() {
-                                    self.emit_binop_reg_imm64("cmp", preg, i as u64);
-                                    println!("jz label_{}", basic_block);
-                                }
-                                println!("jmp label_{}", target);
-                            }
-                        }
-                    }
-                    &Call { ref func, .. } => match func {
-                        &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
-                        &CallTargetKind::Indirect(ref addr) => match addr {
-                            &Address::Var(_) => unreachable!(),
-                            &Address::VarBaseRegOffset { .. } => unreachable!(),
-                            &Address::RegBaseImmOffset { .. } => unimplemented!(),
-                            &Address::RegBaseRegOffset { .. } => unimplemented!(),
-                            &Address::RegBaseRegIndex {
-                                base,
-                                index,
-                                ref scale,
-                            } => {
-                                assert!(base.is_physical());
-                                assert!(index.is_physical());
-                                let base_name = self.register_name_map.get(&base).unwrap();
-                                let index_name = self.register_name_map.get(&index).unwrap();
-                                println!(
-                                    "lea {}, [{} + {} * {}]",
-                                    base_name,
-                                    base_name,
-                                    index_name,
-                                    scale.get_size()
-                                );
-                                println!("call {}", base_name);
-                            }
-                        },
-                    },
-                    &Return { .. } => {
-                        println!("pop rbx");
-                        println!("mov rsp, rbp");
-                        println!("pop rbp");
-                        println!("ret");
-                    }
-                    &AddressOf { dst, ref location } => match location {
-                        &Address::Var(var) => {
-                            assert!(!var.is_physical());
-                            let dst_name = self.register_name_map.get(&dst).unwrap();
-                            if function
-                                .get_local_region()
-                                .get_offset_map()
-                                .contains_key(&var)
-                            {
-                                unimplemented!()
-                            } else {
-                                let ipr_name = self
-                                    .register_name_map
-                                    .get(&self.instruction_pointer_register)
-                                    .unwrap();
-                                let module = function.get_module();
-                                if module
-                                    .get_mutable_global_variable_region()
-                                    .get_offset_map()
-                                    .contains_key(&var)
-                                {
-                                    unimplemented!()
-                                } else if module
-                                    .get_const_global_variable_region()
-                                    .get_offset_map()
-                                    .contains_key(&var)
-                                {
-                                    unimplemented!()
-                                } else {
-                                    println!(
-                                        "lea {}, [{} + {}]",
-                                        dst_name,
-                                        ipr_name,
-                                        module.get_dynamic_regions()[0].get_name(),
-                                    );
-                                };
-                            }
-                        }
-                        &Address::VarBaseRegOffset { .. } => unreachable!(),
-                        &Address::RegBaseImmOffset { .. } => unreachable!(),
-                        &Address::RegBaseRegOffset { .. } => unreachable!(),
-                        &Address::RegBaseRegIndex { .. } => unreachable!(),
-                    },
+                };
+            }
+            &BinaryOp {
+                ref kind,
+                dst,
+                src1,
+                ref src2,
+            } => {
+                assert_eq!(dst, src1);
+                assert!(dst.is_physical());
+                let op = match kind {
+                    &BinaryOpKind::Add => "add",
+                    &BinaryOpKind::Sub => "sub",
+                    &BinaryOpKind::Mul => "imul",
+                    &BinaryOpKind::Div => "idiv",
+                    &BinaryOpKind::Sll => "shl",
+                    &BinaryOpKind::Srl => "shr",
+                    &BinaryOpKind::Sra => "sar",
+                    &BinaryOpKind::And => "and",
+                    &BinaryOpKind::Or => "or",
+                    &BinaryOpKind::Xor => "xor",
+                };
+                match src2 {
+                    &OperandKind::Register(src2) => self.emit_binop_reg_reg(op, dst, src2),
+                    &OperandKind::ImmI8(imm) => self.emit_binop_reg_imm8(op, dst, imm),
+                    &OperandKind::ImmI32(imm) => self.emit_binop_reg_imm32(op, dst, imm),
+                    &OperandKind::ImmI64(imm) => self.emit_binop_reg_imm64(op, dst, imm),
                 }
-                iter.advance();
             }
+            &Load { dst, ref src } => {
+                assert!(dst.is_physical());
+                let dst_name = self.register_name_map.get(&dst).unwrap();
+                let ptr_notation = dst.get_typ().get_ptr_notation();
+                match src {
+                    &Address::Var(_) => unreachable!(),
+                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::RegBaseImmOffset { base, offset } => {
+                        let base_name = self.register_name_map.get(&base).unwrap();
+                        let op = if offset >= 0 { "+" } else { "-" };
+                        let offset = offset.abs();
+                        println!(
+                            "mov {}, {} ptr [{} {} {}]",
+                            dst_name, ptr_notation, base_name, op, offset,
+                        );
+                    }
+                    &Address::RegBaseRegOffset { .. } => unimplemented!(),
+                    &Address::RegBaseRegIndex { .. } => unimplemented!(),
+                }
+            }
+            &Store { ref dst, src } => {
+                assert!(src.is_physical());
+                let src_name = self.register_name_map.get(&src).unwrap();
+                let ptr_notation = src.get_typ().get_ptr_notation();
+                match dst {
+                    &Address::Var(_) => unreachable!(),
+                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::RegBaseImmOffset { base, offset } => {
+                        let base_name = self.register_name_map.get(&base).unwrap();
+                        let op = if offset >= 0 { "+" } else { "-" };
+                        let offset = offset.abs();
+                        println!(
+                            "mov {} ptr [{} {} {}], {}",
+                            ptr_notation, base_name, op, offset, src_name
+                        );
+                    }
+                    &Address::RegBaseRegOffset { base, offset } => {
+                        let base_name = self.register_name_map.get(&base).unwrap();
+                        let offset_name = self.register_name_map.get(&offset).unwrap();
+                        println!(
+                            "mov {} ptr [{} + {}], {}",
+                            ptr_notation, base_name, offset_name, src_name
+                        );
+                    }
+                    &Address::RegBaseRegIndex { .. } => unimplemented!(),
+                }
+            }
+            &Jump {
+                ref kind,
+                ref target,
+            } => {
+                let target = match target {
+                    JumpTargetKind::BasicBlock(bb) => *bb,
+                };
+                use self::JumpCondKind::*;
+                match kind {
+                    &Unconditional => {
+                        println!("jmp label_{}", target);
+                    }
+                    &Eq0(preg) => self.emit_jump("test", "jz", target, preg, preg),
+                    &Neq0(preg) => self.emit_jump("test", "jnz", target, preg, preg),
+                    &Eq(preg1, preg2) => self.emit_jump("cmp", "jz", target, preg1, preg2),
+                    &Neq(preg1, preg2) => self.emit_jump("cmp", "jnz", target, preg1, preg2),
+                    &LtS(preg1, preg2) => self.emit_jump("cmp", "jl", target, preg1, preg2),
+                    &LtU(preg1, preg2) => self.emit_jump("cmp", "jb", target, preg1, preg2),
+                    &LeS(preg1, preg2) => self.emit_jump("cmp", "jle", target, preg1, preg2),
+                    &LeU(preg1, preg2) => self.emit_jump("cmp", "jbe", target, preg1, preg2),
+                    &GtS(preg1, preg2) => self.emit_jump("cmp", "jg", target, preg1, preg2),
+                    &GtU(preg1, preg2) => self.emit_jump("cmp", "ja", target, preg1, preg2),
+                    &GeS(preg1, preg2) => self.emit_jump("cmp", "jge", target, preg1, preg2),
+                    &GeU(preg1, preg2) => self.emit_jump("cmp", "jae", target, preg1, preg2),
+                    &Table(ref table, preg) => {
+                        // ToDo: fix
+                        for (i, basic_block) in table.iter().enumerate() {
+                            self.emit_binop_reg_imm64("cmp", preg, i as u64);
+                            println!("jz label_{}", basic_block);
+                        }
+                        println!("jmp label_{}", target);
+                    }
+                }
+            }
+            &Call { ref func, .. } => match func {
+                &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
+                &CallTargetKind::Indirect(ref addr) => match addr {
+                    &Address::Var(_) => unreachable!(),
+                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::RegBaseImmOffset { .. } => unimplemented!(),
+                    &Address::RegBaseRegOffset { .. } => unimplemented!(),
+                    &Address::RegBaseRegIndex {
+                        base,
+                        index,
+                        ref scale,
+                    } => {
+                        assert!(base.is_physical());
+                        assert!(index.is_physical());
+                        let base_name = self.register_name_map.get(&base).unwrap();
+                        let index_name = self.register_name_map.get(&index).unwrap();
+                        println!(
+                            "lea {}, [{} + {} * {}]",
+                            base_name,
+                            base_name,
+                            index_name,
+                            scale.get_size()
+                        );
+                        println!("call {}", base_name);
+                    }
+                },
+            },
+            &Return { .. } => {
+                println!("pop rbx");
+                println!("mov rsp, rbp");
+                println!("pop rbp");
+                println!("ret");
+            }
+            &AddressOf { dst, ref location } => match location {
+                &Address::Var(var) => {
+                    assert!(!var.is_physical());
+                    let dst_name = self.register_name_map.get(&dst).unwrap();
+                    let function = instr.get_basic_block().get_function();
+                    if function
+                        .get_local_region()
+                        .get_offset_map()
+                        .contains_key(&var)
+                    {
+                        unimplemented!()
+                    } else {
+                        let ipr_name = self
+                            .register_name_map
+                            .get(&self.instruction_pointer_register)
+                            .unwrap();
+                        let module = function.get_module();
+                        if module
+                            .get_mutable_global_variable_region()
+                            .get_offset_map()
+                            .contains_key(&var)
+                        {
+                            unimplemented!()
+                        } else if module
+                            .get_const_global_variable_region()
+                            .get_offset_map()
+                            .contains_key(&var)
+                        {
+                            unimplemented!()
+                        } else {
+                            println!(
+                                "lea {}, [{} + {}]",
+                                dst_name,
+                                ipr_name,
+                                module.get_dynamic_regions()[0].get_name(),
+                            );
+                        };
+                    }
+                }
+                &Address::VarBaseRegOffset { .. } => unreachable!(),
+                &Address::RegBaseImmOffset { .. } => unreachable!(),
+                &Address::RegBaseRegOffset { .. } => unreachable!(),
+                &Address::RegBaseRegIndex { .. } => unreachable!(),
+            },
         }
     }
 }
 
-impl EmitAssemblyPass {
-    pub fn new(
-        physical_register_name_map: HashMap<RegisterHandle, &'static str>,
-        base_pointer_register: RegisterHandle,
-        stack_pointer_register: RegisterHandle,
-        instruction_pointer_register: RegisterHandle,
-        argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    ) -> EmitAssemblyPass {
-        EmitAssemblyPass {
-            register_name_map: physical_register_name_map,
-            base_pointer_register,
-            stack_pointer_register,
-            instruction_pointer_register,
-            argument_registers,
+impl<'a> EmitX86AssemblyPass<'a> {
+    pub fn new(emit_assembly_pass: &'a EmitAssemblyPass) -> EmitX86AssemblyPass<'a> {
+        EmitX86AssemblyPass {
+            register_name_map: &emit_assembly_pass.register_name_map,
+            instruction_pointer_register: emit_assembly_pass.instruction_pointer_register,
         }
     }
 
@@ -430,5 +371,65 @@ impl EmitAssemblyPass {
     ) {
         self.emit_binop_reg_reg(comp_op, lhs, rhs);
         println!("{} label_{}", jump_op, target);
+    }
+}
+
+#[derive(Debug)]
+pub struct EmitAssemblyPass {
+    register_name_map: HashMap<RegisterHandle, &'static str>,
+    base_pointer_register: RegisterHandle,
+    stack_pointer_register: RegisterHandle,
+    instruction_pointer_register: RegisterHandle,
+    argument_registers: Vec<HashMap<Type, RegisterHandle>>,
+}
+
+impl FunctionPass for EmitAssemblyPass {
+    fn do_action(&mut self, function: FunctionHandle) {
+        println!();
+
+        match function.get_linkage() {
+            &Linkage::Export => println!(".global {}", function.get_func_name()),
+            &Linkage::Import => return,
+            &Linkage::Private => (),
+        }
+        println!("{}:", function.get_func_name());
+
+        let base_pointer_register = self
+            .register_name_map
+            .get(&self.base_pointer_register)
+            .unwrap();
+        let stack_pointer_register = self
+            .register_name_map
+            .get(&self.stack_pointer_register)
+            .unwrap();
+
+        println!("push {}", base_pointer_register);
+        println!("mov {}, {}", base_pointer_register, stack_pointer_register);
+        println!(
+            "sub {}, {}",
+            stack_pointer_register,
+            function.get_local_region().get_region_size().unwrap()
+        );
+        println!("push rbx");
+
+        function.apply_instr_pass(&mut EmitX86AssemblyPass::new(self));
+    }
+}
+
+impl EmitAssemblyPass {
+    pub fn new(
+        physical_register_name_map: HashMap<RegisterHandle, &'static str>,
+        base_pointer_register: RegisterHandle,
+        stack_pointer_register: RegisterHandle,
+        instruction_pointer_register: RegisterHandle,
+        argument_registers: Vec<HashMap<Type, RegisterHandle>>,
+    ) -> EmitAssemblyPass {
+        EmitAssemblyPass {
+            register_name_map: physical_register_name_map,
+            base_pointer_register,
+            stack_pointer_register,
+            instruction_pointer_register,
+            argument_registers,
+        }
     }
 }
