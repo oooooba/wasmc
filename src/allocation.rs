@@ -603,11 +603,10 @@ impl FunctionPass for VariableAddressLoweringPass {
                     } => match addr {
                         &mut Address::Var(var) => {
                             assert!(!var.is_physical());
-                            if local_region.get_offset_map().contains_key(&var) {
-                                let offset = *local_region.get_offset_map().get(&var).unwrap();
+                            if let Some(offset) = local_region.get_offset_map().get(&var) {
                                 *addr = Address::RegBaseImmOffset {
                                     base: self.base_pointer_register,
-                                    offset: -(offset as isize),
+                                    offset: -(*offset as isize),
                                 };
                             } else {
                                 unimplemented!()
