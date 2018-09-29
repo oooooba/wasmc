@@ -1,3 +1,4 @@
+use std::cmp;
 use std::collections::{HashMap, VecDeque};
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
@@ -504,6 +505,8 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
 #[derive(Debug)]
 pub struct FuncArgsStoreInstrInsertionPass<'a> {
     argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+    base_pointer_register: RegisterHandle,
+    temporary_register: &'a HashMap<Type, RegisterHandle>,
 }
 
 impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
@@ -511,34 +514,71 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
         if function.get_linkage() == &Linkage::Import {
             return;
         }
-        assert!(function.get_parameter_types().len() <= self.argument_registers.len());
+
         assert_eq!(
             function.get_parameter_types().len(),
             function.get_parameter_variables().len()
         );
-        let mut store_instrs = vec![];
+
         let mut entry_block = function.get_basic_blocks()[0];
-        for (i, var) in function.get_parameter_variables().iter().enumerate() {
+        let mut new_entry_instrs = VecDeque::new();
+
+        for i in 0..cmp::min(
+            function.get_parameter_types().len(),
+            self.argument_registers.len(),
+        ) {
+            let var = function.get_parameter_variables()[i];
             let instr = Context::create_instr(
                 Opcode::Store {
-                    dst: Address::Var(*var),
+                    dst: Address::Var(var),
                     src: *self.argument_registers[i].get(var.get_typ()).unwrap(),
                 },
                 entry_block,
             );
-            store_instrs.push(instr);
+            new_entry_instrs.push_back(instr);
         }
-        for instr in store_instrs {
-            entry_block.get_mut_instrs().push_front(instr);
+
+        for i in self.argument_registers.len()..function.get_parameter_types().len() {
+            let var = function.get_parameter_variables()[i];
+            let index = i - self.argument_registers.len();
+            let tmp = *self.temporary_register.get(var.get_typ()).unwrap();
+            let load_instr = Context::create_instr(
+                Opcode::Load {
+                    dst: tmp,
+                    src: Address::RegBaseImmOffset {
+                        base: self.base_pointer_register,
+                        offset: (0x10 + index * Type::Pointer.get_size()) as isize,
+                    },
+                },
+                entry_block,
+            );
+            let store_instr = Context::create_instr(
+                Opcode::Store {
+                    dst: Address::Var(var),
+                    src: tmp,
+                },
+                entry_block,
+            );
+            new_entry_instrs.push_back(load_instr);
+            new_entry_instrs.push_back(store_instr);
         }
+
+        new_entry_instrs.append(entry_block.get_mut_instrs());
+        entry_block.set_instrs(new_entry_instrs);
     }
 }
 
 impl<'a> FuncArgsStoreInstrInsertionPass<'a> {
     pub fn new(
         argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+        base_pointer_register: RegisterHandle,
+        temporary_register: &'a HashMap<Type, RegisterHandle>,
     ) -> FuncArgsStoreInstrInsertionPass<'a> {
-        FuncArgsStoreInstrInsertionPass { argument_registers }
+        FuncArgsStoreInstrInsertionPass {
+            argument_registers,
+            base_pointer_register,
+            temporary_register,
+        }
     }
 }
 
@@ -606,6 +646,8 @@ impl FunctionPass for SimpleRegisterAllocationPass {
         function.apply_function_pass(&mut MemoryAccessInstrInsertionPass::new(self));
         function.apply_function_pass(&mut FuncArgsStoreInstrInsertionPass::new(
             &self.physical_argument_registers,
+            self.physical_base_pointer_register,
+            &self.physical_result_register,
         ));
         function.get_local_region().calculate_variable_offset();
         function.apply_function_pass(&mut VariableAddressLoweringPass::new(
