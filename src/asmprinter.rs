@@ -162,6 +162,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 match src {
                     &Address::Var(_) => unreachable!(),
                     &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::VarBaseImmOffset { .. } => unimplemented!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
                         let op = if offset >= 0 { "+" } else { "-" };
@@ -181,6 +182,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let ptr_notation = src.get_typ().get_ptr_notation();
                 match dst {
                     &Address::Var(_) => unreachable!(),
+                    &Address::VarBaseImmOffset { .. } => unimplemented!(),
                     &Address::VarBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
@@ -240,6 +242,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
                 &CallTargetKind::Indirect(ref addr) => match addr {
                     &Address::Var(_) => unreachable!(),
+                    &Address::VarBaseImmOffset { .. } => unreachable!(),
                     &Address::VarBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { .. } => unimplemented!(),
                     &Address::RegBaseRegOffset { .. } => unimplemented!(),
@@ -308,6 +311,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                         };
                     }
                 }
+                &Address::VarBaseImmOffset { .. } => unimplemented!(),
                 &Address::VarBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseImmOffset { .. } => unreachable!(),
                 &Address::RegBaseRegOffset { .. } => unreachable!(),

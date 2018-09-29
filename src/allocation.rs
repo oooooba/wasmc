@@ -139,6 +139,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     } => {
                         match src {
                             &mut Address::Var(_) => {}
+                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::VarBaseRegOffset {
                                 base: v_base,
                                 offset: v_offset,
@@ -199,6 +200,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                         match dst {
                             &mut Address::Var(_) => {}
+                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::VarBaseRegOffset {
                                 base: v_base,
                                 offset: v_offset,
@@ -313,6 +315,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut CallTargetKind::Function(_) => {}
                             &mut CallTargetKind::Indirect(ref mut addr) => match addr {
                                 &mut Address::Var(_) => {}
+                                &mut Address::VarBaseImmOffset { .. } => {}
                                 &mut Address::VarBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseImmOffset { .. } => {}
                                 &mut Address::RegBaseRegOffset { .. } => {}
@@ -612,6 +615,7 @@ impl FunctionPass for VariableAddressLoweringPass {
                                 unimplemented!()
                             }
                         }
+                        &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
                         &mut Address::VarBaseRegOffset { .. } => unimplemented!(),
                         &mut Address::RegBaseImmOffset { .. } => {}
                         &mut Address::RegBaseRegOffset { .. } => {}
