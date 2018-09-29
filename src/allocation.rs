@@ -593,6 +593,8 @@ pub struct VariableAddressLoweringPass {
 impl FunctionPass for VariableAddressLoweringPass {
     fn do_action(&mut self, function: FunctionHandle) {
         let local_region = function.get_local_region();
+        let global_mutable_region = function.get_module().get_mutable_global_variable_region();
+        let global_const_region = function.get_module().get_const_global_variable_region();
 
         for basic_block in function.get_basic_blocks() {
             for instr in basic_block.get_instrs() {
@@ -610,6 +612,20 @@ impl FunctionPass for VariableAddressLoweringPass {
                                 *addr = Address::RegBaseImmOffset {
                                     base: self.base_pointer_register,
                                     offset: -(*offset as isize),
+                                };
+                            } else if let Some(offset) =
+                                global_mutable_region.get_offset_map().get(&var)
+                            {
+                                *addr = Address::VarBaseImmOffset {
+                                    base: global_mutable_region.get_variable(),
+                                    offset: *offset as isize,
+                                };
+                            } else if let Some(offset) =
+                                global_const_region.get_offset_map().get(&var)
+                            {
+                                *addr = Address::VarBaseImmOffset {
+                                    base: global_const_region.get_variable(),
+                                    offset: *offset as isize,
                                 };
                             } else {
                                 unimplemented!()
