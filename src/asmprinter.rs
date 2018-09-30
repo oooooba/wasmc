@@ -161,8 +161,59 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let ptr_notation = dst.get_typ().get_ptr_notation();
                 match src {
                     &Address::Var(_) => unreachable!(),
+                    &Address::VarBaseImmOffset { base, offset } => {
+                        assert!(!base.is_physical());
+                        let function = instr.get_basic_block().get_function();
+                        if function
+                            .get_local_region()
+                            .get_offset_map()
+                            .contains_key(&base)
+                        {
+                            unimplemented!()
+                        } else {
+                            let module = function.get_module();
+                            let ipr_name = self
+                                .register_name_map
+                                .get(&self.instruction_pointer_register)
+                                .unwrap();
+                            let region =
+                                if module.get_mutable_global_variable_region().get_variable()
+                                    == base
+                                {
+                                    module.get_mutable_global_variable_region()
+                                } else if module
+                                    .get_mutable_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&base)
+                                {
+                                    unreachable!()
+                                } else if module.get_const_global_variable_region().get_variable()
+                                    == base
+                                {
+                                    module.get_const_global_variable_region()
+                                } else if module
+                                    .get_const_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&base)
+                                {
+                                    unreachable!()
+                                } else {
+                                    module.get_dynamic_regions()[0]
+                                };
+                            let offset_op = if offset >= 0 { "+" } else { "-" };
+                            let offset = offset.abs();
+                            println!(
+                                "mov {}, {} ptr [{} + {} {} {}]",
+                                dst_name,
+                                ptr_notation,
+                                ipr_name,
+                                region.get_name(),
+                                offset_op,
+                                offset,
+                            );
+                        }
+                    }
                     &Address::VarBaseRegOffset { .. } => unreachable!(),
-                    &Address::VarBaseImmOffset { .. } => unimplemented!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
                         let op = if offset >= 0 { "+" } else { "-" };
@@ -182,7 +233,58 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let ptr_notation = src.get_typ().get_ptr_notation();
                 match dst {
                     &Address::Var(_) => unreachable!(),
-                    &Address::VarBaseImmOffset { .. } => unimplemented!(),
+                    &Address::VarBaseImmOffset { base, offset } => {
+                        assert!(!base.is_physical());
+                        let function = instr.get_basic_block().get_function();
+                        if function
+                            .get_local_region()
+                            .get_offset_map()
+                            .contains_key(&base)
+                        {
+                            unimplemented!()
+                        } else {
+                            let module = function.get_module();
+                            let ipr_name = self
+                                .register_name_map
+                                .get(&self.instruction_pointer_register)
+                                .unwrap();
+                            let region =
+                                if module.get_mutable_global_variable_region().get_variable()
+                                    == base
+                                {
+                                    module.get_mutable_global_variable_region()
+                                } else if module
+                                    .get_mutable_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&base)
+                                {
+                                    unreachable!()
+                                } else if module.get_const_global_variable_region().get_variable()
+                                    == base
+                                {
+                                    module.get_const_global_variable_region()
+                                } else if module
+                                    .get_const_global_variable_region()
+                                    .get_offset_map()
+                                    .contains_key(&base)
+                                {
+                                    unreachable!()
+                                } else {
+                                    module.get_dynamic_regions()[0]
+                                };
+                            let offset_op = if offset >= 0 { "+" } else { "-" };
+                            let offset = offset.abs();
+                            println!(
+                                "mov {} ptr [{} + {} {} {}], {}",
+                                ptr_notation,
+                                ipr_name,
+                                region.get_name(),
+                                offset_op,
+                                offset,
+                                src_name
+                            );
+                        }
+                    }
                     &Address::VarBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
