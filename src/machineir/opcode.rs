@@ -241,6 +241,12 @@ pub enum Opcode {
         dst: RegisterHandle,
         location: Address,
     },
+    Push {
+        src: OperandKind,
+    },
+    Pop {
+        dst: RegisterHandle,
+    },
 }
 
 impl Opcode {
@@ -354,6 +360,16 @@ impl Opcode {
                 print!(" &");
                 location.print();
             }
+            &Push { ref src } => {
+                print!("push");
+                print!(" ");
+                src.print();
+            }
+            &Pop { ref dst } => {
+                dst.print();
+                print!(" = ");
+                print!("pop");
+            }
         }
     }
 }
@@ -389,6 +405,8 @@ impl fmt::Display for Opcode {
             &Call { .. } => unimplemented!(),
             &Return { .. } => unimplemented!(),
             &AddressOf { .. } => unimplemented!(),
+            &Push { .. } => unimplemented!(),
+            &Pop { .. } => unimplemented!(),
         }
     }
 }

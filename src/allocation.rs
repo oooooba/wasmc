@@ -404,6 +404,39 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         new_instrs.push_back(instr);
                     }
                     &mut Opcode::AddressOf { .. } => unimplemented!(),
+                    &mut Opcode::Push { ref mut src } => {
+                        match src {
+                            &mut OperandKind::Register(ref mut src) => {
+                                let v_src = *src;
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                    function, v_src,
+                                );
+                                let p_src = self.allocate_physical_register(v_src, 1);
+                                *src = p_src;
+                                new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                    basic_block,
+                                    p_src,
+                                    v_src,
+                                ));
+                            }
+                            &mut OperandKind::ImmI8(_) => {}
+                            &mut OperandKind::ImmI32(_) => {}
+                            &mut OperandKind::ImmI64(_) => {}
+                        }
+                        new_instrs.push_back(instr);
+                    }
+                    &mut Opcode::Pop { ref mut dst } => {
+                        let v_dst = *dst;
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_dst);
+                        let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
+                        *dst = p_dst;
+                        new_instrs.push_back(instr);
+                        new_instrs.push_back(self.create_store_instr_for_dst_reg(
+                            basic_block,
+                            v_dst,
+                            p_dst,
+                        ));
+                    }
                 }
             }
             basic_block.set_instrs(new_instrs);

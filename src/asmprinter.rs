@@ -317,6 +317,21 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 &Address::RegBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseRegIndex { .. } => unreachable!(),
             },
+            &Push { ref src } => match src {
+                &OperandKind::Register(reg) => {
+                    assert!(reg.is_physical());
+                    let reg_name = self.register_name_map.get(&reg).unwrap();
+                    println!("push {}", reg_name);
+                }
+                &OperandKind::ImmI8(imm) => println!("push {}", imm),
+                &OperandKind::ImmI32(imm) => println!("push {}", imm),
+                &OperandKind::ImmI64(imm) => println!("push {}", imm),
+            },
+            &Pop { ref dst } => {
+                assert!(dst.is_physical());
+                let dst_name = self.register_name_map.get(&dst).unwrap();
+                println!("pop {}", dst_name);
+            }
         }
     }
 }
