@@ -4,7 +4,9 @@ use std::collections::{HashMap, VecDeque};
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
 use context::Context;
 use machineir::function::Linkage;
-use machineir::opcode::{Address, BinaryOpKind, CallTargetKind, JumpCondKind, Opcode, OperandKind};
+use machineir::opcode::{
+    Address, BinaryOpKind, CallTargetKind, CastKind, JumpCondKind, Opcode, OperandKind,
+};
 use machineir::typ::Type;
 use pass::FunctionPass;
 
@@ -13,6 +15,7 @@ pub struct MemoryAccessInstrInsertionPass<'a> {
     physical_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
     physical_argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
     physical_result_register: &'a HashMap<Type, RegisterHandle>,
+    physical_stack_pointer_register: RegisterHandle,
 }
 
 impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
@@ -351,7 +354,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             },
                         }
 
-                        for i in 0..args.len() {
+                        for i in 0..cmp::min(args.len(), self.physical_argument_registers.len()) {
                             let v_arg = args[i];
                             MemoryAccessInstrInsertionPass::registry_as_local_variable(
                                 function, v_arg,
@@ -365,7 +368,55 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             ));
                         }
 
+                        let mut num_push_instrs = 0;
+                        for i in (self.physical_argument_registers.len()..args.len()).rev() {
+                            let v_arg = args[i];
+                            let p_arg =
+                                *self.physical_result_register.get(v_arg.get_typ()).unwrap();
+                            new_instrs.push_back(self.create_load_instr_for_src_reg(
+                                basic_block,
+                                p_arg,
+                                v_arg,
+                            ));
+                            let p_arg = if p_arg.get_typ().get_size() == Type::Pointer.get_size() {
+                                p_arg
+                            } else {
+                                let tmp =
+                                    *self.physical_result_register.get(&Type::Pointer).unwrap();
+                                new_instrs.push_back(Context::create_instr(
+                                    Opcode::Cast {
+                                        kind: CastKind::SignExtension,
+                                        dst: tmp,
+                                        src: p_arg,
+                                    },
+                                    basic_block,
+                                ));
+                                tmp
+                            };
+                            new_instrs.push_back(Context::create_instr(
+                                Opcode::Push {
+                                    src: OperandKind::Register(p_arg),
+                                },
+                                basic_block,
+                            ));
+                            num_push_instrs += 1;
+                        }
+
                         new_instrs.push_back(instr);
+
+                        if num_push_instrs != 0 {
+                            new_instrs.push_back(Context::create_instr(
+                                Opcode::BinaryOp {
+                                    kind: BinaryOpKind::Add,
+                                    dst: self.physical_stack_pointer_register,
+                                    src1: self.physical_stack_pointer_register,
+                                    src2: OperandKind::ImmI64(
+                                        (num_push_instrs * Type::Pointer.get_size()) as u64,
+                                    ),
+                                },
+                                basic_block,
+                            ));
+                        }
 
                         if let &mut Some(ref mut result) = result {
                             let v_result = *result;
@@ -453,6 +504,8 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
             physical_argument_registers: &simple_register_allocation_pass
                 .physical_argument_registers,
             physical_result_register: &simple_register_allocation_pass.physical_result_register,
+            physical_stack_pointer_register: simple_register_allocation_pass
+                .physical_stack_pointer_register,
         }
     }
 
@@ -691,6 +744,7 @@ pub struct SimpleRegisterAllocationPass {
     physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     physical_result_register: HashMap<Type, RegisterHandle>,
     physical_base_pointer_register: RegisterHandle,
+    physical_stack_pointer_register: RegisterHandle,
 }
 
 impl FunctionPass for SimpleRegisterAllocationPass {
@@ -714,12 +768,14 @@ impl SimpleRegisterAllocationPass {
         physical_argument_registers: Vec<HashMap<Type, RegisterHandle>>,
         physical_result_register: HashMap<Type, RegisterHandle>,
         physical_base_pointer_register: RegisterHandle,
+        physical_stack_pointer_register: RegisterHandle,
     ) -> SimpleRegisterAllocationPass {
         SimpleRegisterAllocationPass {
             physical_registers,
             physical_argument_registers,
             physical_result_register,
             physical_base_pointer_register,
+            physical_stack_pointer_register,
         }
     }
 }

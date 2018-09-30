@@ -36,6 +36,7 @@ impl ModulePass for MainPass {
             self.argument_registers.clone(),
             self.result_register.clone(),
             self.base_pointer_register,
+            self.stack_pointer_register,
         ));
         module.apply_basic_block_pass(&mut InsertBasicBlockLabelPass::new());
         module.apply_function_pass(&mut EmitAssemblyPass::new(
@@ -105,6 +106,7 @@ impl MainPass {
             (Type::I8, reg_al),
             (Type::I32, reg_eax),
             (Type::I64, reg_rax),
+            (Type::Pointer, reg_rax),
         ]);
 
         let register_name_map = HashMap::from_iter(vec![
