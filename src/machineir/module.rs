@@ -10,6 +10,7 @@ pub struct Module {
     mutable_global_variable_region: RegionHandle,
     const_global_variable_region: RegionHandle,
     dynamic_regions: Vec<RegionHandle>,
+    global_regions: Vec<RegionHandle>,
     indirect_function_tables: Vec<RegionHandle>,
 }
 
@@ -21,6 +22,7 @@ impl Module {
             mutable_global_variable_region: Context::create_region(RegionKind::MutableGlobal),
             const_global_variable_region: Context::create_region(RegionKind::ReadOnlyGlobal),
             dynamic_regions: vec![],
+            global_regions: vec![],
             indirect_function_tables: vec![],
         }
     }
@@ -51,6 +53,14 @@ impl Module {
 
     pub fn get_mut_dynamic_regions(&mut self) -> &mut Vec<RegionHandle> {
         &mut self.dynamic_regions
+    }
+
+    pub fn get_global_regions(&self) -> &Vec<RegionHandle> {
+        &self.global_regions
+    }
+
+    pub fn get_mut_global_regions(&mut self) -> &mut Vec<RegionHandle> {
+        &mut self.global_regions
     }
 
     pub fn get_indirect_function_tables(&self) -> &Vec<RegionHandle> {
