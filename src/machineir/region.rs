@@ -10,7 +10,7 @@ use machineir::typ::Type;
 pub enum RegionKind {
     Local,
     StaticGlobal,
-    DynamicGlobal { min: usize, max: Option<usize> },
+    VariableSizedGlobal { min: usize, max: Option<usize> },
 }
 
 #[derive(PartialEq, Eq, Debug)]

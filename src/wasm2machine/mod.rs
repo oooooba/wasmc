@@ -178,11 +178,11 @@ impl WasmToMachine {
         }
 
         let memory = if wasmir_module.get_mems().len() == 0 {
-            Context::create_region(RegionKind::DynamicGlobal { min: 0, max: None })
+            Context::create_region(RegionKind::VariableSizedGlobal { min: 0, max: None })
         } else {
             assert_eq!(wasmir_module.get_mems().len(), 1);
             let mem = &wasmir_module.get_mems()[0];
-            Context::create_region(RegionKind::DynamicGlobal {
+            Context::create_region(RegionKind::VariableSizedGlobal {
                 min: mem.get_type().get_lim().get_min() as usize,
                 max: mem.get_type().get_lim().get_max().map(|i| i as usize),
             })
@@ -214,11 +214,11 @@ impl WasmToMachine {
         }
 
         let table = if wasmir_module.get_tables().len() == 0 {
-            Context::create_region(RegionKind::DynamicGlobal { min: 0, max: None })
+            Context::create_region(RegionKind::VariableSizedGlobal { min: 0, max: None })
         } else {
             assert_eq!(wasmir_module.get_tables().len(), 1);
             let tab = &wasmir_module.get_tables()[0];
-            Context::create_region(RegionKind::DynamicGlobal {
+            Context::create_region(RegionKind::VariableSizedGlobal {
                 min: tab.get_type().get_limits().get_min() as usize,
                 max: tab.get_type().get_limits().get_max().map(|i| i as usize),
             })
