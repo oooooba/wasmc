@@ -9,7 +9,8 @@ use machineir::typ::Type;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RegionKind {
     Local,
-    StaticGlobal,
+    MutableGlobal,
+    ReadOnlyGlobal,
     VariableSizedGlobal { min: usize, max: Option<usize> },
 }
 

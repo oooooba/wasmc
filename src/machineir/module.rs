@@ -18,8 +18,8 @@ impl Module {
         Module {
             handle: handle,
             functions: vec![],
-            mutable_global_variable_region: Context::create_region(RegionKind::StaticGlobal),
-            const_global_variable_region: Context::create_region(RegionKind::StaticGlobal),
+            mutable_global_variable_region: Context::create_region(RegionKind::MutableGlobal),
+            const_global_variable_region: Context::create_region(RegionKind::ReadOnlyGlobal),
             dynamic_regions: vec![],
             indirect_function_tables: vec![],
         }
