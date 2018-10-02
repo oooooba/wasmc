@@ -218,30 +218,33 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                                 .register_name_map
                                 .get(&self.instruction_pointer_register)
                                 .unwrap();
-                            let region =
-                                if module.get_mutable_global_variable_region().get_variable()
-                                    == base
-                                {
-                                    module.get_mutable_global_variable_region()
-                                } else if module
-                                    .get_mutable_global_variable_region()
-                                    .get_offset_map()
-                                    .contains_key(&base)
-                                {
-                                    unreachable!()
-                                } else if module.get_const_global_variable_region().get_variable()
-                                    == base
-                                {
-                                    module.get_const_global_variable_region()
-                                } else if module
-                                    .get_const_global_variable_region()
-                                    .get_offset_map()
-                                    .contains_key(&base)
-                                {
-                                    unreachable!()
-                                } else {
-                                    module.get_dynamic_regions()[0]
-                                };
+                            let region = if module
+                                .get_mutable_global_variable_region()
+                                .get_variable_deprecated()
+                                == base
+                            {
+                                module.get_mutable_global_variable_region()
+                            } else if module
+                                .get_mutable_global_variable_region()
+                                .get_offset_map()
+                                .contains_key(&base)
+                            {
+                                unreachable!()
+                            } else if module
+                                .get_const_global_variable_region()
+                                .get_variable_deprecated()
+                                == base
+                            {
+                                module.get_const_global_variable_region()
+                            } else if module
+                                .get_const_global_variable_region()
+                                .get_offset_map()
+                                .contains_key(&base)
+                            {
+                                unreachable!()
+                            } else {
+                                module.get_dynamic_regions()[0]
+                            };
                             let offset_op = if offset >= 0 { "+" } else { "-" };
                             let offset = offset.abs();
                             println!(
@@ -290,30 +293,33 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                                 .register_name_map
                                 .get(&self.instruction_pointer_register)
                                 .unwrap();
-                            let region =
-                                if module.get_mutable_global_variable_region().get_variable()
-                                    == base
-                                {
-                                    module.get_mutable_global_variable_region()
-                                } else if module
-                                    .get_mutable_global_variable_region()
-                                    .get_offset_map()
-                                    .contains_key(&base)
-                                {
-                                    unreachable!()
-                                } else if module.get_const_global_variable_region().get_variable()
-                                    == base
-                                {
-                                    module.get_const_global_variable_region()
-                                } else if module
-                                    .get_const_global_variable_region()
-                                    .get_offset_map()
-                                    .contains_key(&base)
-                                {
-                                    unreachable!()
-                                } else {
-                                    module.get_dynamic_regions()[0]
-                                };
+                            let region = if module
+                                .get_mutable_global_variable_region()
+                                .get_variable_deprecated()
+                                == base
+                            {
+                                module.get_mutable_global_variable_region()
+                            } else if module
+                                .get_mutable_global_variable_region()
+                                .get_offset_map()
+                                .contains_key(&base)
+                            {
+                                unreachable!()
+                            } else if module
+                                .get_const_global_variable_region()
+                                .get_variable_deprecated()
+                                == base
+                            {
+                                module.get_const_global_variable_region()
+                            } else if module
+                                .get_const_global_variable_region()
+                                .get_offset_map()
+                                .contains_key(&base)
+                            {
+                                unreachable!()
+                            } else {
+                                module.get_dynamic_regions()[0]
+                            };
                             let offset_op = if offset >= 0 { "+" } else { "-" };
                             let offset = offset.abs();
                             println!(

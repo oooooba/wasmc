@@ -703,14 +703,14 @@ impl FunctionPass for VariableAddressLoweringPass {
                                 global_mutable_region.get_offset_map().get(&var)
                             {
                                 *addr = Address::VarBaseImmOffsetDeprecated {
-                                    base: global_mutable_region.get_variable(),
+                                    base: global_mutable_region.get_variable_deprecated(),
                                     offset: *offset as isize,
                                 };
                             } else if let Some(offset) =
                                 global_const_region.get_offset_map().get(&var)
                             {
                                 *addr = Address::VarBaseImmOffsetDeprecated {
-                                    base: global_const_region.get_variable(),
+                                    base: global_const_region.get_variable_deprecated(),
                                     offset: *offset as isize,
                                 };
                             } else {

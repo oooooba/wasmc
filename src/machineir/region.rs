@@ -19,7 +19,7 @@ pub struct Region {
     handle: RegionHandle,
     name: String,
     kind: RegionKind,
-    variable: RegisterHandle,
+    variable_deprecated: RegisterHandle,
     offset_map: HashMap<RegisterHandle, usize>,
     initial_value_map: HashMap<RegisterHandle, Opcode>,
     region_size: Option<usize>,
@@ -27,12 +27,12 @@ pub struct Region {
 
 impl Region {
     pub fn new(handle: RegionHandle, kind: RegionKind) -> Region {
-        let variable = Context::create_register(Type::Pointer);
+        let variable_deprecated = Context::create_register(Type::Pointer);
         Region {
             handle,
             name: format!("region_{}", handle),
             kind,
-            variable,
+            variable_deprecated,
             offset_map: HashMap::new(),
             initial_value_map: HashMap::new(),
             region_size: None,
@@ -73,8 +73,8 @@ impl Region {
         &mut self.initial_value_map
     }
 
-    pub fn get_variable(&self) -> RegisterHandle {
-        self.variable
+    pub fn get_variable_deprecated(&self) -> RegisterHandle {
+        self.variable_deprecated
     }
 
     pub fn get_region_size(&self) -> &Option<usize> {
