@@ -7,6 +7,7 @@ use machineir::instruction::Instr;
 use machineir::module::Module;
 use machineir::region::Region;
 use machineir::register::Register;
+use machineir::variable::Variable;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
 pub struct RegisterHandle(usize);
@@ -162,6 +163,60 @@ impl DerefMut for BasicBlockHandle {
 }
 
 impl fmt::Display for BasicBlockHandle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
+pub struct VariableHandle(usize);
+
+impl VariableHandle {
+    pub(super) fn new(id: usize) -> Self {
+        VariableHandle(id)
+    }
+
+    pub fn get(&self) -> &Variable {
+        unsafe {
+            super::CONTEXT
+                .variables
+                .as_ref()
+                .unwrap()
+                .get(self)
+                .unwrap()
+        }
+    }
+
+    pub fn get_mut(&mut self) -> &mut Variable {
+        unsafe {
+            super::CONTEXT
+                .variables
+                .as_mut()
+                .unwrap()
+                .get_mut(self)
+                .unwrap()
+        }
+    }
+
+    pub fn print(&self) {
+        print!("v{}", self.0);
+    }
+}
+
+impl Deref for VariableHandle {
+    type Target = Variable;
+    fn deref(&self) -> &Variable {
+        self.get()
+    }
+}
+
+impl DerefMut for VariableHandle {
+    fn deref_mut(&mut self) -> &mut Variable {
+        self.get_mut()
+    }
+}
+
+impl fmt::Display for VariableHandle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }

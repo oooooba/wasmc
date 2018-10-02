@@ -6,3 +6,4 @@ pub mod opcode;
 pub mod region;
 pub mod register;
 pub mod typ;
+pub mod variable;

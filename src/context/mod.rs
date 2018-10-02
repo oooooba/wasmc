@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use context::handle::{
     BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
+    VariableHandle,
 };
 use machineir::basicblock::BasicBlock;
 use machineir::function::Function;
@@ -13,6 +14,7 @@ use machineir::opcode::Opcode;
 use machineir::region::{Region, RegionKind};
 use machineir::register::Register;
 use machineir::typ::Type;
+use machineir::variable::Variable;
 
 #[derive(Debug)]
 pub struct Context {
@@ -22,6 +24,8 @@ pub struct Context {
     num_created_instrs: usize,
     basic_blocks: Option<BTreeMap<BasicBlockHandle, BasicBlock>>,
     num_created_basic_blocks: usize,
+    variables: Option<BTreeMap<VariableHandle, Variable>>,
+    num_created_variables: usize,
     functions: Option<BTreeMap<FunctionHandle, Function>>,
     num_created_functions: usize,
     regions: Option<BTreeMap<RegionHandle, Region>>,
@@ -37,6 +41,8 @@ static mut CONTEXT: Context = Context {
     num_created_instrs: 0,
     basic_blocks: None,
     num_created_basic_blocks: 0,
+    variables: None,
+    num_created_variables: 0,
     functions: None,
     num_created_functions: 0,
     regions: None,
@@ -51,6 +57,7 @@ impl Context {
             CONTEXT.registers = Some(BTreeMap::new());
             CONTEXT.instrs = Some(BTreeMap::new());
             CONTEXT.basic_blocks = Some(BTreeMap::new());
+            CONTEXT.variables = Some(BTreeMap::new());
             CONTEXT.functions = Some(BTreeMap::new());
             CONTEXT.regions = Some(BTreeMap::new());
             CONTEXT.modules = Some(BTreeMap::new());
@@ -90,6 +97,17 @@ impl Context {
                 .as_mut()
                 .unwrap()
                 .insert(handle, basic_block);
+            handle
+        }
+    }
+
+    pub fn create_variable(region: RegionHandle) -> VariableHandle {
+        unsafe {
+            let id = CONTEXT.num_created_variables;
+            CONTEXT.num_created_variables += 1;
+            let handle = VariableHandle::new(id);
+            let variable = Variable::new(handle, region);
+            CONTEXT.variables.as_mut().unwrap().insert(handle, variable);
             handle
         }
     }
