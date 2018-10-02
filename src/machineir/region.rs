@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use context::handle::{RegionHandle, RegisterHandle};
+use context::handle::{RegionHandle, RegisterHandle, VariableHandle};
 use context::Context;
 use machineir::opcode::Opcode;
 use machineir::typ::Type;
@@ -19,6 +19,7 @@ pub struct Region {
     handle: RegionHandle,
     name: String,
     kind: RegionKind,
+    variable: VariableHandle,
     variable_deprecated: RegisterHandle,
     offset_map: HashMap<RegisterHandle, usize>,
     initial_value_map: HashMap<RegisterHandle, Opcode>,
@@ -27,11 +28,13 @@ pub struct Region {
 
 impl Region {
     pub fn new(handle: RegionHandle, kind: RegionKind) -> Region {
+        let variable = Context::create_variable(Type::Pointer, handle);
         let variable_deprecated = Context::create_register(Type::Pointer);
         Region {
             handle,
             name: format!("region_{}", handle),
             kind,
+            variable,
             variable_deprecated,
             offset_map: HashMap::new(),
             initial_value_map: HashMap::new(),
@@ -71,6 +74,10 @@ impl Region {
 
     pub fn get_mut_initial_value_map(&mut self) -> &mut HashMap<RegisterHandle, Opcode> {
         &mut self.initial_value_map
+    }
+
+    pub fn get_variable(&self) -> VariableHandle {
+        self.variable
     }
 
     pub fn get_variable_deprecated(&self) -> RegisterHandle {

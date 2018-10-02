@@ -101,12 +101,12 @@ impl Context {
         }
     }
 
-    pub fn create_variable(region: RegionHandle) -> VariableHandle {
+    pub fn create_variable(typ: Type, region: RegionHandle) -> VariableHandle {
         unsafe {
             let id = CONTEXT.num_created_variables;
             CONTEXT.num_created_variables += 1;
             let handle = VariableHandle::new(id);
-            let variable = Variable::new(handle, region);
+            let variable = Variable::new(handle, typ, region);
             CONTEXT.variables.as_mut().unwrap().insert(handle, variable);
             handle
         }
