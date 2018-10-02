@@ -202,8 +202,8 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let dst_name = self.register_name_map.get(&dst).unwrap();
                 let ptr_notation = dst.get_typ().get_ptr_notation();
                 match src {
-                    &Address::Var(_) => unreachable!(),
-                    &Address::VarBaseImmOffset { base, offset } => {
+                    &Address::VarDeprecated(_) => unreachable!(),
+                    &Address::VarBaseImmOffsetDeprecated { base, offset } => {
                         assert!(!base.is_physical());
                         let function = instr.get_basic_block().get_function();
                         if function
@@ -255,7 +255,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                             );
                         }
                     }
-                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
                         let op = if offset >= 0 { "+" } else { "-" };
@@ -274,8 +274,8 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let src_name = self.register_name_map.get(&src).unwrap();
                 let ptr_notation = src.get_typ().get_ptr_notation();
                 match dst {
-                    &Address::Var(_) => unreachable!(),
-                    &Address::VarBaseImmOffset { base, offset } => {
+                    &Address::VarDeprecated(_) => unreachable!(),
+                    &Address::VarBaseImmOffsetDeprecated { base, offset } => {
                         assert!(!base.is_physical());
                         let function = instr.get_basic_block().get_function();
                         if function
@@ -327,7 +327,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                             );
                         }
                     }
-                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
                         let op = if offset >= 0 { "+" } else { "-" };
@@ -385,9 +385,9 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
             &Call { ref func, .. } => match func {
                 &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
                 &CallTargetKind::Indirect(ref addr) => match addr {
-                    &Address::Var(_) => unreachable!(),
-                    &Address::VarBaseImmOffset { .. } => unreachable!(),
-                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::VarDeprecated(_) => unreachable!(),
+                    &Address::VarBaseImmOffsetDeprecated { .. } => unreachable!(),
+                    &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { .. } => unimplemented!(),
                     &Address::RegBaseRegOffset { .. } => unimplemented!(),
                     &Address::RegBaseRegIndex {
@@ -417,7 +417,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 println!("ret");
             }
             &AddressOf { dst, ref location } => match location {
-                &Address::Var(var) => {
+                &Address::VarDeprecated(var) => {
                     assert!(!var.is_physical());
                     let dst_name = self.register_name_map.get(&dst).unwrap();
                     let function = instr.get_basic_block().get_function();
@@ -455,8 +455,8 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                         };
                     }
                 }
-                &Address::VarBaseImmOffset { .. } => unimplemented!(),
-                &Address::VarBaseRegOffset { .. } => unreachable!(),
+                &Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                 &Address::RegBaseImmOffset { .. } => unreachable!(),
                 &Address::RegBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseRegIndex { .. } => unreachable!(),

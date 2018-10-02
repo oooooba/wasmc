@@ -141,9 +141,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ref mut src,
                     } => {
                         match src {
-                            &mut Address::Var(_) => {}
-                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::VarBaseRegOffset {
+                            &mut Address::VarDeprecated(_) => {}
+                            &mut Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                            &mut Address::VarBaseRegOffsetDeprecated {
                                 base: v_base,
                                 offset: v_offset,
                             } => {
@@ -202,9 +202,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ));
 
                         match dst {
-                            &mut Address::Var(_) => {}
-                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::VarBaseRegOffset {
+                            &mut Address::VarDeprecated(_) => {}
+                            &mut Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                            &mut Address::VarBaseRegOffsetDeprecated {
                                 base: v_base,
                                 offset: v_offset,
                             } => {
@@ -317,9 +317,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         match func {
                             &mut CallTargetKind::Function(_) => {}
                             &mut CallTargetKind::Indirect(ref mut addr) => match addr {
-                                &mut Address::Var(_) => {}
-                                &mut Address::VarBaseImmOffset { .. } => {}
-                                &mut Address::VarBaseRegOffset { .. } => {}
+                                &mut Address::VarDeprecated(_) => {}
+                                &mut Address::VarBaseImmOffsetDeprecated { .. } => {}
+                                &mut Address::VarBaseRegOffsetDeprecated { .. } => {}
                                 &mut Address::RegBaseImmOffset { .. } => {}
                                 &mut Address::RegBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseRegIndex {
@@ -521,7 +521,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         Context::create_instr(
             Opcode::Load {
                 dst: preg,
-                src: Address::Var(vreg),
+                src: Address::VarDeprecated(vreg),
             },
             basic_block,
         )
@@ -538,7 +538,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         assert_eq!(vreg.get_typ(), preg.get_typ());
         Context::create_instr(
             Opcode::Store {
-                dst: Address::Var(vreg),
+                dst: Address::VarDeprecated(vreg),
                 src: preg,
             },
             basic_block,
@@ -556,7 +556,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         Context::create_instr(
             Opcode::AddressOf {
                 dst: preg,
-                location: Address::Var(vreg),
+                location: Address::VarDeprecated(vreg),
             },
             basic_block,
         )
@@ -619,7 +619,7 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
             let var = function.get_parameter_variables()[i];
             let instr = Context::create_instr(
                 Opcode::Store {
-                    dst: Address::Var(var),
+                    dst: Address::VarDeprecated(var),
                     src: *self.argument_registers[i].get(var.get_typ()).unwrap(),
                 },
                 entry_block,
@@ -643,7 +643,7 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
             );
             let store_instr = Context::create_instr(
                 Opcode::Store {
-                    dst: Address::Var(var),
+                    dst: Address::VarDeprecated(var),
                     src: tmp,
                 },
                 entry_block,
@@ -692,7 +692,7 @@ impl FunctionPass for VariableAddressLoweringPass {
                     | &mut Opcode::Store {
                         dst: ref mut addr, ..
                     } => match addr {
-                        &mut Address::Var(var) => {
+                        &mut Address::VarDeprecated(var) => {
                             assert!(!var.is_physical());
                             if let Some(offset) = local_region.get_offset_map().get(&var) {
                                 *addr = Address::RegBaseImmOffset {
@@ -702,14 +702,14 @@ impl FunctionPass for VariableAddressLoweringPass {
                             } else if let Some(offset) =
                                 global_mutable_region.get_offset_map().get(&var)
                             {
-                                *addr = Address::VarBaseImmOffset {
+                                *addr = Address::VarBaseImmOffsetDeprecated {
                                     base: global_mutable_region.get_variable(),
                                     offset: *offset as isize,
                                 };
                             } else if let Some(offset) =
                                 global_const_region.get_offset_map().get(&var)
                             {
-                                *addr = Address::VarBaseImmOffset {
+                                *addr = Address::VarBaseImmOffsetDeprecated {
                                     base: global_const_region.get_variable(),
                                     offset: *offset as isize,
                                 };
@@ -717,8 +717,8 @@ impl FunctionPass for VariableAddressLoweringPass {
                                 unimplemented!()
                             }
                         }
-                        &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
-                        &mut Address::VarBaseRegOffset { .. } => unimplemented!(),
+                        &mut Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                        &mut Address::VarBaseRegOffsetDeprecated { .. } => unimplemented!(),
                         &mut Address::RegBaseImmOffset { .. } => {}
                         &mut Address::RegBaseRegOffset { .. } => {}
                         &mut Address::RegBaseRegIndex { .. } => {}

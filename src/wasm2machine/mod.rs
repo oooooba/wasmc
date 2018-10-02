@@ -654,7 +654,7 @@ impl WasmToMachine {
                 self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src: Address::Var(var),
+                    src: Address::VarDeprecated(var),
                 });
             }
             &WasmInstr::SetLocal(ref localidx) => {
@@ -666,7 +666,7 @@ impl WasmToMachine {
                 };
                 assert_eq!(src.get_typ(), var.get_typ());
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::Var(var),
+                    dst: Address::VarDeprecated(var),
                     src,
                 });
             }
@@ -680,7 +680,7 @@ impl WasmToMachine {
                 assert_eq!(src.get_typ(), var.get_typ());
                 self.operand_stack.push_value(src);
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::Var(var),
+                    dst: Address::VarDeprecated(var),
                     src,
                 });
             }
@@ -691,7 +691,7 @@ impl WasmToMachine {
                 self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src: Address::Var(var),
+                    src: Address::VarDeprecated(var),
                 });
             }
             &WasmInstr::SetGlobal(globalidx) => {
@@ -703,7 +703,7 @@ impl WasmToMachine {
                 };
                 assert_eq!(src.get_typ(), var.get_typ());
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::Var(var),
+                    dst: Address::VarDeprecated(var),
                     src,
                 });
             }
@@ -737,7 +737,7 @@ impl WasmToMachine {
                 let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src: Address::VarBaseRegOffset {
+                    src: Address::VarBaseRegOffsetDeprecated {
                         base: memory_variable,
                         offset,
                     },
@@ -816,7 +816,7 @@ impl WasmToMachine {
                 let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
 
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::VarBaseRegOffset {
+                    dst: Address::VarBaseRegOffsetDeprecated {
                         base: memory_variable,
                         offset,
                     },
