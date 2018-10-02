@@ -19,6 +19,10 @@ impl Variable {
         }
     }
 
+    pub fn get_region(&self) -> RegionHandle {
+        self.region
+    }
+
     pub fn get_name(&self) -> &String {
         &self.name
     }

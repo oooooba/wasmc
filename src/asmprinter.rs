@@ -9,6 +9,7 @@ use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
     Opcode, OperandKind,
 };
+use machineir::region::RegionKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
 
@@ -41,7 +42,9 @@ impl ModulePass for ModuleInitPass {
         println!(".data");
         println!(".align {}", Type::Pointer.get_size());
         let mutable_region = module.get_mutable_global_variable_region();
+        println!(".global {}", mutable_region.get_variable().get_name());
         println!(".global {}", mutable_region.get_name());
+        println!("{}:", mutable_region.get_variable().get_name());
         println!("{}:", mutable_region.get_name());
         let mut mutable_inits: Vec<(RegisterHandle, usize)> = mutable_region
             .get_offset_map()
@@ -73,7 +76,9 @@ impl ModulePass for ModuleInitPass {
         println!(".data");
         println!(".align {}", Type::Pointer.get_size());
         let bss_region = module.get_dynamic_regions()[0];
+        println!(".global {}", bss_region.get_variable().get_name());
         println!(".global {}", bss_region.get_name());
+        println!("{}:", bss_region.get_variable().get_name());
         println!("{}:", bss_region.get_name());
         let mut bss_inits: Vec<(RegisterHandle, usize)> =
             bss_region.get_offset_map().clone().into_iter().collect();
@@ -203,60 +208,26 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let ptr_notation = dst.get_typ().get_ptr_notation();
                 match src {
                     &Address::VarDeprecated(_) => unreachable!(),
-                    &Address::VarBaseImmOffsetDeprecated { base, offset } => {
-                        assert!(!base.is_physical());
-                        let function = instr.get_basic_block().get_function();
-                        if function
-                            .get_local_region()
-                            .get_offset_map()
-                            .contains_key(&base)
-                        {
-                            unimplemented!()
-                        } else {
-                            let module = function.get_module();
-                            let ipr_name = self
-                                .register_name_map
-                                .get(&self.instruction_pointer_register)
-                                .unwrap();
-                            let region = if module
-                                .get_mutable_global_variable_region()
-                                .get_variable_deprecated()
-                                == base
-                            {
-                                module.get_mutable_global_variable_region()
-                            } else if module
-                                .get_mutable_global_variable_region()
-                                .get_offset_map()
-                                .contains_key(&base)
-                            {
-                                unreachable!()
-                            } else if module
-                                .get_const_global_variable_region()
-                                .get_variable_deprecated()
-                                == base
-                            {
-                                module.get_const_global_variable_region()
-                            } else if module
-                                .get_const_global_variable_region()
-                                .get_offset_map()
-                                .contains_key(&base)
-                            {
-                                unreachable!()
-                            } else {
-                                module.get_dynamic_regions()[0]
-                            };
-                            let offset_op = if offset >= 0 { "+" } else { "-" };
-                            let offset = offset.abs();
-                            println!(
-                                "mov {}, {} ptr [{} + {} {} {}]",
-                                dst_name,
-                                ptr_notation,
-                                ipr_name,
-                                region.get_name(),
-                                offset_op,
-                                offset,
-                            );
+                    &Address::VarBaseImmOffset { base, offset } => {
+                        match base.get_region().get_kind() {
+                            &RegionKind::Local => unreachable!(),
+                            _ => {}
                         }
+                        let ipr_name = self
+                            .register_name_map
+                            .get(&self.instruction_pointer_register)
+                            .unwrap();
+                        let offset_op = if offset >= 0 { "+" } else { "-" };
+                        let offset = offset.abs();
+                        println!(
+                            "mov {}, {} ptr [{} + {} {} {}]",
+                            dst_name,
+                            ptr_notation,
+                            ipr_name,
+                            base.get_name(),
+                            offset_op,
+                            offset,
+                        );
                     }
                     &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
@@ -278,60 +249,26 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let ptr_notation = src.get_typ().get_ptr_notation();
                 match dst {
                     &Address::VarDeprecated(_) => unreachable!(),
-                    &Address::VarBaseImmOffsetDeprecated { base, offset } => {
-                        assert!(!base.is_physical());
-                        let function = instr.get_basic_block().get_function();
-                        if function
-                            .get_local_region()
-                            .get_offset_map()
-                            .contains_key(&base)
-                        {
-                            unimplemented!()
-                        } else {
-                            let module = function.get_module();
-                            let ipr_name = self
-                                .register_name_map
-                                .get(&self.instruction_pointer_register)
-                                .unwrap();
-                            let region = if module
-                                .get_mutable_global_variable_region()
-                                .get_variable_deprecated()
-                                == base
-                            {
-                                module.get_mutable_global_variable_region()
-                            } else if module
-                                .get_mutable_global_variable_region()
-                                .get_offset_map()
-                                .contains_key(&base)
-                            {
-                                unreachable!()
-                            } else if module
-                                .get_const_global_variable_region()
-                                .get_variable_deprecated()
-                                == base
-                            {
-                                module.get_const_global_variable_region()
-                            } else if module
-                                .get_const_global_variable_region()
-                                .get_offset_map()
-                                .contains_key(&base)
-                            {
-                                unreachable!()
-                            } else {
-                                module.get_dynamic_regions()[0]
-                            };
-                            let offset_op = if offset >= 0 { "+" } else { "-" };
-                            let offset = offset.abs();
-                            println!(
-                                "mov {} ptr [{} + {} {} {}], {}",
-                                ptr_notation,
-                                ipr_name,
-                                region.get_name(),
-                                offset_op,
-                                offset,
-                                src_name
-                            );
+                    &Address::VarBaseImmOffset { base, offset } => {
+                        match base.get_region().get_kind() {
+                            &RegionKind::Local => unreachable!(),
+                            _ => {}
                         }
+                        let ipr_name = self
+                            .register_name_map
+                            .get(&self.instruction_pointer_register)
+                            .unwrap();
+                        let offset_op = if offset >= 0 { "+" } else { "-" };
+                        let offset = offset.abs();
+                        println!(
+                            "mov {} ptr [{} + {} {} {}], {}",
+                            ptr_notation,
+                            ipr_name,
+                            base.get_name(),
+                            offset_op,
+                            offset,
+                            src_name
+                        );
                     }
                     &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
@@ -392,7 +329,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
                 &CallTargetKind::Indirect(ref addr) => match addr {
                     &Address::VarDeprecated(_) => unreachable!(),
-                    &Address::VarBaseImmOffsetDeprecated { .. } => unreachable!(),
+                    &Address::VarBaseImmOffset { .. } => unreachable!(),
                     &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { .. } => unimplemented!(),
                     &Address::RegBaseRegOffset { .. } => unimplemented!(),
@@ -461,7 +398,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                         };
                     }
                 }
-                &Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                &Address::VarBaseImmOffset { .. } => unimplemented!(),
                 &Address::VarBaseRegOffsetDeprecated { .. } => unreachable!(),
                 &Address::RegBaseImmOffset { .. } => unreachable!(),
                 &Address::RegBaseRegOffset { .. } => unreachable!(),

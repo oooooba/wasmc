@@ -142,7 +142,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     } => {
                         match src {
                             &mut Address::VarDeprecated(_) => {}
-                            &mut Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::VarBaseRegOffsetDeprecated {
                                 base: v_base,
                                 offset: v_offset,
@@ -203,7 +203,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                         match dst {
                             &mut Address::VarDeprecated(_) => {}
-                            &mut Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::VarBaseRegOffsetDeprecated {
                                 base: v_base,
                                 offset: v_offset,
@@ -318,7 +318,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut CallTargetKind::Function(_) => {}
                             &mut CallTargetKind::Indirect(ref mut addr) => match addr {
                                 &mut Address::VarDeprecated(_) => {}
-                                &mut Address::VarBaseImmOffsetDeprecated { .. } => {}
+                                &mut Address::VarBaseImmOffset { .. } => {}
                                 &mut Address::VarBaseRegOffsetDeprecated { .. } => {}
                                 &mut Address::RegBaseImmOffset { .. } => {}
                                 &mut Address::RegBaseRegOffset { .. } => {}
@@ -702,22 +702,22 @@ impl FunctionPass for VariableAddressLoweringPass {
                             } else if let Some(offset) =
                                 global_mutable_region.get_offset_map().get(&var)
                             {
-                                *addr = Address::VarBaseImmOffsetDeprecated {
-                                    base: global_mutable_region.get_variable_deprecated(),
+                                *addr = Address::VarBaseImmOffset {
+                                    base: global_mutable_region.get_variable(),
                                     offset: *offset as isize,
                                 };
                             } else if let Some(offset) =
                                 global_const_region.get_offset_map().get(&var)
                             {
-                                *addr = Address::VarBaseImmOffsetDeprecated {
-                                    base: global_const_region.get_variable_deprecated(),
+                                *addr = Address::VarBaseImmOffset {
+                                    base: global_const_region.get_variable(),
                                     offset: *offset as isize,
                                 };
                             } else {
                                 unimplemented!()
                             }
                         }
-                        &mut Address::VarBaseImmOffsetDeprecated { .. } => unimplemented!(),
+                        &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
                         &mut Address::VarBaseRegOffsetDeprecated { .. } => unimplemented!(),
                         &mut Address::RegBaseImmOffset { .. } => {}
                         &mut Address::RegBaseRegOffset { .. } => {}
