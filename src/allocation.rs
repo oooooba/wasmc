@@ -1,7 +1,9 @@
 use std::cmp;
 use std::collections::{HashMap, VecDeque};
 
-use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle};
+use context::handle::{
+    BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle, VariableHandle,
+};
 use context::Context;
 use machineir::function::Linkage;
 use machineir::opcode::{
@@ -141,10 +143,11 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ref mut src,
                     } => {
                         match src {
+                            &mut Address::Var(_) => unimplemented!(),
                             &mut Address::VarDeprecated(_) => {}
                             &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::VarBaseRegOffsetDeprecated {
-                                base: v_base,
+                            &mut Address::VarBaseRegOffset {
+                                base,
                                 offset: v_offset,
                             } => {
                                 MemoryAccessInstrInsertionPass::registry_as_local_variable(
@@ -153,10 +156,10 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                                 let p_base =
                                     *self.physical_registers[0].get(&Type::Pointer).unwrap();
-                                new_instrs.push_back(self.create_addressof_instr_for_virtual_reg(
+                                new_instrs.push_back(self.create_addressof_instr(
                                     basic_block,
                                     p_base,
-                                    v_base,
+                                    base,
                                 ));
 
                                 let p_offset = self.allocate_physical_register(v_offset, 1);
@@ -202,10 +205,11 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ));
 
                         match dst {
+                            &mut Address::Var(_) => unimplemented!(),
                             &mut Address::VarDeprecated(_) => {}
                             &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::VarBaseRegOffsetDeprecated {
-                                base: v_base,
+                            &mut Address::VarBaseRegOffset {
+                                base,
                                 offset: v_offset,
                             } => {
                                 MemoryAccessInstrInsertionPass::registry_as_local_variable(
@@ -214,10 +218,10 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                                 let p_base =
                                     *self.physical_registers[1].get(&Type::Pointer).unwrap();
-                                new_instrs.push_back(self.create_addressof_instr_for_virtual_reg(
+                                new_instrs.push_back(self.create_addressof_instr(
                                     basic_block,
                                     p_base,
-                                    v_base,
+                                    base,
                                 ));
 
                                 let p_offset = self.allocate_physical_register(v_offset, 2);
@@ -317,9 +321,10 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         match func {
                             &mut CallTargetKind::Function(_) => {}
                             &mut CallTargetKind::Indirect(ref mut addr) => match addr {
+                                &mut Address::Var(_) => {}
                                 &mut Address::VarDeprecated(_) => {}
                                 &mut Address::VarBaseImmOffset { .. } => {}
-                                &mut Address::VarBaseRegOffsetDeprecated { .. } => {}
+                                &mut Address::VarBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseImmOffset { .. } => {}
                                 &mut Address::RegBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseRegIndex {
@@ -545,18 +550,17 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         )
     }
 
-    fn create_addressof_instr_for_virtual_reg(
+    fn create_addressof_instr(
         &mut self,
         basic_block: BasicBlockHandle,
-        preg: RegisterHandle,
-        vreg: RegisterHandle,
+        reg: RegisterHandle,
+        var: VariableHandle,
     ) -> InstrHandle {
-        assert!(preg.is_physical());
-        assert!(!vreg.is_physical());
+        assert!(reg.is_physical());
         Context::create_instr(
             Opcode::AddressOf {
-                dst: preg,
-                location: Address::VarDeprecated(vreg),
+                dst: reg,
+                location: Address::Var(var),
             },
             basic_block,
         )
@@ -692,6 +696,7 @@ impl FunctionPass for VariableAddressLoweringPass {
                     | &mut Opcode::Store {
                         dst: ref mut addr, ..
                     } => match addr {
+                        &mut Address::Var(_) => unimplemented!(),
                         &mut Address::VarDeprecated(var) => {
                             assert!(!var.is_physical());
                             if let Some(offset) = local_region.get_offset_map().get(&var) {
@@ -718,7 +723,7 @@ impl FunctionPass for VariableAddressLoweringPass {
                             }
                         }
                         &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
-                        &mut Address::VarBaseRegOffsetDeprecated { .. } => unimplemented!(),
+                        &mut Address::VarBaseRegOffset { .. } => {}
                         &mut Address::RegBaseImmOffset { .. } => {}
                         &mut Address::RegBaseRegOffset { .. } => {}
                         &mut Address::RegBaseRegIndex { .. } => {}

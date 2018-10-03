@@ -737,11 +737,11 @@ impl WasmToMachine {
                     &Loadattr::I64 => Context::create_register(Type::I64),
                     &Loadattr::I32x8S | &Loadattr::I32x8U => Context::create_register(Type::I8),
                 };
-                let memory_variable =
-                    self.module.get_dynamic_regions()[0].get_variable_deprecated();
+
+                let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src: Address::VarBaseRegOffsetDeprecated {
+                    src: Address::VarBaseRegOffset {
                         base: memory_variable,
                         offset,
                     },
@@ -817,11 +817,9 @@ impl WasmToMachine {
                     offset
                 };
 
-                let memory_variable =
-                    self.module.get_dynamic_regions()[0].get_variable_deprecated();
-
+                let memory_variable = self.module.get_dynamic_regions()[0].get_variable();
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::VarBaseRegOffsetDeprecated {
+                    dst: Address::VarBaseRegOffset {
                         base: memory_variable,
                         offset,
                     },
