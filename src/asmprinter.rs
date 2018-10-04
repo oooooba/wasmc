@@ -230,7 +230,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                             offset,
                         );
                     }
-                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::LabelBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
                         let op = if offset >= 0 { "+" } else { "-" };
@@ -272,7 +272,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                             src_name
                         );
                     }
-                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::LabelBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { base, offset } => {
                         let base_name = self.register_name_map.get(&base).unwrap();
                         let op = if offset >= 0 { "+" } else { "-" };
@@ -333,7 +333,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                     &Address::Var(_) => unreachable!(),
                     &Address::VarDeprecated(_) => unreachable!(),
                     &Address::LabelBaseImmOffset { .. } => unreachable!(),
-                    &Address::VarBaseRegOffset { .. } => unreachable!(),
+                    &Address::LabelBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { .. } => unimplemented!(),
                     &Address::RegBaseRegOffset { .. } => unimplemented!(),
                     &Address::RegBaseRegIndex {
@@ -414,7 +414,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                     }
                 }
                 &Address::LabelBaseImmOffset { .. } => unimplemented!(),
-                &Address::VarBaseRegOffset { .. } => unreachable!(),
+                &Address::LabelBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseImmOffset { .. } => unreachable!(),
                 &Address::RegBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseRegIndex { .. } => unreachable!(),

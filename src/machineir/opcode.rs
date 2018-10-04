@@ -82,8 +82,8 @@ pub enum Address {
         base: RegionHandle,
         offset: isize,
     },
-    VarBaseRegOffset {
-        base: VariableHandle,
+    LabelBaseRegOffset {
+        base: RegionHandle,
         offset: RegisterHandle,
     },
     RegBaseImmOffset {
@@ -119,7 +119,7 @@ impl Address {
                 };
                 print!(" {} {}", op, offset);
             }
-            &VarBaseRegOffset { base, offset } => {
+            &LabelBaseRegOffset { base, offset } => {
                 base.print();
                 print!(" + ");
                 offset.print();

@@ -146,7 +146,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut Address::Var(_) => unimplemented!(),
                             &mut Address::VarDeprecated(_) => {}
                             &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::VarBaseRegOffset {
+                            &mut Address::LabelBaseRegOffset {
                                 base,
                                 offset: v_offset,
                             } => {
@@ -159,7 +159,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 new_instrs.push_back(self.create_addressof_instr(
                                     basic_block,
                                     p_base,
-                                    base,
+                                    base.get_variable(),
                                 ));
 
                                 let p_offset = self.allocate_physical_register(v_offset, 1);
@@ -208,7 +208,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut Address::Var(_) => unimplemented!(),
                             &mut Address::VarDeprecated(_) => {}
                             &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::VarBaseRegOffset {
+                            &mut Address::LabelBaseRegOffset {
                                 base,
                                 offset: v_offset,
                             } => {
@@ -221,7 +221,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 new_instrs.push_back(self.create_addressof_instr(
                                     basic_block,
                                     p_base,
-                                    base,
+                                    base.get_variable(),
                                 ));
 
                                 let p_offset = self.allocate_physical_register(v_offset, 2);
@@ -324,7 +324,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 &mut Address::Var(_) => {}
                                 &mut Address::VarDeprecated(_) => {}
                                 &mut Address::LabelBaseImmOffset { .. } => {}
-                                &mut Address::VarBaseRegOffset { .. } => {}
+                                &mut Address::LabelBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseImmOffset { .. } => {}
                                 &mut Address::RegBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseRegIndex {
@@ -723,7 +723,7 @@ impl FunctionPass for VariableAddressLoweringPass {
                             }
                         }
                         &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
-                        &mut Address::VarBaseRegOffset { .. } => {}
+                        &mut Address::LabelBaseRegOffset { .. } => {}
                         &mut Address::RegBaseImmOffset { .. } => {}
                         &mut Address::RegBaseRegOffset { .. } => {}
                         &mut Address::RegBaseRegIndex { .. } => {}
