@@ -209,8 +209,8 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 match src {
                     &Address::Var(_) => unimplemented!(),
                     &Address::VarDeprecated(_) => unreachable!(),
-                    &Address::VarBaseImmOffset { base, offset } => {
-                        match base.get_region().get_kind() {
+                    &Address::LabelBaseImmOffset { base, offset } => {
+                        match base.get_kind() {
                             &RegionKind::Local => unreachable!(),
                             _ => {}
                         }
@@ -251,8 +251,8 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 match dst {
                     &Address::Var(_) => unimplemented!(),
                     &Address::VarDeprecated(_) => unreachable!(),
-                    &Address::VarBaseImmOffset { base, offset } => {
-                        match base.get_region().get_kind() {
+                    &Address::LabelBaseImmOffset { base, offset } => {
+                        match base.get_kind() {
                             &RegionKind::Local => unreachable!(),
                             _ => {}
                         }
@@ -332,7 +332,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 &CallTargetKind::Indirect(ref addr) => match addr {
                     &Address::Var(_) => unreachable!(),
                     &Address::VarDeprecated(_) => unreachable!(),
-                    &Address::VarBaseImmOffset { .. } => unreachable!(),
+                    &Address::LabelBaseImmOffset { .. } => unreachable!(),
                     &Address::VarBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { .. } => unimplemented!(),
                     &Address::RegBaseRegOffset { .. } => unimplemented!(),
@@ -413,7 +413,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                         };
                     }
                 }
-                &Address::VarBaseImmOffset { .. } => unimplemented!(),
+                &Address::LabelBaseImmOffset { .. } => unimplemented!(),
                 &Address::VarBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseImmOffset { .. } => unreachable!(),
                 &Address::RegBaseRegOffset { .. } => unreachable!(),

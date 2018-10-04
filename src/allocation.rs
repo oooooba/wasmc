@@ -145,7 +145,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         match src {
                             &mut Address::Var(_) => unimplemented!(),
                             &mut Address::VarDeprecated(_) => {}
-                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
+                            &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::VarBaseRegOffset {
                                 base,
                                 offset: v_offset,
@@ -207,7 +207,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         match dst {
                             &mut Address::Var(_) => unimplemented!(),
                             &mut Address::VarDeprecated(_) => {}
-                            &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
+                            &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::VarBaseRegOffset {
                                 base,
                                 offset: v_offset,
@@ -323,7 +323,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut CallTargetKind::Indirect(ref mut addr) => match addr {
                                 &mut Address::Var(_) => {}
                                 &mut Address::VarDeprecated(_) => {}
-                                &mut Address::VarBaseImmOffset { .. } => {}
+                                &mut Address::LabelBaseImmOffset { .. } => {}
                                 &mut Address::VarBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseImmOffset { .. } => {}
                                 &mut Address::RegBaseRegOffset { .. } => {}
@@ -707,22 +707,22 @@ impl FunctionPass for VariableAddressLoweringPass {
                             } else if let Some(offset) =
                                 global_mutable_region.get_offset_map().get(&var)
                             {
-                                *addr = Address::VarBaseImmOffset {
-                                    base: global_mutable_region.get_variable(),
+                                *addr = Address::LabelBaseImmOffset {
+                                    base: global_mutable_region,
                                     offset: *offset as isize,
                                 };
                             } else if let Some(offset) =
                                 global_const_region.get_offset_map().get(&var)
                             {
-                                *addr = Address::VarBaseImmOffset {
-                                    base: global_const_region.get_variable(),
+                                *addr = Address::LabelBaseImmOffset {
+                                    base: global_const_region,
                                     offset: *offset as isize,
                                 };
                             } else {
                                 unimplemented!()
                             }
                         }
-                        &mut Address::VarBaseImmOffset { .. } => unimplemented!(),
+                        &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                         &mut Address::VarBaseRegOffset { .. } => {}
                         &mut Address::RegBaseImmOffset { .. } => {}
                         &mut Address::RegBaseRegOffset { .. } => {}

@@ -1,6 +1,8 @@
 use std::fmt;
 
-use context::handle::{BasicBlockHandle, FunctionHandle, RegisterHandle, VariableHandle};
+use context::handle::{
+    BasicBlockHandle, FunctionHandle, RegionHandle, RegisterHandle, VariableHandle,
+};
 use machineir::typ::Type;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -76,8 +78,8 @@ impl OffsetKind {
 pub enum Address {
     Var(VariableHandle),
     VarDeprecated(RegisterHandle),
-    VarBaseImmOffset {
-        base: VariableHandle,
+    LabelBaseImmOffset {
+        base: RegionHandle,
         offset: isize,
     },
     VarBaseRegOffset {
@@ -108,7 +110,7 @@ impl Address {
             &VarDeprecated(reg) => {
                 reg.print();
             }
-            &VarBaseImmOffset { base, offset } => {
+            &LabelBaseImmOffset { base, offset } => {
                 base.print();
                 let (offset, op) = if offset < 0 {
                     (-offset as usize, "-")
