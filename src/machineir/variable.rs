@@ -23,6 +23,10 @@ impl Variable {
         self.region
     }
 
+    pub fn get_type(&self) -> &Type {
+        &self.typ
+    }
+
     pub fn get_name(&self) -> &String {
         &self.name
     }
