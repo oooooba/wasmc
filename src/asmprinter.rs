@@ -185,7 +185,6 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let ptr_notation = dst.get_typ().get_ptr_notation();
                 match src {
                     &Address::Var(_) => unreachable!(),
-                    &Address::VarDeprecated(_) => panic!("deprecated"),
                     &Address::LabelBaseImmOffset { base, offset } => {
                         match base.get_kind() {
                             &RegionKind::Local => unreachable!(),
@@ -227,7 +226,6 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let ptr_notation = src.get_typ().get_ptr_notation();
                 match dst {
                     &Address::Var(_) => unreachable!(),
-                    &Address::VarDeprecated(_) => panic!("deprecated"),
                     &Address::LabelBaseImmOffset { base, offset } => {
                         match base.get_kind() {
                             &RegionKind::Local => unreachable!(),
@@ -308,7 +306,6 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
                 &CallTargetKind::Indirect(ref addr) => match addr {
                     &Address::Var(_) => unreachable!(),
-                    &Address::VarDeprecated(_) => panic!("deprecated"),
                     &Address::LabelBaseImmOffset { .. } => unreachable!(),
                     &Address::LabelBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { .. } => unimplemented!(),
@@ -352,7 +349,6 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                         .unwrap();
                     println!("lea {}, [{} + {}]", dst_name, ipr_name, var.get_name());
                 }
-                &Address::VarDeprecated(_) => panic!("deprecated"),
                 &Address::LabelBaseImmOffset { .. } => unimplemented!(),
                 &Address::LabelBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseImmOffset { .. } => unreachable!(),

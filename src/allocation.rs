@@ -112,7 +112,6 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     } => {
                         match src {
                             &mut Address::Var(_) => {}
-                            &mut Address::VarDeprecated(_) => {}
                             &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::LabelBaseRegOffset { base, offset } => {
                                 let v_offset = self.registry_as_local_variable(function, offset);
@@ -160,7 +159,6 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                         match dst {
                             &mut Address::Var(_) => {}
-                            &mut Address::VarDeprecated(_) => {}
                             &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::LabelBaseRegOffset { base, offset } => {
                                 let v_offset = self.registry_as_local_variable(function, offset);
@@ -261,7 +259,6 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut CallTargetKind::Function(_) => {}
                             &mut CallTargetKind::Indirect(ref mut addr) => match addr {
                                 &mut Address::Var(_) => {}
-                                &mut Address::VarDeprecated(_) => {}
                                 &mut Address::LabelBaseImmOffset { .. } => {}
                                 &mut Address::LabelBaseRegOffset { .. } => {}
                                 &mut Address::RegBaseImmOffset { .. } => {}
@@ -622,7 +619,6 @@ impl FunctionPass for VariableAddressLoweringPass {
                                 &RegionKind::VariableSizedGlobal { .. } => unimplemented!(),
                             }
                         }
-                        &mut Address::VarDeprecated(_) => panic!("deprecated"),
                         &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                         &mut Address::LabelBaseRegOffset { .. } => {}
                         &mut Address::RegBaseImmOffset { .. } => {}

@@ -77,7 +77,6 @@ impl OffsetKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Address {
     Var(VariableHandle),
-    VarDeprecated(RegisterHandle),
     LabelBaseImmOffset {
         base: RegionHandle,
         offset: isize,
@@ -107,9 +106,6 @@ impl Address {
         print!("[");
         match self {
             &Var(var) => var.print(),
-            &VarDeprecated(reg) => {
-                reg.print();
-            }
             &LabelBaseImmOffset { base, offset } => {
                 base.print();
                 let (offset, op) = if offset < 0 {
