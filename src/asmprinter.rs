@@ -207,8 +207,8 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let dst_name = self.register_name_map.get(&dst).unwrap();
                 let ptr_notation = dst.get_typ().get_ptr_notation();
                 match src {
-                    &Address::Var(_) => unimplemented!(),
-                    &Address::VarDeprecated(_) => unreachable!(),
+                    &Address::Var(_) => unreachable!(),
+                    &Address::VarDeprecated(_) => panic!("deprecated"),
                     &Address::LabelBaseImmOffset { base, offset } => {
                         match base.get_kind() {
                             &RegionKind::Local => unreachable!(),
@@ -249,8 +249,8 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 let src_name = self.register_name_map.get(&src).unwrap();
                 let ptr_notation = src.get_typ().get_ptr_notation();
                 match dst {
-                    &Address::Var(_) => unimplemented!(),
-                    &Address::VarDeprecated(_) => unreachable!(),
+                    &Address::Var(_) => unreachable!(),
+                    &Address::VarDeprecated(_) => panic!("deprecated"),
                     &Address::LabelBaseImmOffset { base, offset } => {
                         match base.get_kind() {
                             &RegionKind::Local => unreachable!(),
@@ -331,7 +331,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 &CallTargetKind::Function(f) => println!("call {}", f.get_func_name()),
                 &CallTargetKind::Indirect(ref addr) => match addr {
                     &Address::Var(_) => unreachable!(),
-                    &Address::VarDeprecated(_) => unreachable!(),
+                    &Address::VarDeprecated(_) => panic!("deprecated"),
                     &Address::LabelBaseImmOffset { .. } => unreachable!(),
                     &Address::LabelBaseRegOffset { .. } => unreachable!(),
                     &Address::RegBaseImmOffset { .. } => unimplemented!(),
@@ -375,44 +375,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                         .unwrap();
                     println!("lea {}, [{} + {}]", dst_name, ipr_name, var.get_name());
                 }
-                &Address::VarDeprecated(var) => {
-                    assert!(!var.is_physical());
-                    let dst_name = self.register_name_map.get(&dst).unwrap();
-                    let function = instr.get_basic_block().get_function();
-                    if function
-                        .get_local_region()
-                        .get_offset_map()
-                        .contains_key(&var)
-                    {
-                        unimplemented!()
-                    } else {
-                        let ipr_name = self
-                            .register_name_map
-                            .get(&self.instruction_pointer_register)
-                            .unwrap();
-                        let module = function.get_module();
-                        if module
-                            .get_mutable_global_variable_region()
-                            .get_offset_map()
-                            .contains_key(&var)
-                        {
-                            unimplemented!()
-                        } else if module
-                            .get_const_global_variable_region()
-                            .get_offset_map()
-                            .contains_key(&var)
-                        {
-                            unimplemented!()
-                        } else {
-                            println!(
-                                "lea {}, [{} + {}]",
-                                dst_name,
-                                ipr_name,
-                                module.get_dynamic_regions()[0].get_name(),
-                            );
-                        };
-                    }
-                }
+                &Address::VarDeprecated(_) => panic!("deprecated"),
                 &Address::LabelBaseImmOffset { .. } => unimplemented!(),
                 &Address::LabelBaseRegOffset { .. } => unreachable!(),
                 &Address::RegBaseImmOffset { .. } => unreachable!(),
