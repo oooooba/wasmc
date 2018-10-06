@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
+    VariableHandle,
 };
 use context::Context;
 use machineir::function::Linkage;
@@ -125,6 +126,49 @@ impl ModulePass for ModuleInitPass {
 impl ModuleInitPass {
     pub fn new() -> ModuleInitPass {
         ModuleInitPass {}
+    }
+
+    fn emit_global_region(region: RegionHandle, export: bool) {
+        match region.get_kind() {
+            &RegionKind::Local => unreachable!(),
+            _ => {}
+        }
+
+        println!(".data");
+        println!(".align {}", Type::Pointer.get_size());
+        if export {
+            println!(".global {}", region.get_variable().get_name());
+            println!(".global {}", region.get_name());
+        }
+        println!("{}:", region.get_variable().get_name());
+        println!("{}:", region.get_name());
+
+        let mut offset_map_vec: Vec<(VariableHandle, usize)> =
+            region.get_offset_map().clone().into_iter().collect();
+        offset_map_vec.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+
+        let mut start_of_zeros_offset = 0;
+        for (var, offset) in offset_map_vec.into_iter() {
+            for _ in 0..(offset - start_of_zeros_offset) {
+                println!(".byte {}", 0);
+            }
+            let directive = match var.get_type() {
+                &Type::I8 => "byte",
+                &Type::I32 => "long",
+                &Type::I64 => "quad",
+                &Type::Pointer => "quad",
+            };
+            let cst = region.get_initial_value_map().get(&var).unwrap();
+            let value = match cst {
+                Some(ConstKind::ConstI8(i)) => *i as usize,
+                Some(ConstKind::ConstI32(i)) => *i as usize,
+                Some(ConstKind::ConstI64(i)) => *i as usize,
+                None => 0,
+            };
+            println!(".{} {}", directive, value);
+            start_of_zeros_offset = offset + 1;
+        }
+        println!();
     }
 }
 
