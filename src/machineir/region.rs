@@ -3,7 +3,7 @@ use std::fmt;
 
 use context::handle::{RegionHandle, RegisterHandle, VariableHandle};
 use context::Context;
-use machineir::opcode::Opcode;
+use machineir::opcode::{ConstKind, Opcode};
 use machineir::typ::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -21,7 +21,9 @@ pub struct Region {
     kind: RegionKind,
     variable: VariableHandle,
     variable_deprecated: RegisterHandle,
+    offset_map: HashMap<VariableHandle, usize>,
     offset_map_deprecated: HashMap<RegisterHandle, usize>,
+    initial_value_map: HashMap<VariableHandle, ConstKind>,
     initial_value_map_deprecated: HashMap<RegisterHandle, Opcode>,
     region_size: Option<usize>,
 }
@@ -36,7 +38,9 @@ impl Region {
             kind,
             variable,
             variable_deprecated,
+            offset_map: HashMap::new(),
             offset_map_deprecated: HashMap::new(),
+            initial_value_map: HashMap::new(),
             initial_value_map_deprecated: HashMap::new(),
             region_size: None,
         }
@@ -59,6 +63,10 @@ impl Region {
         &self.kind
     }
 
+    pub fn get_offset_map(&self) -> &HashMap<VariableHandle, usize> {
+        &self.offset_map
+    }
+
     pub fn get_offset_map_deprecated(&self) -> &HashMap<RegisterHandle, usize> {
         &self.offset_map_deprecated
     }
@@ -68,8 +76,16 @@ impl Region {
         &mut self.offset_map_deprecated
     }
 
+    pub fn get_initial_value_map(&self) -> &HashMap<VariableHandle, ConstKind> {
+        &self.initial_value_map
+    }
+
     pub fn get_initial_value_map_deprecated(&self) -> &HashMap<RegisterHandle, Opcode> {
         &self.initial_value_map_deprecated
+    }
+
+    pub fn get_mut_initial_value_map(&mut self) -> &mut HashMap<VariableHandle, ConstKind> {
+        &mut self.initial_value_map
     }
 
     pub fn get_mut_initial_value_map_deprecated(&mut self) -> &mut HashMap<RegisterHandle, Opcode> {
@@ -102,6 +118,13 @@ impl Region {
         }
         self.region_size = Some(len_buffer);
         len_buffer
+    }
+
+    pub fn create_variable(&mut self, typ: Type) -> VariableHandle {
+        self.region_size = None;
+        let var = Context::create_variable(typ, self.handle);
+        self.offset_map.insert(var, 0);
+        var
     }
 }
 
