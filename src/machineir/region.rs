@@ -20,9 +20,7 @@ pub struct Region {
     name: String,
     kind: RegionKind,
     variable: VariableHandle,
-    variable_deprecated: RegisterHandle,
     offset_map: HashMap<VariableHandle, usize>,
-    offset_map_deprecated: HashMap<RegisterHandle, usize>,
     initial_value_map: HashMap<VariableHandle, Option<ConstKind>>,
     initial_value_map_deprecated: HashMap<RegisterHandle, Opcode>,
     region_size: Option<usize>,
@@ -31,15 +29,12 @@ pub struct Region {
 impl Region {
     pub fn new(handle: RegionHandle, kind: RegionKind) -> Region {
         let variable = Context::create_variable(Type::Pointer, handle);
-        let variable_deprecated = Context::create_register(Type::Pointer);
         Region {
             handle,
             name: format!("region_{}", handle),
             kind,
             variable,
-            variable_deprecated,
             offset_map: HashMap::new(),
-            offset_map_deprecated: HashMap::new(),
             initial_value_map: HashMap::new(),
             initial_value_map_deprecated: HashMap::new(),
             region_size: None,
@@ -67,38 +62,17 @@ impl Region {
         &self.offset_map
     }
 
-    pub fn get_offset_map_deprecated(&self) -> &HashMap<RegisterHandle, usize> {
-        &self.offset_map_deprecated
-    }
-
     pub fn get_mut_offset_map(&mut self) -> &mut HashMap<VariableHandle, usize> {
-        //self.region_size = None; // ToDo: enable this
-        &mut self.offset_map
-    }
-
-    pub fn get_mut_offset_map_deprecated(&mut self) -> &mut HashMap<RegisterHandle, usize> {
         self.region_size = None;
-        &mut self.offset_map_deprecated
+        &mut self.offset_map
     }
 
     pub fn get_initial_value_map(&self) -> &HashMap<VariableHandle, Option<ConstKind>> {
         &self.initial_value_map
     }
 
-    pub fn get_initial_value_map_deprecated(&self) -> &HashMap<RegisterHandle, Opcode> {
-        &self.initial_value_map_deprecated
-    }
-
-    pub fn get_mut_initial_value_map_deprecated(&mut self) -> &mut HashMap<RegisterHandle, Opcode> {
-        &mut self.initial_value_map_deprecated
-    }
-
     pub fn get_variable(&self) -> VariableHandle {
         self.variable
-    }
-
-    pub fn get_variable_deprecated(&self) -> RegisterHandle {
-        self.variable_deprecated
     }
 
     pub fn get_region_size(&self) -> &Option<usize> {
@@ -109,14 +83,16 @@ impl Region {
         let word_size = 8;
         let mut tmp_pairs = vec![];
         let mut len_buffer = word_size;
-        for var in self.offset_map_deprecated.keys() {
+
+        for var in self.offset_map.keys() {
             tmp_pairs.push((*var, len_buffer));
-            let typ = var.get_typ();
+            let typ = var.get_type();
             len_buffer += ((typ.get_size() + word_size - 1) / word_size) * word_size;
         }
         for (var, offset) in tmp_pairs.into_iter() {
-            self.offset_map_deprecated.insert(var, offset);
+            self.offset_map.insert(var, offset);
         }
+
         self.region_size = Some(len_buffer);
         len_buffer
     }

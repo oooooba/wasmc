@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
-    VariableHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle, VariableHandle,
 };
 use context::Context;
 use machineir::function::Linkage;
@@ -101,9 +100,7 @@ pub struct WasmToMachine {
     current_function: FunctionHandle,
     module: ModuleHandle,
     local_variables: Vec<VariableHandle>,
-    local_variables_deprecated: Vec<RegisterHandle>,
     global_variables: Vec<VariableHandle>,
-    global_variables_deprecated: Vec<(RegisterHandle, RegionHandle)>,
     function_types: Vec<(Vec<Type>, Vec<Type>)>,
     num_import_functions: usize,
 }
@@ -190,18 +187,6 @@ impl WasmToMachine {
             global_variables.push(var);
         }
 
-        let mut global_variables_deprecated = vec![];
-        for global in wasmir_module.get_globals().iter() {
-            let typ = WasmToMachine::map_valtype(global.get_type().valtype());
-            let var = Context::create_register(typ);
-            let mut region = match global.get_type().mutability() {
-                &Mut::Var => module.get_mutable_global_variable_region(),
-                &Mut::Const => module.get_const_global_variable_region(),
-            };
-            region.get_mut_offset_map_deprecated().insert(var, 0);
-            global_variables_deprecated.push((var, region));
-        }
-
         let memory = if wasmir_module.get_mems().len() == 0 {
             Context::create_region(RegionKind::VariableSizedGlobal { min: 0, max: None })
         } else {
@@ -229,18 +214,6 @@ impl WasmToMachine {
             for (i, &init) in data.get_init().iter().enumerate() {
                 let var = mem.create_variable(Type::I8, Some(ConstKind::ConstI8(init)));
                 mem.get_mut_offset_map().insert(var, offset + i);
-            }
-
-            for (i, &init) in data.get_init().iter().enumerate() {
-                let var = Context::create_register(Type::I8);
-                mem.get_mut_initial_value_map_deprecated().insert(
-                    var,
-                    Opcode::Const {
-                        dst: var,
-                        src: ConstKind::ConstI8(init),
-                    },
-                );
-                mem.get_mut_offset_map_deprecated().insert(var, offset + i);
             }
         }
 
@@ -292,9 +265,7 @@ impl WasmToMachine {
             current_function: dummy_function,
             module,
             local_variables: vec![],
-            local_variables_deprecated: vec![],
             global_variables,
-            global_variables_deprecated,
             function_types,
             num_import_functions,
         }
@@ -685,61 +656,61 @@ impl WasmToMachine {
             }
             &WasmInstr::GetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let var = self.local_variables_deprecated[index];
-                let dst = Context::create_register(var.get_typ().clone());
+                let var = self.local_variables[index];
+                let dst = Context::create_register(var.get_type().clone());
                 self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src: Address::VarDeprecated(var),
+                    src: Address::Var(var),
                 });
             }
             &WasmInstr::SetLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let var = self.local_variables_deprecated[index];
+                let var = self.local_variables[index];
                 let src = match self.operand_stack.pop().unwrap() {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), var.get_typ());
+                assert_eq!(src.get_typ(), var.get_type());
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::VarDeprecated(var),
+                    dst: Address::Var(var),
                     src,
                 });
             }
             &WasmInstr::TeeLocal(ref localidx) => {
                 let index = localidx.as_index();
-                let var = self.local_variables_deprecated[index];
+                let var = self.local_variables[index];
                 let src = match self.operand_stack.pop().unwrap() {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), var.get_typ());
+                assert_eq!(src.get_typ(), var.get_type());
                 self.operand_stack.push_value(src);
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::VarDeprecated(var),
+                    dst: Address::Var(var),
                     src,
                 });
             }
             &WasmInstr::GetGlobal(globalidx) => {
                 let index = globalidx.as_index();
-                let var = self.global_variables_deprecated[index].0;
-                let dst = Context::create_register(var.get_typ().clone());
+                let var = self.global_variables[index];
+                let dst = Context::create_register(var.get_type().clone());
                 self.operand_stack.push_value(dst);
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src: Address::VarDeprecated(var),
+                    src: Address::Var(var),
                 });
             }
             &WasmInstr::SetGlobal(globalidx) => {
                 let index = globalidx.as_index();
-                let var = self.global_variables_deprecated[index].0;
+                let var = self.global_variables[index];
                 let src = match self.operand_stack.pop().unwrap() {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), var.get_typ());
+                assert_eq!(src.get_typ(), var.get_type());
                 self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::VarDeprecated(var),
+                    dst: Address::Var(var),
                     src,
                 });
             }
@@ -925,6 +896,9 @@ impl WasmToMachine {
                 args.reverse();
 
                 assert!(result_types.len() == 0 || result_types.len() == 1);
+
+                panic!()
+                /*
                 let result = if result_types.len() == 0 {
                     None
                 } else if result_types.len() == 1 {
@@ -935,7 +909,6 @@ impl WasmToMachine {
                 } else {
                     unreachable!()
                 };
-
                 let table_variable =
                     self.module.get_indirect_function_tables()[0].get_variable_deprecated();
                 self.emit_on_current_basic_block(Opcode::Call {
@@ -947,6 +920,7 @@ impl WasmToMachine {
                     result,
                     args,
                 });
+                */
             }
             &WasmInstr::Drop => {
                 assert!(!self.operand_stack.is_empty());
@@ -1194,31 +1168,7 @@ impl WasmToMachine {
         }
     }
 
-    fn initialize_global_variables(&mut self, module: &wasmir::Module) {
-        for (i, global) in module.get_globals().iter().enumerate() {
-            let expr = global.get_init();
-            assert_eq!(expr.get_instr_sequences().len(), 1);
-            match &expr.get_instr_sequences()[0] {
-                &WasmInstr::Const(ref cst) => {
-                    let (typ, src) = match cst {
-                        &Const::I32(i) => (Type::I32, ConstKind::ConstI32(i)),
-                        &Const::I64(i) => (Type::I64, ConstKind::ConstI64(i)),
-                    };
-                    let dst = self.global_variables_deprecated[i].0;
-                    assert_eq!(&typ, dst.get_typ());
-                    let val = Opcode::Const { dst, src };
-                    self.global_variables_deprecated[i]
-                        .1
-                        .get_mut_initial_value_map_deprecated()
-                        .insert(dst, val);
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
-
     pub fn emit(&mut self, module: &wasmir::Module) {
-        self.initialize_global_variables(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
             let function = self.module.get_functions()[self.num_import_functions + i];
 
@@ -1237,18 +1187,6 @@ impl WasmToMachine {
                 local_variables.push(var);
             }
 
-            let mut local_variables_deprecated =
-                function.get_parameter_variables_deprecated().clone();
-            for valtype in func.get_locals().iter() {
-                let typ = WasmToMachine::map_valtype(valtype);
-                let var = Context::create_register(typ);
-                function
-                    .get_local_region()
-                    .get_mut_offset_map_deprecated()
-                    .insert(var, 0);
-                local_variables_deprecated.push(var);
-            }
-
             let entry_block = Context::create_basic_block(function);
             let exit_block = Context::create_basic_block(function);
 
@@ -1259,7 +1197,6 @@ impl WasmToMachine {
             self.basic_block_to_continuation = HashMap::new();
             self.current_function = function;
             self.local_variables = local_variables;
-            self.local_variables_deprecated = local_variables_deprecated;
 
             let result_registers =
                 WasmToMachine::create_registers_for_types(function.get_result_types().clone());
