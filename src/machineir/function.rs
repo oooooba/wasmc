@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::fmt;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, ModuleHandle, RegionHandle, RegisterHandle,
+    BasicBlockHandle, FunctionHandle, ModuleHandle, RegionHandle, RegisterHandle, VariableHandle,
 };
 use context::Context;
 use machineir::region::RegionKind;
@@ -22,7 +22,8 @@ pub struct Function {
     func_name: String,
     basic_blocks: VecDeque<BasicBlockHandle>,
     parameter_types: Vec<Type>,
-    parameter_variables: Vec<RegisterHandle>,
+    parameter_variables: Vec<VariableHandle>,
+    parameter_variables_deprecated: Vec<RegisterHandle>,
     result_types: Vec<Type>,
     local_region: RegionHandle,
     linkage: Linkage,
@@ -38,18 +39,27 @@ impl Function {
         module: ModuleHandle,
     ) -> Function {
         let mut region = Context::create_region(RegionKind::Local);
+
         let mut parameter_variables = vec![];
+        for typ in parameter_types.iter() {
+            let var = region.create_variable(typ.clone(), None);
+            parameter_variables.push(var);
+        }
+
+        let mut parameter_variables_deprecated = vec![];
         for typ in parameter_types.iter() {
             let reg = Context::create_register(typ.clone());
             region.get_mut_offset_map_deprecated().insert(reg, 0);
-            parameter_variables.push(reg);
+            parameter_variables_deprecated.push(reg);
         }
+
         Function {
             handle,
             func_name,
             basic_blocks: VecDeque::new(),
             parameter_types,
             parameter_variables,
+            parameter_variables_deprecated,
             result_types,
             local_region: region,
             linkage: Linkage::Private,
@@ -82,8 +92,12 @@ impl Function {
         &self.parameter_types
     }
 
-    pub fn get_parameter_variables(&self) -> &Vec<RegisterHandle> {
+    pub fn get_parameter_variables(&self) -> &Vec<VariableHandle> {
         &self.parameter_variables
+    }
+
+    pub fn get_parameter_variables_deprecated(&self) -> &Vec<RegisterHandle> {
+        &self.parameter_variables_deprecated
     }
 
     pub fn get_result_types(&self) -> &Vec<Type> {

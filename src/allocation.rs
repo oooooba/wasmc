@@ -32,8 +32,12 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     &mut Opcode::Debug(..) => new_instrs.push_back(instr),
                     &mut Opcode::Label(..) => new_instrs.push_back(instr),
                     &mut Opcode::Copy { dst, src } => {
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, dst);
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, src);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, dst,
+                        );
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, src,
+                        );
                         let p_tmp = *self.physical_result_register.get(dst.get_typ()).unwrap();
                         new_instrs.push_back(self.create_load_instr_for_src_reg(
                             basic_block,
@@ -48,7 +52,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     }
                     &mut Opcode::Const { ref mut dst, .. } => {
                         let v_dst = *dst;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_dst);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, v_dst,
+                        );
                         let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
                         *dst = p_dst;
                         new_instrs.push_back(instr);
@@ -64,7 +70,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ..
                     } => {
                         let v_src = *src;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_src);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, v_src,
+                        );
                         let p_src = self.allocate_physical_register(v_src, 0);
                         *src = p_src;
                         new_instrs.push_back(self.create_load_instr_for_src_reg(
@@ -74,7 +82,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ));
 
                         let v_dst = *dst;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_dst);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, v_dst,
+                        );
                         let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
                         *dst = p_dst;
                         new_instrs.push_back(instr);
@@ -91,7 +101,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ref mut src2,
                     } => {
                         let v_src1 = *src1;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                             function, v_src1,
                         );
                         let p_src1 = self.allocate_physical_register(v_src1, 0);
@@ -105,7 +115,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         match src2 {
                             &mut OperandKind::Register(ref mut src2) => {
                                 let v_src2 = *src2;
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_src2,
                                 );
                                 let index = match kind {
@@ -128,7 +138,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         };
 
                         let v_dst = *dst;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_dst);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, v_dst,
+                        );
                         let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
                         *dst = p_dst;
                         new_instrs.push_back(instr);
@@ -150,7 +162,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 base,
                                 offset: v_offset,
                             } => {
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_offset,
                                 );
 
@@ -180,7 +192,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         };
 
                         let v_dst = *dst;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_dst);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, v_dst,
+                        );
                         let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
                         *dst = p_dst;
                         new_instrs.push_back(instr);
@@ -195,7 +209,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ref mut src,
                     } => {
                         let v_src = *src;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_src);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, v_src,
+                        );
                         let p_src = *self.physical_result_register.get(v_src.get_typ()).unwrap();
                         *src = p_src;
                         new_instrs.push_back(self.create_load_instr_for_src_reg(
@@ -212,7 +228,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 base,
                                 offset: v_offset,
                             } => {
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_offset,
                                 );
 
@@ -249,7 +265,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut Eq0(ref mut cond) | &mut Neq0(ref mut cond) => {
                                 assert!(!cond.is_physical());
                                 let v_cond = *cond;
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_cond,
                                 );
                                 let p_cond = self.allocate_physical_register(v_cond, 0);
@@ -272,7 +288,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             | &mut GeU(ref mut lhs, ref mut rhs) => {
                                 assert!(!lhs.is_physical());
                                 let v_lhs = *lhs;
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_lhs,
                                 );
                                 let p_lhs = self.allocate_physical_register(v_lhs, 0);
@@ -285,7 +301,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                                 assert!(!rhs.is_physical());
                                 let v_rhs = *rhs;
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_rhs,
                                 );
                                 let p_rhs = self.allocate_physical_register(v_rhs, 1);
@@ -299,7 +315,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             &mut Table(_, ref mut index) => {
                                 assert!(!index.is_physical());
                                 let v_index = *index;
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_index,
                                 );
                                 let p_index = self.allocate_physical_register(v_index, 0);
@@ -333,7 +349,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                     ..
                                 } => {
                                     let v_base = *base;
-                                    MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                    MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                         function, v_base,
                                     );
                                     let p_base = self.allocate_physical_register(v_base, 0);
@@ -345,7 +361,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                     ));
 
                                     let v_index = *index;
-                                    MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                    MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                         function, v_index,
                                     );
                                     let p_index = self.allocate_physical_register(v_index, 1);
@@ -361,7 +377,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                         for i in 0..cmp::min(args.len(), self.physical_argument_registers.len()) {
                             let v_arg = args[i];
-                            MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                            MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                 function, v_arg,
                             );
                             let p_arg = self.allocate_physical_argument_register(v_arg, i);
@@ -425,7 +441,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                         if let &mut Some(ref mut result) = result {
                             let v_result = *result;
-                            MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                            MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                 function, v_result,
                             );
                             let p_result = *self
@@ -443,7 +459,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     &mut Opcode::Return { ref mut result } => {
                         if let &mut Some(ref mut result) = result {
                             let v_result = *result;
-                            MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                            MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                 function, v_result,
                             );
                             let p_result = *self
@@ -464,7 +480,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         match src {
                             &mut OperandKind::Register(ref mut src) => {
                                 let v_src = *src;
-                                MemoryAccessInstrInsertionPass::registry_as_local_variable(
+                                MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
                                     function, v_src,
                                 );
                                 let p_src = self.allocate_physical_register(v_src, 1);
@@ -483,7 +499,9 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     }
                     &mut Opcode::Pop { ref mut dst } => {
                         let v_dst = *dst;
-                        MemoryAccessInstrInsertionPass::registry_as_local_variable(function, v_dst);
+                        MemoryAccessInstrInsertionPass::registry_as_local_variable_deprecated(
+                            function, v_dst,
+                        );
                         let p_dst = *self.physical_result_register.get(v_dst.get_typ()).unwrap();
                         *dst = p_dst;
                         new_instrs.push_back(instr);
@@ -586,7 +604,11 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         preg
     }
 
-    fn registry_as_local_variable(function: FunctionHandle, reg: RegisterHandle) {
+    fn registry_as_local_variable(function: FunctionHandle, typ: Type) -> VariableHandle {
+        function.get_local_region().create_variable(typ, None)
+    }
+
+    fn registry_as_local_variable_deprecated(function: FunctionHandle, reg: RegisterHandle) {
         assert!(!reg.is_physical());
         function
             .get_local_region()
@@ -610,7 +632,7 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
 
         assert_eq!(
             function.get_parameter_types().len(),
-            function.get_parameter_variables().len()
+            function.get_parameter_variables_deprecated().len()
         );
 
         let mut entry_block = function.get_basic_blocks()[0];
@@ -620,7 +642,7 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
             function.get_parameter_types().len(),
             self.argument_registers.len(),
         ) {
-            let var = function.get_parameter_variables()[i];
+            let var = function.get_parameter_variables_deprecated()[i];
             let instr = Context::create_instr(
                 Opcode::Store {
                     dst: Address::VarDeprecated(var),
@@ -632,7 +654,7 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
         }
 
         for i in self.argument_registers.len()..function.get_parameter_types().len() {
-            let var = function.get_parameter_variables()[i];
+            let var = function.get_parameter_variables_deprecated()[i];
             let index = i - self.argument_registers.len();
             let tmp = *self.temporary_register.get(var.get_typ()).unwrap();
             let load_instr = Context::create_instr(
