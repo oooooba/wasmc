@@ -9,6 +9,7 @@ use machineir::function::Linkage;
 use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, JumpCondKind, Opcode, OperandKind,
 };
+use machineir::region::RegionKind;
 use machineir::typ::Type;
 use pass::FunctionPass;
 
@@ -155,7 +156,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ref mut src,
                     } => {
                         match src {
-                            &mut Address::Var(_) => unimplemented!(),
+                            &mut Address::Var(_) => {}
                             &mut Address::VarDeprecated(_) => {}
                             &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::LabelBaseRegOffset {
@@ -221,7 +222,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         ));
 
                         match dst {
-                            &mut Address::Var(_) => unimplemented!(),
+                            &mut Address::Var(_) => {}
                             &mut Address::VarDeprecated(_) => {}
                             &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
                             &mut Address::LabelBaseRegOffset {
@@ -718,7 +719,25 @@ impl FunctionPass for VariableAddressLoweringPass {
                     | &mut Opcode::Store {
                         dst: ref mut addr, ..
                     } => match addr {
-                        &mut Address::Var(_) => unimplemented!(),
+                        &mut Address::Var(var) => {
+                            let region = var.get_region();
+                            let offset = *region.get_offset_map().get(&var).unwrap();
+                            match region.get_kind() {
+                                &RegionKind::Local => {
+                                    *addr = Address::RegBaseImmOffset {
+                                        base: self.base_pointer_register,
+                                        offset: -(offset as isize),
+                                    }
+                                }
+                                &RegionKind::MutableGlobal | &RegionKind::ReadOnlyGlobal => {
+                                    *addr = Address::LabelBaseImmOffset {
+                                        base: region,
+                                        offset: offset as isize,
+                                    }
+                                }
+                                &RegionKind::VariableSizedGlobal { .. } => unimplemented!(),
+                            }
+                        }
                         &mut Address::VarDeprecated(var) => {
                             assert!(!var.is_physical());
                             if let Some(offset) = local_region.get_offset_map_deprecated().get(&var)
