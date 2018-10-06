@@ -173,7 +173,7 @@ impl WasmToMachine {
                 &Mut::Var => module.get_mutable_global_variable_region(),
                 &Mut::Const => module.get_const_global_variable_region(),
             };
-            region.get_mut_offset_map().insert(var, 0);
+            region.get_mut_offset_map_deprecated().insert(var, 0);
             global_variables.push((var, region));
         }
 
@@ -202,14 +202,14 @@ impl WasmToMachine {
             };
             for (i, &init) in data.get_init().iter().enumerate() {
                 let var = Context::create_register(Type::I8);
-                mem.get_mut_initial_value_map().insert(
+                mem.get_mut_initial_value_map_deprecated().insert(
                     var,
                     Opcode::Const {
                         dst: var,
                         src: ConstKind::ConstI8(init),
                     },
                 );
-                mem.get_mut_offset_map().insert(var, offset + i);
+                mem.get_mut_offset_map_deprecated().insert(var, offset + i);
             }
         }
 
@@ -1176,7 +1176,7 @@ impl WasmToMachine {
                     let val = Opcode::Const { dst, src };
                     self.global_variables[i]
                         .1
-                        .get_mut_initial_value_map()
+                        .get_mut_initial_value_map_deprecated()
                         .insert(dst, val);
                 }
                 _ => unreachable!(),
@@ -1194,7 +1194,7 @@ impl WasmToMachine {
                 let var = Context::create_register(typ);
                 function
                     .get_local_region()
-                    .get_mut_offset_map()
+                    .get_mut_offset_map_deprecated()
                     .insert(var, 0);
                 local_variables.push(var);
             }

@@ -41,7 +41,7 @@ impl Function {
         let mut parameter_variables = vec![];
         for typ in parameter_types.iter() {
             let reg = Context::create_register(typ.clone());
-            region.get_mut_offset_map().insert(reg, 0);
+            region.get_mut_offset_map_deprecated().insert(reg, 0);
             parameter_variables.push(reg);
         }
         Function {

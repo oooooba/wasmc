@@ -47,13 +47,16 @@ impl ModulePass for ModuleInitPass {
         println!("{}:", mutable_region.get_variable().get_name());
         println!("{}:", mutable_region.get_name());
         let mut mutable_inits: Vec<(RegisterHandle, usize)> = mutable_region
-            .get_offset_map()
+            .get_offset_map_deprecated()
             .clone()
             .into_iter()
             .collect();
         mutable_inits.sort_unstable_by(|a, b| a.1.cmp(&b.1));
         for (var, _) in mutable_inits.into_iter() {
-            let opc = mutable_region.get_initial_value_map().get(&var).unwrap();
+            let opc = mutable_region
+                .get_initial_value_map_deprecated()
+                .get(&var)
+                .unwrap();
             let (directive, value) = match opc {
                 &Opcode::Const {
                     src: ConstKind::ConstI8(i),
@@ -80,15 +83,21 @@ impl ModulePass for ModuleInitPass {
         println!(".global {}", bss_region.get_name());
         println!("{}:", bss_region.get_variable().get_name());
         println!("{}:", bss_region.get_name());
-        let mut bss_inits: Vec<(RegisterHandle, usize)> =
-            bss_region.get_offset_map().clone().into_iter().collect();
+        let mut bss_inits: Vec<(RegisterHandle, usize)> = bss_region
+            .get_offset_map_deprecated()
+            .clone()
+            .into_iter()
+            .collect();
         bss_inits.sort_unstable_by(|a, b| a.1.cmp(&b.1));
         let mut start_of_zeros_offset = 0;
         for (var, offset) in bss_inits.into_iter() {
             for _ in 0..(offset - start_of_zeros_offset) {
                 println!(".{} {}", Type::I8.get_ptr_notation(), 0);
             }
-            let opc = bss_region.get_initial_value_map().get(&var).unwrap();
+            let opc = bss_region
+                .get_initial_value_map_deprecated()
+                .get(&var)
+                .unwrap();
             let (directive, value) = match opc {
                 &Opcode::Const {
                     src: ConstKind::ConstI8(i),

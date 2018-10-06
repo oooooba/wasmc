@@ -590,7 +590,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         assert!(!reg.is_physical());
         function
             .get_local_region()
-            .get_mut_offset_map()
+            .get_mut_offset_map_deprecated()
             .insert(reg, 0);
     }
 }
@@ -699,20 +699,21 @@ impl FunctionPass for VariableAddressLoweringPass {
                         &mut Address::Var(_) => unimplemented!(),
                         &mut Address::VarDeprecated(var) => {
                             assert!(!var.is_physical());
-                            if let Some(offset) = local_region.get_offset_map().get(&var) {
+                            if let Some(offset) = local_region.get_offset_map_deprecated().get(&var)
+                            {
                                 *addr = Address::RegBaseImmOffset {
                                     base: self.base_pointer_register,
                                     offset: -(*offset as isize),
                                 };
                             } else if let Some(offset) =
-                                global_mutable_region.get_offset_map().get(&var)
+                                global_mutable_region.get_offset_map_deprecated().get(&var)
                             {
                                 *addr = Address::LabelBaseImmOffset {
                                     base: global_mutable_region,
                                     offset: *offset as isize,
                                 };
                             } else if let Some(offset) =
-                                global_const_region.get_offset_map().get(&var)
+                                global_const_region.get_offset_map_deprecated().get(&var)
                             {
                                 *addr = Address::LabelBaseImmOffset {
                                     base: global_const_region,

@@ -21,8 +21,8 @@ pub struct Region {
     kind: RegionKind,
     variable: VariableHandle,
     variable_deprecated: RegisterHandle,
-    offset_map: HashMap<RegisterHandle, usize>,
-    initial_value_map: HashMap<RegisterHandle, Opcode>,
+    offset_map_deprecated: HashMap<RegisterHandle, usize>,
+    initial_value_map_deprecated: HashMap<RegisterHandle, Opcode>,
     region_size: Option<usize>,
 }
 
@@ -36,8 +36,8 @@ impl Region {
             kind,
             variable,
             variable_deprecated,
-            offset_map: HashMap::new(),
-            initial_value_map: HashMap::new(),
+            offset_map_deprecated: HashMap::new(),
+            initial_value_map_deprecated: HashMap::new(),
             region_size: None,
         }
     }
@@ -59,21 +59,21 @@ impl Region {
         &self.kind
     }
 
-    pub fn get_offset_map(&self) -> &HashMap<RegisterHandle, usize> {
-        &self.offset_map
+    pub fn get_offset_map_deprecated(&self) -> &HashMap<RegisterHandle, usize> {
+        &self.offset_map_deprecated
     }
 
-    pub fn get_mut_offset_map(&mut self) -> &mut HashMap<RegisterHandle, usize> {
+    pub fn get_mut_offset_map_deprecated(&mut self) -> &mut HashMap<RegisterHandle, usize> {
         self.region_size = None;
-        &mut self.offset_map
+        &mut self.offset_map_deprecated
     }
 
-    pub fn get_initial_value_map(&self) -> &HashMap<RegisterHandle, Opcode> {
-        &self.initial_value_map
+    pub fn get_initial_value_map_deprecated(&self) -> &HashMap<RegisterHandle, Opcode> {
+        &self.initial_value_map_deprecated
     }
 
-    pub fn get_mut_initial_value_map(&mut self) -> &mut HashMap<RegisterHandle, Opcode> {
-        &mut self.initial_value_map
+    pub fn get_mut_initial_value_map_deprecated(&mut self) -> &mut HashMap<RegisterHandle, Opcode> {
+        &mut self.initial_value_map_deprecated
     }
 
     pub fn get_variable(&self) -> VariableHandle {
@@ -92,13 +92,13 @@ impl Region {
         let word_size = 8;
         let mut tmp_pairs = vec![];
         let mut len_buffer = word_size;
-        for var in self.offset_map.keys() {
+        for var in self.offset_map_deprecated.keys() {
             tmp_pairs.push((*var, len_buffer));
             let typ = var.get_typ();
             len_buffer += ((typ.get_size() + word_size - 1) / word_size) * word_size;
         }
         for (var, offset) in tmp_pairs.into_iter() {
-            self.offset_map.insert(var, offset);
+            self.offset_map_deprecated.insert(var, offset);
         }
         self.region_size = Some(len_buffer);
         len_buffer
