@@ -1221,7 +1221,24 @@ impl WasmToMachine {
         self.initialize_global_variables(module);
         for (i, func) in module.get_funcs().iter().enumerate() {
             let function = self.module.get_functions()[self.num_import_functions + i];
-            let mut local_variables = function.get_parameter_variables_deprecated().clone();
+
+            let mut local_variables = function.get_parameter_variables().clone();
+            for valtype in func.get_locals().iter() {
+                let typ = WasmToMachine::map_valtype(valtype);
+                let init_val = match typ {
+                    Type::I8 => ConstKind::ConstI8(0),
+                    Type::I32 => ConstKind::ConstI32(0),
+                    Type::I64 => ConstKind::ConstI64(0),
+                    Type::Pointer => ConstKind::ConstI64(0),
+                };
+                let var = function
+                    .get_local_region()
+                    .create_variable(typ, Some(init_val));
+                local_variables.push(var);
+            }
+
+            let mut local_variables_deprecated =
+                function.get_parameter_variables_deprecated().clone();
             for valtype in func.get_locals().iter() {
                 let typ = WasmToMachine::map_valtype(valtype);
                 let var = Context::create_register(typ);
@@ -1229,7 +1246,7 @@ impl WasmToMachine {
                     .get_local_region()
                     .get_mut_offset_map_deprecated()
                     .insert(var, 0);
-                local_variables.push(var);
+                local_variables_deprecated.push(var);
             }
 
             let entry_block = Context::create_basic_block(function);
@@ -1241,7 +1258,8 @@ impl WasmToMachine {
             self.entry_block = entry_block;
             self.basic_block_to_continuation = HashMap::new();
             self.current_function = function;
-            self.local_variables_deprecated = local_variables;
+            self.local_variables = local_variables;
+            self.local_variables_deprecated = local_variables_deprecated;
 
             let result_registers =
                 WasmToMachine::create_registers_for_types(function.get_result_types().clone());

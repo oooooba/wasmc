@@ -72,6 +72,7 @@ impl Region {
     }
 
     pub fn get_mut_offset_map(&mut self) -> &mut HashMap<VariableHandle, usize> {
+        //self.region_size = None; // ToDo: enable this
         &mut self.offset_map
     }
 
