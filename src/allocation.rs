@@ -633,6 +633,86 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
 
         assert_eq!(
             function.get_parameter_types().len(),
+            function.get_parameter_variables().len()
+        );
+
+        let mut entry_block = function.get_basic_blocks()[0];
+        let mut new_entry_instrs = VecDeque::new();
+
+        for i in 0..cmp::min(
+            function.get_parameter_types().len(),
+            self.argument_registers.len(),
+        ) {
+            let var = function.get_parameter_variables()[i];
+            let instr = Context::create_instr(
+                Opcode::Store {
+                    dst: Address::Var(var),
+                    src: *self.argument_registers[i].get(var.get_type()).unwrap(),
+                },
+                entry_block,
+            );
+            new_entry_instrs.push_back(instr);
+        }
+
+        for i in self.argument_registers.len()..function.get_parameter_types().len() {
+            let var = function.get_parameter_variables()[i];
+            let index = i - self.argument_registers.len();
+            let tmp = *self.temporary_register.get(var.get_type()).unwrap();
+            let load_instr = Context::create_instr(
+                Opcode::Load {
+                    dst: tmp,
+                    src: Address::RegBaseImmOffset {
+                        base: self.base_pointer_register,
+                        offset: (0x10 + index * Type::Pointer.get_size()) as isize,
+                    },
+                },
+                entry_block,
+            );
+            let store_instr = Context::create_instr(
+                Opcode::Store {
+                    dst: Address::Var(var),
+                    src: tmp,
+                },
+                entry_block,
+            );
+            new_entry_instrs.push_back(load_instr);
+            new_entry_instrs.push_back(store_instr);
+        }
+
+        new_entry_instrs.append(entry_block.get_mut_instrs());
+        entry_block.set_instrs(new_entry_instrs);
+    }
+}
+
+impl<'a> FuncArgsStoreInstrInsertionPass<'a> {
+    pub fn new(
+        argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+        base_pointer_register: RegisterHandle,
+        temporary_register: &'a HashMap<Type, RegisterHandle>,
+    ) -> FuncArgsStoreInstrInsertionPassDeprecated<'a> {
+        FuncArgsStoreInstrInsertionPassDeprecated {
+            argument_registers,
+            base_pointer_register,
+            temporary_register,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct FuncArgsStoreInstrInsertionPassDeprecated<'a> {
+    argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+    base_pointer_register: RegisterHandle,
+    temporary_register: &'a HashMap<Type, RegisterHandle>,
+}
+
+impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPassDeprecated<'a> {
+    fn do_action(&mut self, function: FunctionHandle) {
+        if function.get_linkage() == &Linkage::Import {
+            return;
+        }
+
+        assert_eq!(
+            function.get_parameter_types().len(),
             function.get_parameter_variables_deprecated().len()
         );
 
@@ -684,13 +764,13 @@ impl<'a> FunctionPass for FuncArgsStoreInstrInsertionPass<'a> {
     }
 }
 
-impl<'a> FuncArgsStoreInstrInsertionPass<'a> {
+impl<'a> FuncArgsStoreInstrInsertionPassDeprecated<'a> {
     pub fn new(
         argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
         base_pointer_register: RegisterHandle,
         temporary_register: &'a HashMap<Type, RegisterHandle>,
-    ) -> FuncArgsStoreInstrInsertionPass<'a> {
-        FuncArgsStoreInstrInsertionPass {
+    ) -> FuncArgsStoreInstrInsertionPassDeprecated<'a> {
+        FuncArgsStoreInstrInsertionPassDeprecated {
             argument_registers,
             base_pointer_register,
             temporary_register,
@@ -797,7 +877,7 @@ pub struct SimpleRegisterAllocationPass {
 impl FunctionPass for SimpleRegisterAllocationPass {
     fn do_action(&mut self, function: FunctionHandle) {
         function.apply_function_pass(&mut MemoryAccessInstrInsertionPass::new(self));
-        function.apply_function_pass(&mut FuncArgsStoreInstrInsertionPass::new(
+        function.apply_function_pass(&mut FuncArgsStoreInstrInsertionPassDeprecated::new(
             &self.physical_argument_registers,
             self.physical_base_pointer_register,
             &self.physical_result_register,
