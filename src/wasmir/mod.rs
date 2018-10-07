@@ -4,7 +4,7 @@ pub mod types;
 use wasmir::instructions::Expr;
 use wasmir::types::{Functype, Globaltype, Memtype, Tabletype, Valtype};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Typeidx(u32);
 
 impl Typeidx {
@@ -17,7 +17,7 @@ impl Typeidx {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Funcidx(u32);
 
 impl Funcidx {
@@ -30,7 +30,7 @@ impl Funcidx {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Tableidx(u32);
 
 impl Tableidx {
@@ -43,7 +43,7 @@ impl Tableidx {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Memidx(u32);
 
 impl Memidx {
@@ -56,7 +56,7 @@ impl Memidx {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Globalidx(u32);
 
 impl Globalidx {
@@ -69,7 +69,7 @@ impl Globalidx {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Localidx(u32);
 
 impl Localidx {
@@ -82,7 +82,7 @@ impl Localidx {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Labelidx(u32);
 
 impl Labelidx {
