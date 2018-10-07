@@ -375,7 +375,25 @@ impl WasmToMachine {
     }
 
     pub fn finalize(self) -> ModuleHandle {
-        self.module
+        let module = self.module;
+        self.emit_memory_instance_initialization_function();
+        module
+    }
+
+    fn emit_memory_instance_initialization_function(self) {
+        let mut module = self.module;
+        for (i, memory_instance) in self.memory_instances.iter().enumerate() {
+            let mut function =
+                Context::create_function(format!("_wasmc_memory_{}", i), vec![], vec![], module)
+                    .set_linkage(memory_instance.instance_region.get_linkage().clone());
+
+            let mut block = Context::create_basic_block(function);
+            let instr = Context::create_instr(Opcode::Return { result: None }, block);
+            block.add_instr(instr);
+
+            function.get_mut_basic_blocks().push_back(block);
+            module.get_mut_functions().push(function);
+        }
     }
 
     fn emit_unop(&mut self, _op: &Iunop) {

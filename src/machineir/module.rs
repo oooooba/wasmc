@@ -3,7 +3,7 @@ use context::Context;
 use machineir::region::RegionKind;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Linkage {
     Export,
     Import,
