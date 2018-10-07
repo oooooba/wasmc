@@ -5,16 +5,10 @@ use context::handle::{
     BasicBlockHandle, FunctionHandle, ModuleHandle, RegionHandle, VariableHandle,
 };
 use context::Context;
+use machineir::module::Linkage;
 use machineir::region::RegionKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass};
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Linkage {
-    Export,
-    Import,
-    Private,
-}
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Function {

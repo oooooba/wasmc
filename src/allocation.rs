@@ -5,7 +5,7 @@ use context::handle::{
     BasicBlockHandle, FunctionHandle, InstrHandle, RegisterHandle, VariableHandle,
 };
 use context::Context;
-use machineir::function::Linkage;
+use machineir::module::Linkage;
 use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, JumpCondKind, Opcode, OperandKind,
 };

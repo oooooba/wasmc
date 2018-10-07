@@ -3,6 +3,13 @@ use context::Context;
 use machineir::region::RegionKind;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Linkage {
+    Export,
+    Import,
+    Private,
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub struct Module {
     handle: ModuleHandle,
