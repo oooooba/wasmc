@@ -17,7 +17,7 @@ use wasmir::instructions::{
     Const, Cvtop, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
 };
 use wasmir::types::{Functype, Mut, Resulttype, Valtype};
-use wasmir::{Exportdesc, Importdesc, Labelidx, Typeidx};
+use wasmir::{Exportdesc, Importdesc, Labelidx, Memidx, Typeidx};
 
 #[derive(Debug)]
 enum StackElem {
@@ -165,6 +165,20 @@ impl WasmToMachine {
             Context::create_function("".to_string(), parameter_types, result_types, module);
         let dummy_block = Context::create_basic_block(dummy_function);
 
+        let mut export_funcs = HashMap::new();
+        let mut export_tables = HashMap::new();
+        let mut export_mems = HashMap::new();
+        let mut export_globals = HashMap::new();
+        for export in wasmir_module.get_exports().iter() {
+            let name = export.get_name().clone();
+            match export.get_desc() {
+                &Exportdesc::Func(funcidx) => export_funcs.insert(funcidx, name),
+                &Exportdesc::Table(tableidx) => export_tables.insert(tableidx, name),
+                &Exportdesc::Mem(memidx) => export_mems.insert(memidx, name),
+                &Exportdesc::Global(globalidx) => export_globals.insert(globalidx, name),
+            };
+        }
+
         let mut global_variables = vec![];
         for global in wasmir_module.get_globals().iter() {
             let mut region = match global.get_type().mutability() {
@@ -187,7 +201,7 @@ impl WasmToMachine {
             global_variables.push(var);
         }
 
-        let memory = if wasmir_module.get_mems().len() == 0 {
+        let mut memory = if wasmir_module.get_mems().len() == 0 {
             Context::create_region(RegionKind::VariableSizedGlobal { min: 0, max: None })
         } else {
             assert_eq!(wasmir_module.get_mems().len(), 1);
@@ -197,6 +211,9 @@ impl WasmToMachine {
                 max: mem.get_type().get_lim().get_max().map(|i| i as usize),
             })
         };
+        if let Some(name) = export_mems.remove(&Memidx::new(0)) {
+            memory.set_name(name).set_linkage(Linkage::Export);
+        }
         module.get_mut_dynamic_regions().push(memory);
 
         for data in wasmir_module.get_data().iter() {
@@ -234,29 +251,13 @@ impl WasmToMachine {
             .iter()
             .map(|functype| WasmToMachine::map_functype(functype))
             .collect();
-
         let (num_import_functions, _) =
             WasmToMachine::declare_functions(wasmir_module, &function_types, module);
-
-        for export in wasmir_module.get_exports().iter() {
-            match export.get_desc() {
-                &Exportdesc::Func(funcidx) => {
-                    let index = funcidx.as_index();
-                    module.get_mut_functions()[index]
-                        .set_func_name(export.get_name().clone())
-                        .set_linkage(Linkage::Export);
-                }
-                &Exportdesc::Mem(memidx) => {
-                    let index = memidx.as_index();
-                    module.get_mut_dynamic_regions()[index]
-                        .set_name(export.get_name().clone())
-                        .set_linkage(Linkage::Export);
-                    module.get_mut_dynamic_regions()[index]
-                        .get_variable()
-                        .set_name(export.get_name().clone());
-                }
-                _ => continue,
-            }
+        for (funcidx, name) in export_funcs {
+            let index = funcidx.as_index();
+            module.get_mut_functions()[index]
+                .set_func_name(name)
+                .set_linkage(Linkage::Export);
         }
 
         WasmToMachine {
