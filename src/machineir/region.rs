@@ -3,6 +3,7 @@ use std::fmt;
 
 use context::handle::{RegionHandle, RegisterHandle, VariableHandle};
 use context::Context;
+use machineir::module::Linkage;
 use machineir::opcode::{ConstKind, Opcode};
 use machineir::typ::Type;
 
@@ -24,6 +25,7 @@ pub struct Region {
     initial_value_map: HashMap<VariableHandle, Option<ConstKind>>,
     initial_value_map_deprecated: HashMap<RegisterHandle, Opcode>,
     region_size: Option<usize>,
+    linkage: Linkage,
 }
 
 impl Region {
@@ -38,6 +40,7 @@ impl Region {
             initial_value_map: HashMap::new(),
             initial_value_map_deprecated: HashMap::new(),
             region_size: None,
+            linkage: Linkage::Private,
         }
     }
 
@@ -77,6 +80,15 @@ impl Region {
 
     pub fn get_region_size(&self) -> &Option<usize> {
         &self.region_size
+    }
+
+    pub fn get_linkage(&self) -> &Linkage {
+        &self.linkage
+    }
+
+    pub fn set_linkage(&mut self, linkage: Linkage) -> RegionHandle {
+        self.linkage = linkage;
+        self.handle
     }
 
     pub fn calculate_variable_offset(&mut self) -> usize {

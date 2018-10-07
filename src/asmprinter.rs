@@ -40,8 +40,8 @@ impl ModulePass for ModuleInitPass {
         println!(".intel_syntax noprefix");
         println!();
 
-        self.emit_global_region(module.get_mutable_global_variable_region(), false);
-        self.emit_global_region(module.get_dynamic_regions()[0], true);
+        self.emit_global_region(module.get_mutable_global_variable_region());
+        self.emit_global_region(module.get_dynamic_regions()[0]);
 
         println!(".text");
     }
@@ -52,11 +52,17 @@ impl ModuleInitPass {
         ModuleInitPass {}
     }
 
-    fn emit_global_region(&self, region: RegionHandle, export: bool) {
+    fn emit_global_region(&self, region: RegionHandle) {
         match region.get_kind() {
-            &RegionKind::Local => unreachable!(),
+            &RegionKind::Local => panic!("pre-condition"),
             _ => {}
         }
+
+        let export = match region.get_linkage() {
+            &Linkage::Export => true,
+            &Linkage::Import => return,
+            &Linkage::Private => false,
+        };
 
         println!(".data");
         println!(".align {}", Type::Pointer.get_size());
