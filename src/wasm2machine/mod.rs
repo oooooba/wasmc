@@ -114,6 +114,7 @@ pub struct WasmToMachine {
     global_variables: Vec<VariableHandle>,
     function_types: Vec<(Vec<Type>, Vec<Type>)>,
     num_import_functions: usize,
+    memory_instances: Vec<MemoryInstance>,
 }
 
 impl WasmToMachine {
@@ -167,13 +168,18 @@ impl WasmToMachine {
         (num_import_functions, num_define_functions)
     }
 
-    #[allow(dead_code)]
     fn declare_memory_instances(
         wasm_module: &wasmir::Module,
         mut machine_module: ModuleHandle,
         mut export_mems: HashMap<Memidx, String>,
     ) -> Vec<MemoryInstance> {
-        assert_eq!(wasm_module.get_mems().len(), 1);
+        let mut data_map = HashMap::new();
+        for data in wasm_module.get_data().iter() {
+            let index = data.get_data().as_index();
+            data_map.insert(index, data);
+        }
+
+        assert!(wasm_module.get_mems().len() == 0 || wasm_module.get_mems().len() == 1);
         let mut memory_instances = vec![];
         for (i, mem) in wasm_module.get_mems().iter().enumerate() {
             let mut instance_region =
@@ -204,25 +210,27 @@ impl WasmToMachine {
                 .get_mut_offset_map()
                 .insert(var_arena, Type::Pointer.get_size() * 2);
 
-            let data = &wasm_module.get_data()[i];
-            assert_eq!(data.get_data().as_index(), i);
-
             let mut initial_image_region =
                 machine_module.create_global_region(RegionKind::ReadOnlyGlobal);
-            for (i, &init) in data.get_init().iter().enumerate() {
-                let var =
-                    initial_image_region.create_variable(Type::I8, Some(ConstKind::ConstI8(init)));
-                initial_image_region.get_mut_offset_map().insert(var, i);
-            }
+            let offset = if let Some(data) = data_map.get(&i) {
+                for (i, &init) in data.get_init().iter().enumerate() {
+                    let var = initial_image_region
+                        .create_variable(Type::I8, Some(ConstKind::ConstI8(init)));
+                    initial_image_region.get_mut_offset_map().insert(var, i);
+                }
 
-            let offset = data.get_offset();
-            assert_eq!(offset.get_instr_sequences().len(), 1);
-            let offset = match &offset.get_instr_sequences()[0] {
-                &WasmInstr::Const(ref cst) => match cst {
-                    &Const::I32(i) => i as u64,
-                    &Const::I64(i) => i,
-                },
-                _ => unreachable!(),
+                let offset = data.get_offset();
+                assert_eq!(offset.get_instr_sequences().len(), 1);
+                let offset = match &offset.get_instr_sequences()[0] {
+                    &WasmInstr::Const(ref cst) => match cst {
+                        &Const::I32(i) => i as u64,
+                        &Const::I64(i) => i,
+                    },
+                    _ => unreachable!(),
+                };
+                offset
+            } else {
+                0
             };
 
             let var_offset =
@@ -299,7 +307,7 @@ impl WasmToMachine {
                 max: mem.get_type().get_lim().get_max().map(|i| i as usize),
             })
         };
-        if let Some(name) = export_mems.remove(&Memidx::new(0)) {
+        if let Some(name) = export_mems.clone().remove(&Memidx::new(0)) {
             memory.set_name(name).set_linkage(Linkage::Export);
         }
         module.get_mut_dynamic_regions().push(memory);
@@ -348,6 +356,9 @@ impl WasmToMachine {
                 .set_linkage(Linkage::Export);
         }
 
+        let memory_instances =
+            WasmToMachine::declare_memory_instances(wasmir_module, module, export_mems);
+
         WasmToMachine {
             operand_stack: OperandStack::new(),
             current_basic_block: dummy_block,
@@ -359,6 +370,7 @@ impl WasmToMachine {
             global_variables,
             function_types,
             num_import_functions,
+            memory_instances,
         }
     }
 
