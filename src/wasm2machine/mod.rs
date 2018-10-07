@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use context::handle::{
-    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegisterHandle, VariableHandle,
+    BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
+    VariableHandle,
 };
 use context::Context;
 use machineir::module::Linkage;
@@ -92,6 +93,16 @@ impl OperandStack {
 }
 
 #[derive(Debug)]
+struct MemoryInstance {
+    instance_region: RegionHandle,
+    var_min: VariableHandle,
+    var_max: VariableHandle,
+    var_arena: VariableHandle,
+    initial_image_region: RegionHandle,
+    var_offset: VariableHandle,
+}
+
+#[derive(Debug)]
 pub struct WasmToMachine {
     operand_stack: OperandStack,
     current_basic_block: BasicBlockHandle,
@@ -154,6 +165,83 @@ impl WasmToMachine {
         let num_define_functions = machine_module.get_functions().len() - num_import_functions;
 
         (num_import_functions, num_define_functions)
+    }
+
+    #[allow(dead_code)]
+    fn declare_memory_instances(
+        wasm_module: &wasmir::Module,
+        mut machine_module: ModuleHandle,
+        mut export_mems: HashMap<Memidx, String>,
+    ) -> Vec<MemoryInstance> {
+        assert_eq!(wasm_module.get_mems().len(), 1);
+        let mut memory_instances = vec![];
+        for (i, mem) in wasm_module.get_mems().iter().enumerate() {
+            let mut instance_region =
+                machine_module.create_global_region(RegionKind::MutableGlobal);
+            if let Some(name) = export_mems.remove(&Memidx::new(0)) {
+                instance_region.set_name(name).set_linkage(Linkage::Export);
+            }
+
+            let var_min = instance_region.create_variable(
+                Type::I32,
+                Some(ConstKind::ConstI32(mem.get_type().get_lim().get_min())),
+            );
+            instance_region
+                .get_mut_offset_map()
+                .insert(var_min, Type::Pointer.get_size() * 0);
+            let var_max = instance_region.create_variable(
+                Type::I32,
+                mem.get_type()
+                    .get_lim()
+                    .get_max()
+                    .map(|i| ConstKind::ConstI32(i)),
+            );
+            instance_region
+                .get_mut_offset_map()
+                .insert(var_max, Type::Pointer.get_size() * 1);
+            let var_arena = instance_region.create_variable(Type::Pointer, None);
+            instance_region
+                .get_mut_offset_map()
+                .insert(var_arena, Type::Pointer.get_size() * 2);
+
+            let data = &wasm_module.get_data()[i];
+            assert_eq!(data.get_data().as_index(), i);
+
+            let mut initial_image_region =
+                machine_module.create_global_region(RegionKind::ReadOnlyGlobal);
+            for (i, &init) in data.get_init().iter().enumerate() {
+                let var =
+                    initial_image_region.create_variable(Type::I8, Some(ConstKind::ConstI8(init)));
+                initial_image_region.get_mut_offset_map().insert(var, i);
+            }
+
+            let offset = data.get_offset();
+            assert_eq!(offset.get_instr_sequences().len(), 1);
+            let offset = match &offset.get_instr_sequences()[0] {
+                &WasmInstr::Const(ref cst) => match cst {
+                    &Const::I32(i) => i as u64,
+                    &Const::I64(i) => i,
+                },
+                _ => unreachable!(),
+            };
+
+            let var_offset =
+                instance_region.create_variable(Type::I64, Some(ConstKind::ConstI64(offset)));
+            instance_region
+                .get_mut_offset_map()
+                .insert(var_offset, Type::Pointer.get_size() * 3);
+
+            memory_instances.push(MemoryInstance {
+                instance_region,
+                var_min,
+                var_max,
+                var_arena,
+                initial_image_region,
+                var_offset,
+            });
+        }
+
+        memory_instances
     }
 
     pub fn new(wasmir_module: &wasmir::Module) -> WasmToMachine {

@@ -70,6 +70,12 @@ impl Module {
         &mut self.global_regions
     }
 
+    pub fn create_global_region(&mut self, kind: RegionKind) -> RegionHandle {
+        let region = Context::create_region(kind);
+        self.global_regions.push(region);
+        region
+    }
+
     pub fn get_indirect_function_tables(&self) -> &Vec<RegionHandle> {
         &self.indirect_function_tables
     }
