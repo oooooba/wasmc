@@ -381,7 +381,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
 }
 
 impl<'a> EmitX86AssemblyPass<'a> {
-    pub fn new(emit_assembly_pass: &'a EmitAssemblyPass) -> EmitX86AssemblyPass<'a> {
+    pub fn new(emit_assembly_pass: &'a EmitAssemblyFunctionPass) -> EmitX86AssemblyPass<'a> {
         EmitX86AssemblyPass {
             register_name_map: &emit_assembly_pass.register_name_map,
             instruction_pointer_register: emit_assembly_pass.instruction_pointer_register,
@@ -438,7 +438,7 @@ impl<'a> EmitX86AssemblyPass<'a> {
 }
 
 #[derive(Debug)]
-pub struct EmitAssemblyPass {
+pub struct EmitAssemblyFunctionPass {
     register_name_map: HashMap<RegisterHandle, &'static str>,
     base_pointer_register: RegisterHandle,
     stack_pointer_register: RegisterHandle,
@@ -446,7 +446,7 @@ pub struct EmitAssemblyPass {
     argument_registers: Vec<HashMap<Type, RegisterHandle>>,
 }
 
-impl FunctionPass for EmitAssemblyPass {
+impl FunctionPass for EmitAssemblyFunctionPass {
     fn do_action(&mut self, function: FunctionHandle) {
         println!();
 
@@ -479,15 +479,15 @@ impl FunctionPass for EmitAssemblyPass {
     }
 }
 
-impl EmitAssemblyPass {
+impl EmitAssemblyFunctionPass {
     pub fn new(
         physical_register_name_map: HashMap<RegisterHandle, &'static str>,
         base_pointer_register: RegisterHandle,
         stack_pointer_register: RegisterHandle,
         instruction_pointer_register: RegisterHandle,
         argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    ) -> EmitAssemblyPass {
-        EmitAssemblyPass {
+    ) -> EmitAssemblyFunctionPass {
+        EmitAssemblyFunctionPass {
             register_name_map: physical_register_name_map,
             base_pointer_register,
             stack_pointer_register,

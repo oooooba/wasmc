@@ -7,7 +7,7 @@ use std::io::BufReader;
 use std::iter::FromIterator;
 
 use wasmc::allocation::SimpleRegisterAllocationPass;
-use wasmc::asmprinter::{EmitAssemblyPass, InsertBasicBlockLabelPass, ModuleInitPass};
+use wasmc::asmprinter::{EmitAssemblyFunctionPass, InsertBasicBlockLabelPass, ModuleInitPass};
 use wasmc::context::handle::{ModuleHandle, RegisterHandle};
 use wasmc::context::Context;
 use wasmc::machineir::typ::Type;
@@ -39,7 +39,7 @@ impl ModulePass for MainPass {
             self.stack_pointer_register,
         ));
         module.apply_basic_block_pass(&mut InsertBasicBlockLabelPass::new());
-        module.apply_function_pass(&mut EmitAssemblyPass::new(
+        module.apply_function_pass(&mut EmitAssemblyFunctionPass::new(
             self.register_name_map.clone(),
             self.base_pointer_register,
             self.stack_pointer_register,
