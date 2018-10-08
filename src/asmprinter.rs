@@ -438,15 +438,15 @@ impl<'a> EmitX86AssemblyPass<'a> {
 }
 
 #[derive(Debug)]
-struct EmitAssemblyFunctionPass {
-    register_name_map: HashMap<RegisterHandle, &'static str>,
+struct EmitAssemblyFunctionPass<'a> {
+    register_name_map: &'a HashMap<RegisterHandle, &'static str>,
     base_pointer_register: RegisterHandle,
     stack_pointer_register: RegisterHandle,
     instruction_pointer_register: RegisterHandle,
-    argument_registers: Vec<HashMap<Type, RegisterHandle>>,
+    argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
 }
 
-impl FunctionPass for EmitAssemblyFunctionPass {
+impl<'a> FunctionPass for EmitAssemblyFunctionPass<'a> {
     fn do_action(&mut self, function: FunctionHandle) {
         println!();
 
@@ -479,14 +479,14 @@ impl FunctionPass for EmitAssemblyFunctionPass {
     }
 }
 
-impl EmitAssemblyFunctionPass {
+impl<'a> EmitAssemblyFunctionPass<'a> {
     fn new(
-        physical_register_name_map: HashMap<RegisterHandle, &'static str>,
+        physical_register_name_map: &'a HashMap<RegisterHandle, &'static str>,
         base_pointer_register: RegisterHandle,
         stack_pointer_register: RegisterHandle,
         instruction_pointer_register: RegisterHandle,
-        argument_registers: Vec<HashMap<Type, RegisterHandle>>,
-    ) -> EmitAssemblyFunctionPass {
+        argument_registers: &'a Vec<HashMap<Type, RegisterHandle>>,
+    ) -> EmitAssemblyFunctionPass<'a> {
         EmitAssemblyFunctionPass {
             register_name_map: physical_register_name_map,
             base_pointer_register,
@@ -511,11 +511,11 @@ impl ModulePass for EmitAssemblyModulePass {
         module.apply_basic_block_pass(&mut InsertBasicBlockLabelPass::new());
         module.apply_module_pass(&mut ModuleInitPass::new());
         module.apply_function_pass(&mut EmitAssemblyFunctionPass::new(
-            self.register_name_map.clone(),
+            &self.register_name_map,
             self.base_pointer_register,
             self.stack_pointer_register,
             self.instruction_pointer_register,
-            self.argument_registers.clone(),
+            &self.argument_registers,
         ));
     }
 }
