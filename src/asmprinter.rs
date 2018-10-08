@@ -15,7 +15,7 @@ use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
 
 #[derive(Debug)]
-pub struct InsertBasicBlockLabelPass {}
+struct InsertBasicBlockLabelPass {}
 
 impl BasicBlockPass for InsertBasicBlockLabelPass {
     fn do_action(&mut self, mut basic_block: BasicBlockHandle) {
@@ -27,13 +27,13 @@ impl BasicBlockPass for InsertBasicBlockLabelPass {
 }
 
 impl InsertBasicBlockLabelPass {
-    pub fn new() -> InsertBasicBlockLabelPass {
+    fn new() -> InsertBasicBlockLabelPass {
         InsertBasicBlockLabelPass {}
     }
 }
 
 #[derive(Debug)]
-pub struct ModuleInitPass {}
+struct ModuleInitPass {}
 
 impl ModulePass for ModuleInitPass {
     fn do_action(&mut self, module: ModuleHandle) {
@@ -48,7 +48,7 @@ impl ModulePass for ModuleInitPass {
 }
 
 impl ModuleInitPass {
-    pub fn new() -> ModuleInitPass {
+    fn new() -> ModuleInitPass {
         ModuleInitPass {}
     }
 
@@ -103,7 +103,7 @@ impl ModuleInitPass {
 }
 
 #[derive(Debug)]
-pub struct EmitX86AssemblyPass<'a> {
+struct EmitX86AssemblyPass<'a> {
     register_name_map: &'a HashMap<RegisterHandle, &'static str>,
     instruction_pointer_register: RegisterHandle,
 }
@@ -381,7 +381,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
 }
 
 impl<'a> EmitX86AssemblyPass<'a> {
-    pub fn new(emit_assembly_pass: &'a EmitAssemblyFunctionPass) -> EmitX86AssemblyPass<'a> {
+    fn new(emit_assembly_pass: &'a EmitAssemblyFunctionPass) -> EmitX86AssemblyPass<'a> {
         EmitX86AssemblyPass {
             register_name_map: &emit_assembly_pass.register_name_map,
             instruction_pointer_register: emit_assembly_pass.instruction_pointer_register,
@@ -438,7 +438,7 @@ impl<'a> EmitX86AssemblyPass<'a> {
 }
 
 #[derive(Debug)]
-pub struct EmitAssemblyFunctionPass {
+struct EmitAssemblyFunctionPass {
     register_name_map: HashMap<RegisterHandle, &'static str>,
     base_pointer_register: RegisterHandle,
     stack_pointer_register: RegisterHandle,
@@ -480,7 +480,7 @@ impl FunctionPass for EmitAssemblyFunctionPass {
 }
 
 impl EmitAssemblyFunctionPass {
-    pub fn new(
+    fn new(
         physical_register_name_map: HashMap<RegisterHandle, &'static str>,
         base_pointer_register: RegisterHandle,
         stack_pointer_register: RegisterHandle,
@@ -488,6 +488,47 @@ impl EmitAssemblyFunctionPass {
         argument_registers: Vec<HashMap<Type, RegisterHandle>>,
     ) -> EmitAssemblyFunctionPass {
         EmitAssemblyFunctionPass {
+            register_name_map: physical_register_name_map,
+            base_pointer_register,
+            stack_pointer_register,
+            instruction_pointer_register,
+            argument_registers,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct EmitAssemblyModulePass {
+    register_name_map: HashMap<RegisterHandle, &'static str>,
+    base_pointer_register: RegisterHandle,
+    stack_pointer_register: RegisterHandle,
+    instruction_pointer_register: RegisterHandle,
+    argument_registers: Vec<HashMap<Type, RegisterHandle>>,
+}
+
+impl ModulePass for EmitAssemblyModulePass {
+    fn do_action(&mut self, module: ModuleHandle) {
+        module.apply_basic_block_pass(&mut InsertBasicBlockLabelPass::new());
+        module.apply_module_pass(&mut ModuleInitPass::new());
+        module.apply_function_pass(&mut EmitAssemblyFunctionPass::new(
+            self.register_name_map.clone(),
+            self.base_pointer_register,
+            self.stack_pointer_register,
+            self.instruction_pointer_register,
+            self.argument_registers.clone(),
+        ));
+    }
+}
+
+impl EmitAssemblyModulePass {
+    pub fn new(
+        physical_register_name_map: HashMap<RegisterHandle, &'static str>,
+        base_pointer_register: RegisterHandle,
+        stack_pointer_register: RegisterHandle,
+        instruction_pointer_register: RegisterHandle,
+        argument_registers: Vec<HashMap<Type, RegisterHandle>>,
+    ) -> EmitAssemblyModulePass {
+        EmitAssemblyModulePass {
             register_name_map: physical_register_name_map,
             base_pointer_register,
             stack_pointer_register,
