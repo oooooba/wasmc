@@ -33,6 +33,27 @@ impl InsertBasicBlockLabelPass {
 }
 
 #[derive(Debug)]
+struct InsertCallingProgramInitializersInstrPass {}
+
+impl ModulePass for InsertCallingProgramInitializersInstrPass {
+    fn do_action(&mut self, module: ModuleHandle) {
+        println!(".section .init");
+        for function in module.get_functions() {
+            if !function.is_program_initializer() {
+                continue;
+            }
+            println!("call {}", function.get_func_name());
+        }
+    }
+}
+
+impl InsertCallingProgramInitializersInstrPass {
+    fn new() -> InsertCallingProgramInitializersInstrPass {
+        InsertCallingProgramInitializersInstrPass {}
+    }
+}
+
+#[derive(Debug)]
 struct ModuleInitPass {}
 
 impl ModulePass for ModuleInitPass {
@@ -42,6 +63,8 @@ impl ModulePass for ModuleInitPass {
 
         self.emit_global_region(module.get_mutable_global_variable_region());
         self.emit_global_region(module.get_dynamic_regions()[0]);
+
+        module.apply_module_pass(&mut InsertCallingProgramInitializersInstrPass::new());
 
         println!(".text");
     }

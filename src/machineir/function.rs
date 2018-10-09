@@ -21,6 +21,7 @@ pub struct Function {
     local_region: RegionHandle,
     linkage: Linkage,
     module: ModuleHandle,
+    is_program_initializer: bool,
 }
 
 impl Function {
@@ -49,6 +50,7 @@ impl Function {
             local_region: region,
             linkage: Linkage::Private,
             module,
+            is_program_initializer: false,
         }
     }
 
@@ -100,6 +102,15 @@ impl Function {
 
     pub fn get_module(&self) -> ModuleHandle {
         self.module
+    }
+
+    pub fn is_program_initializer(&self) -> bool {
+        self.is_program_initializer
+    }
+
+    pub fn set_program_initializer(&mut self) -> FunctionHandle {
+        self.is_program_initializer = true;
+        self.handle
     }
 
     pub fn print(&self) {

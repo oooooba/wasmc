@@ -392,6 +392,7 @@ impl WasmToMachine {
             );
             let function =
                 Context::create_function(format!("_wasmc_memory_{}", i), vec![], vec![], module)
+                    .set_program_initializer()
                     .set_linkage(memory_instance.instance_region.get_linkage().clone());
             self.emit_func(&func, function);
 
