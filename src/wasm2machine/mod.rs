@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::mem;
 
 use context::handle::{
     BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
@@ -15,7 +16,7 @@ use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{
-    Const, Cvtop, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
+    Const, Cvtop, Expr, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
 };
 use wasmir::types::{Functype, Mut, Resulttype, Valtype};
 use wasmir::{Exportdesc, Func, Importdesc, Labelidx, Memidx, Typeidx};
@@ -374,24 +375,26 @@ impl WasmToMachine {
         }
     }
 
-    pub fn finalize(self) -> ModuleHandle {
-        let module = self.module;
+    pub fn finalize(mut self) -> ModuleHandle {
         self.emit_memory_instance_initialization_function();
-        module
+        self.module
     }
 
-    fn emit_memory_instance_initialization_function(self) {
+    fn emit_memory_instance_initialization_function(&mut self) {
         let mut module = self.module;
-        for (i, memory_instance) in self.memory_instances.iter().enumerate() {
-            let mut function =
+        let mut memory_instances = vec![];
+        mem::swap(&mut self.memory_instances, &mut memory_instances);
+        for (i, memory_instance) in memory_instances.iter().enumerate() {
+            let func = Func::new(
+                Typeidx::new(-1i32 as u32), /* never used */
+                vec![],
+                Expr::new(vec![WasmInstr::Return]),
+            );
+            let function =
                 Context::create_function(format!("_wasmc_memory_{}", i), vec![], vec![], module)
                     .set_linkage(memory_instance.instance_region.get_linkage().clone());
+            self.emit_func(&func, function);
 
-            let mut block = Context::create_basic_block(function);
-            let instr = Context::create_instr(Opcode::Return { result: None }, block);
-            block.add_instr(instr);
-
-            function.get_mut_basic_blocks().push_back(block);
             module.get_mut_functions().push(function);
         }
     }
