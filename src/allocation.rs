@@ -375,7 +375,17 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                         }
                         new_instrs.push_back(instr);
                     }
-                    &mut Opcode::AddressOf { .. } => unimplemented!(),
+                    &mut Opcode::AddressOf {
+                        ref mut dst,
+                        ref mut location,
+                    } => match location {
+                        &mut Address::Var(_) => unimplemented!(),
+                        &mut Address::LabelBaseImmOffset { .. } => {}
+                        &mut Address::LabelBaseRegOffset { .. } => unimplemented!(),
+                        &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
+                        &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
+                        &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
+                    },
                     &mut Opcode::Push { ref mut src } => {
                         match src {
                             &mut OperandKind::Register(ref mut src) => {
