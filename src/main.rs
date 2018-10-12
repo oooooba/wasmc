@@ -93,12 +93,36 @@ impl MainPass {
         ];
 
         let argument_registers = vec![
-            HashMap::from_iter(vec![(Type::I32, reg_edi), (Type::I64, reg_rdi)]),
-            HashMap::from_iter(vec![(Type::I32, reg_esi), (Type::I64, reg_rsi)]),
-            HashMap::from_iter(vec![(Type::I32, reg_edx), (Type::I64, reg_rdx)]),
-            HashMap::from_iter(vec![(Type::I32, reg_ecx), (Type::I64, reg_rcx)]),
-            HashMap::from_iter(vec![(Type::I32, reg_r8d), (Type::I64, reg_r8)]),
-            HashMap::from_iter(vec![(Type::I32, reg_r9d), (Type::I64, reg_r9)]),
+            HashMap::from_iter(vec![
+                (Type::I32, reg_edi),
+                (Type::I64, reg_rdi),
+                (Type::Pointer, reg_rdi),
+            ]),
+            HashMap::from_iter(vec![
+                (Type::I32, reg_esi),
+                (Type::I64, reg_rsi),
+                (Type::Pointer, reg_rsi),
+            ]),
+            HashMap::from_iter(vec![
+                (Type::I32, reg_edx),
+                (Type::I64, reg_rdx),
+                (Type::Pointer, reg_rdx),
+            ]),
+            HashMap::from_iter(vec![
+                (Type::I32, reg_ecx),
+                (Type::I64, reg_rcx),
+                (Type::Pointer, reg_rcx),
+            ]),
+            HashMap::from_iter(vec![
+                (Type::I32, reg_r8d),
+                (Type::I64, reg_r8),
+                (Type::Pointer, reg_r8),
+            ]),
+            HashMap::from_iter(vec![
+                (Type::I32, reg_r9d),
+                (Type::I64, reg_r9),
+                (Type::Pointer, reg_r9),
+            ]),
         ];
 
         let result_register = HashMap::from_iter(vec![
