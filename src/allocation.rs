@@ -440,7 +440,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         var: VariableHandle,
     ) -> InstrHandle {
         assert!(reg.is_physical());
-        assert_eq!(var.get_type(), reg.get_typ());
+        assert_eq!(var.get_type().get_size(), reg.get_typ().get_size());
         Context::create_instr(
             Opcode::Load {
                 dst: reg,
@@ -457,7 +457,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         reg: RegisterHandle,
     ) -> InstrHandle {
         assert!(reg.is_physical());
-        assert_eq!(var.get_type(), reg.get_typ());
+        assert_eq!(var.get_type().get_size(), reg.get_typ().get_size());
         Context::create_instr(
             Opcode::Store {
                 dst: Address::Var(var),
@@ -474,6 +474,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         var: VariableHandle,
     ) -> InstrHandle {
         assert!(reg.is_physical());
+        assert_eq!(var.get_type().get_size(), reg.get_typ().get_size());
         Context::create_instr(
             Opcode::AddressOf {
                 dst: reg,
