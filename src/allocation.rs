@@ -378,14 +378,22 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     &mut Opcode::AddressOf {
                         ref mut dst,
                         ref mut location,
-                    } => match location {
-                        &mut Address::Var(_) => unimplemented!(),
-                        &mut Address::LabelBaseImmOffset { .. } => {}
-                        &mut Address::LabelBaseRegOffset { .. } => unimplemented!(),
-                        &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
-                        &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
-                        &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
-                    },
+                    } => {
+                        match location {
+                            &mut Address::Var(_) => unimplemented!(),
+                            &mut Address::LabelBaseImmOffset { .. } => {}
+                            &mut Address::LabelBaseRegOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
+                        }
+                        new_instrs.push_back(instr);
+
+                        let v_dst = self.registry_as_local_variable(function, *dst);
+                        let p_dst = *self.physical_result_register.get(v_dst.get_type()).unwrap();
+                        *dst = p_dst;
+                        new_instrs.push_back(self.create_store_instr(basic_block, v_dst, p_dst));
+                    }
                     &mut Opcode::Push { ref mut src } => {
                         match src {
                             &mut OperandKind::Register(ref mut src) => {
