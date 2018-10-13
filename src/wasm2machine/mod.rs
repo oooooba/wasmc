@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::mem;
 
 use context::handle::{
     BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
@@ -16,7 +15,7 @@ use machineir::region::RegionKind;
 use machineir::typ::Type;
 use wasmir;
 use wasmir::instructions::{
-    Const, Cvtop, Expr, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
+    Const, Cvtop, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
 };
 use wasmir::types::{Functype, Mut, Resulttype, Valtype};
 use wasmir::{Exportdesc, Func, Importdesc, Labelidx, Memidx, Typeidx};
@@ -96,8 +95,8 @@ impl OperandStack {
 #[derive(Debug)]
 struct MemoryInstance {
     instance_region: RegionHandle,
-    var_min: VariableHandle,
-    var_max: VariableHandle,
+    var_min: u32,
+    var_max: Option<u32>,
     var_arena: VariableHandle,
     initial_image_region: RegionHandle,
     var_offset: VariableHandle,
@@ -189,23 +188,8 @@ impl WasmToMachine {
                 instance_region.set_name(name).set_linkage(Linkage::Export);
             }
 
-            let var_min = instance_region.create_variable(
-                Type::I32,
-                Some(ConstKind::ConstI32(mem.get_type().get_lim().get_min())),
-            );
-            instance_region
-                .get_mut_offset_map()
-                .insert(var_min, Type::Pointer.get_size() * 0);
-            let var_max = instance_region.create_variable(
-                Type::I32,
-                mem.get_type()
-                    .get_lim()
-                    .get_max()
-                    .map(|i| ConstKind::ConstI32(i)),
-            );
-            instance_region
-                .get_mut_offset_map()
-                .insert(var_max, Type::Pointer.get_size() * 1);
+            let var_min = mem.get_type().get_lim().get_min();
+            let var_max = mem.get_type().get_lim().get_max().clone();
             let var_arena = instance_region.create_variable(Type::Pointer, None);
             instance_region
                 .get_mut_offset_map()
@@ -417,22 +401,72 @@ impl WasmToMachine {
 
     fn emit_memory_instance_initialization_function(&mut self) {
         let mut module = self.module;
-        let mut memory_instances = vec![];
-        mem::swap(&mut self.memory_instances, &mut memory_instances);
-        for (i, memory_instance) in memory_instances.iter().enumerate() {
-            let func = Func::new(
-                Typeidx::new(-1i32 as u32), /* never used */
-                vec![],
-                Expr::new(vec![WasmInstr::Return]),
-            );
-            let function =
-                Context::create_function(format!("_wasmc_memory_{}", i), vec![], vec![], module)
-                    .set_program_initializer()
-                    .set_linkage(memory_instance.instance_region.get_linkage().clone());
-            self.emit_func(&func, function);
 
-            module.get_mut_functions().push(function);
+        let wasmc_allocate_memory_function = Context::create_function(
+            "_wasmc_allocate_memory".to_string(),
+            vec![Type::Pointer, Type::I32, Type::I64],
+            vec![],
+            module,
+        ).set_linkage(Linkage::Import);
+
+        let mut function =
+            Context::create_function("_wasmc_memory_setup".to_string(), vec![], vec![], module)
+                .set_program_initializer()
+                .set_linkage(Linkage::Private);
+        let mut body = Context::create_basic_block(function);
+
+        for memory_instance in self.memory_instances.iter() {
+            {
+                let reg_memory_instance = Context::create_register(Type::Pointer);
+                let addressof_instr = Context::create_instr(
+                    Opcode::AddressOf {
+                        dst: reg_memory_instance,
+                        location: Address::LabelBaseImmOffset {
+                            base: memory_instance.instance_region,
+                            offset: 0,
+                        },
+                    },
+                    body,
+                );
+                body.add_instr(addressof_instr);
+
+                let reg_min_num_pages = Context::create_register(Type::I32);
+                let const_instr = Context::create_instr(
+                    Opcode::Const {
+                        dst: reg_min_num_pages,
+                        src: ConstKind::ConstI32(memory_instance.var_min),
+                    },
+                    body,
+                );
+                body.add_instr(const_instr);
+
+                let reg_max_num_pages = Context::create_register(Type::I64);
+                let n = memory_instance.var_max.map(|n| n as i64).unwrap_or(-1);
+                let const_instr = Context::create_instr(
+                    Opcode::Const {
+                        dst: reg_max_num_pages,
+                        src: ConstKind::ConstI64(n as u64),
+                    },
+                    body,
+                );
+                body.add_instr(const_instr);
+
+                let call_instr = Context::create_instr(
+                    Opcode::Call {
+                        func: CallTargetKind::Function(wasmc_allocate_memory_function),
+                        result: None,
+                        args: vec![reg_memory_instance, reg_min_num_pages, reg_max_num_pages],
+                    },
+                    body,
+                );
+                body.add_instr(call_instr);
+            }
         }
+        let return_instr = Context::create_instr(Opcode::Return { result: None }, body);
+        body.add_instr(return_instr);
+
+        function.get_mut_basic_blocks().push_back(body);
+        module.get_mut_functions().push(function);
     }
 
     fn emit_unop(&mut self, _op: &Iunop) {
