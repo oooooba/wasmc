@@ -183,8 +183,19 @@ impl WasmToMachine {
         for (i, mem) in wasm_module.get_mems().iter().enumerate() {
             let mut instance_region =
                 machine_module.create_global_region(RegionKind::MutableGlobal);
-            if let Some(name) = export_mems.remove(&Memidx::new(0)) {
-                instance_region.set_name(name).set_linkage(Linkage::Export);
+            {
+                if let Some(name) = export_mems.remove(&Memidx::new(0)) {
+                    instance_region.set_name(name).set_linkage(Linkage::Export);
+                }
+
+                let member_types = vec![Type::Pointer, Type::I64, Type::I64];
+                let mut offset = 0;
+                for typ in member_types {
+                    let type_size = typ.get_size();
+                    let var = instance_region.create_variable(typ, None);
+                    instance_region.get_mut_offset_map().insert(var, offset);
+                    offset += type_size;
+                }
             }
 
             let var_min = mem.get_type().get_lim().get_min();
@@ -481,7 +492,7 @@ impl WasmToMachine {
                 body.add_instr(addressof_instr);
 
                 let reg_initial_vec_len = Context::create_register(Type::I64);
-                let len = initial_image_region.calculate_variable_offset();
+                let len = initial_image_region.get_offset_map().len(); // ToDo: fix
                 let const_instr = Context::create_instr(
                     Opcode::Const {
                         dst: reg_initial_vec_len,
