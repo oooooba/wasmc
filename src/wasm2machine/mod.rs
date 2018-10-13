@@ -97,9 +97,8 @@ struct MemoryInstance {
     instance_region: RegionHandle,
     var_min: u32,
     var_max: Option<u32>,
-    var_arena: VariableHandle,
     initial_image_region: RegionHandle,
-    var_offset: VariableHandle,
+    var_offset: u32,
 }
 
 #[derive(Debug)]
@@ -190,14 +189,10 @@ impl WasmToMachine {
 
             let var_min = mem.get_type().get_lim().get_min();
             let var_max = mem.get_type().get_lim().get_max().clone();
-            let var_arena = instance_region.create_variable(Type::Pointer, None);
-            instance_region
-                .get_mut_offset_map()
-                .insert(var_arena, Type::Pointer.get_size() * 2);
 
             let mut initial_image_region =
                 machine_module.create_global_region(RegionKind::ReadOnlyGlobal);
-            let offset = if let Some(data) = data_map.get(&i) {
+            let var_offset = if let Some(data) = data_map.get(&i) {
                 for (i, &init) in data.get_init().iter().enumerate() {
                     let var = initial_image_region
                         .create_variable(Type::I8, Some(ConstKind::ConstI8(init)));
@@ -208,8 +203,8 @@ impl WasmToMachine {
                 assert_eq!(offset.get_instr_sequences().len(), 1);
                 let offset = match &offset.get_instr_sequences()[0] {
                     &WasmInstr::Const(ref cst) => match cst {
-                        &Const::I32(i) => i as u64,
-                        &Const::I64(i) => i,
+                        &Const::I32(i) => i,
+                        &Const::I64(i) => i as u32,
                     },
                     _ => unreachable!(),
                 };
@@ -218,17 +213,10 @@ impl WasmToMachine {
                 0
             };
 
-            let var_offset =
-                instance_region.create_variable(Type::I64, Some(ConstKind::ConstI64(offset)));
-            instance_region
-                .get_mut_offset_map()
-                .insert(var_offset, Type::Pointer.get_size() * 3);
-
             memory_instances.push(MemoryInstance {
                 instance_region,
                 var_min,
                 var_max,
-                var_arena,
                 initial_image_region,
                 var_offset,
             });
@@ -372,7 +360,7 @@ impl WasmToMachine {
         int64_t  max;
     };
 
-    extern MemoryInstance memory_instance;
+    extern struct MemoryInstance memory_instance;
 
     #define PAGE_SIZE 65536
 
@@ -390,10 +378,9 @@ impl WasmToMachine {
 
     void _wasmc_initialize_memory (
             struct MemoryInstance* memory_instance,
-            int32_t (* offset_proc) (),
+            uint32_t offset,
             uint8_t* initial_vec,
             uint64_t initial_vec_len) {
-        uint32_t offset = offset_proc ();
         memcpy (memory_instance->vec + offset, initial_vec, initial_vec_len);
     }
 
@@ -408,6 +395,12 @@ impl WasmToMachine {
             vec![],
             module,
         ).set_linkage(Linkage::Import);
+        let wasmc_initialize_memory_function = Context::create_function(
+            "_wasmc_initialize_memory".to_string(),
+            vec![Type::Pointer, Type::I32, Type::Pointer, Type::I64],
+            vec![],
+            module,
+        ).set_linkage(Linkage::Import);
 
         let mut function =
             Context::create_function("_wasmc_memory_setup".to_string(), vec![], vec![], module)
@@ -416,20 +409,20 @@ impl WasmToMachine {
         let mut body = Context::create_basic_block(function);
 
         for memory_instance in self.memory_instances.iter() {
-            {
-                let reg_memory_instance = Context::create_register(Type::Pointer);
-                let addressof_instr = Context::create_instr(
-                    Opcode::AddressOf {
-                        dst: reg_memory_instance,
-                        location: Address::LabelBaseImmOffset {
-                            base: memory_instance.instance_region,
-                            offset: 0,
-                        },
+            let reg_memory_instance = Context::create_register(Type::Pointer);
+            let addressof_instr = Context::create_instr(
+                Opcode::AddressOf {
+                    dst: reg_memory_instance,
+                    location: Address::LabelBaseImmOffset {
+                        base: memory_instance.instance_region,
+                        offset: 0,
                     },
-                    body,
-                );
-                body.add_instr(addressof_instr);
+                },
+                body,
+            );
+            body.add_instr(addressof_instr);
 
+            {
                 let reg_min_num_pages = Context::create_register(Type::I32);
                 let const_instr = Context::create_instr(
                     Opcode::Const {
@@ -456,6 +449,58 @@ impl WasmToMachine {
                         func: CallTargetKind::Function(wasmc_allocate_memory_function),
                         result: None,
                         args: vec![reg_memory_instance, reg_min_num_pages, reg_max_num_pages],
+                    },
+                    body,
+                );
+                body.add_instr(call_instr);
+            }
+            {
+                let reg_offset = Context::create_register(Type::I32);
+                let const_instr = Context::create_instr(
+                    Opcode::Const {
+                        dst: reg_offset,
+                        src: ConstKind::ConstI32(memory_instance.var_offset),
+                    },
+                    body,
+                );
+                body.add_instr(const_instr);
+
+                let mut initial_image_region = memory_instance.initial_image_region;
+
+                let reg_initial_vec = Context::create_register(Type::Pointer);
+                let addressof_instr = Context::create_instr(
+                    Opcode::AddressOf {
+                        dst: reg_initial_vec,
+                        location: Address::LabelBaseImmOffset {
+                            base: initial_image_region,
+                            offset: 0,
+                        },
+                    },
+                    body,
+                );
+                body.add_instr(addressof_instr);
+
+                let reg_initial_vec_len = Context::create_register(Type::I64);
+                let len = initial_image_region.calculate_variable_offset();
+                let const_instr = Context::create_instr(
+                    Opcode::Const {
+                        dst: reg_initial_vec_len,
+                        src: ConstKind::ConstI64(len as u64),
+                    },
+                    body,
+                );
+                body.add_instr(const_instr);
+
+                let call_instr = Context::create_instr(
+                    Opcode::Call {
+                        func: CallTargetKind::Function(wasmc_initialize_memory_function),
+                        result: None,
+                        args: vec![
+                            reg_memory_instance,
+                            reg_offset,
+                            reg_initial_vec,
+                            reg_initial_vec_len,
+                        ],
                     },
                     body,
                 );
