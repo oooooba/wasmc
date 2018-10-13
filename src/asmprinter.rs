@@ -62,7 +62,10 @@ impl ModulePass for ModuleInitPass {
         println!();
 
         self.emit_global_region(module.get_mutable_global_variable_region());
-        self.emit_global_region(module.get_dynamic_regions()[0]);
+        //self.emit_global_region(module.get_dynamic_regions()[0]);
+        for global_region in module.get_global_regions() {
+            self.emit_global_region(*global_region);
+        }
 
         module.apply_module_pass(&mut InsertCallingProgramInitializersInstrPass::new());
 
@@ -102,6 +105,7 @@ impl ModuleInitPass {
 
         let mut start_of_zeros_offset = 0;
         for (var, offset) in offset_map_vec.into_iter() {
+            println!("# var.type={:?}, offset={}", var.get_type(), offset);
             for _ in 0..(offset - start_of_zeros_offset) {
                 println!(".byte {}", 0);
             }
@@ -119,7 +123,7 @@ impl ModuleInitPass {
                 None => 0,
             };
             println!(".{} {}", directive, value);
-            start_of_zeros_offset = offset + 1;
+            start_of_zeros_offset = offset + var.get_type().get_size();
         }
         println!();
     }
