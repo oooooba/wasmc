@@ -365,25 +365,46 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 println!("pop rbp");
                 println!("ret");
             }
-            &AddressOf { dst, ref location } => match location {
-                &Address::Var(var) => {
-                    match var.get_region().get_kind() {
-                        &RegionKind::Local => unreachable!(),
-                        _ => {}
+            &AddressOf { dst, ref location } => {
+                let dst_name = self.register_name_map.get(&dst).unwrap();
+                match location {
+                    &Address::Var(var) => {
+                        match var.get_region().get_kind() {
+                            &RegionKind::Local => unreachable!(),
+                            _ => {}
+                        }
+                        let ipr_name = self
+                            .register_name_map
+                            .get(&self.instruction_pointer_register)
+                            .unwrap();
+                        println!("lea {}, [{} + {}]", dst_name, ipr_name, var.get_name());
                     }
-                    let dst_name = self.register_name_map.get(&dst).unwrap();
-                    let ipr_name = self
-                        .register_name_map
-                        .get(&self.instruction_pointer_register)
-                        .unwrap();
-                    println!("lea {}, [{} + {}]", dst_name, ipr_name, var.get_name());
+                    &Address::LabelBaseImmOffset { base, offset } => {
+                        match base.get_kind() {
+                            &RegionKind::Local => unreachable!(),
+                            _ => {}
+                        }
+                        let ipr_name = self
+                            .register_name_map
+                            .get(&self.instruction_pointer_register)
+                            .unwrap();
+                        let offset_op = if offset >= 0 { "+" } else { "-" };
+                        let offset = offset.abs();
+                        println!(
+                            "lea {}, [{} + {} {} {}]",
+                            dst_name,
+                            ipr_name,
+                            base.get_name(),
+                            offset_op,
+                            offset,
+                        );
+                    }
+                    &Address::LabelBaseRegOffset { .. } => unreachable!(),
+                    &Address::RegBaseImmOffset { .. } => unreachable!(),
+                    &Address::RegBaseRegOffset { .. } => unreachable!(),
+                    &Address::RegBaseRegIndex { .. } => unreachable!(),
                 }
-                &Address::LabelBaseImmOffset { .. } => unimplemented!(),
-                &Address::LabelBaseRegOffset { .. } => unreachable!(),
-                &Address::RegBaseImmOffset { .. } => unreachable!(),
-                &Address::RegBaseRegOffset { .. } => unreachable!(),
-                &Address::RegBaseRegIndex { .. } => unreachable!(),
-            },
+            }
             &Push { ref src } => match src {
                 &OperandKind::Register(reg) => {
                     assert!(reg.is_physical());
