@@ -54,12 +54,13 @@ pub struct BasicBlock {
     handle: BasicBlockHandle,
     instrs: VecDeque<InstrHandle>,
     function: FunctionHandle,
+    name: String,
 }
 
 impl fmt::Display for BasicBlock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "BasicBlock[{}]", self.handle)?;
-        writeln!(f, "  label_{}:", self.handle)?;
+        writeln!(f, "  {}:", self.get_name())?;
         for instr in self.instrs.iter() {
             writeln!(f, "    {}: {}", instr, instr.get())?;
         }
@@ -73,6 +74,7 @@ impl BasicBlock {
             handle,
             instrs: VecDeque::new(),
             function,
+            name: format!("label_{}", handle),
         }
     }
 
@@ -112,8 +114,12 @@ impl BasicBlock {
         self.function
     }
 
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+
     pub fn print(&self) {
-        println!("BasicBlock ({:?})", self.handle);
+        println!("BasicBlock ({:?} / {})", self.handle, self.get_name());
         for instr in self.instrs.iter() {
             print!("    ");
             instr.print();
