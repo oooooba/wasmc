@@ -363,40 +363,6 @@ impl WasmToMachine {
         self.module
     }
 
-    /*
-
-    struct MemoryInstance {
-        uint8_t* vec;
-        uint64_t len;
-        int64_t  max;
-    };
-
-    extern struct MemoryInstance memory_instance;
-
-    #define PAGE_SIZE 65536
-
-    void _wasmc_allocate_memory (
-            struct MemoryInstance* memory_instance,
-            uint32_t min_num_pages,
-            int64_t max_num_pages) {
-        assert (max_num_pages < (1l << 32));
-        uint64_t len = PAGE_SIZE * min_num_pages;
-        uint8_t* vec = mmap (NULL, len, ... );
-        memory_instance->vec = vec;
-        memory_instance->len = len;
-        memory_instance->max = max_num_pages;
-    }
-
-    void _wasmc_initialize_memory (
-            struct MemoryInstance* memory_instance,
-            uint32_t offset,
-            uint8_t* initial_vec,
-            uint64_t initial_vec_len) {
-        memcpy (memory_instance->vec + offset, initial_vec, initial_vec_len);
-    }
-
-    */
-
     fn emit_memory_instance_initialization_function(&mut self) {
         let mut module = self.module;
 
