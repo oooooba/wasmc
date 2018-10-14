@@ -62,7 +62,6 @@ impl ModulePass for ModuleInitPass {
         println!();
 
         self.emit_global_region(module.get_mutable_global_variable_region());
-        //self.emit_global_region(module.get_dynamic_regions()[0]);
         for global_region in module.get_global_regions() {
             self.emit_global_region(*global_region);
         }

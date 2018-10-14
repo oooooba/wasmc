@@ -281,39 +281,6 @@ impl WasmToMachine {
             global_variables.push(var);
         }
 
-        let mut memory = if wasmir_module.get_mems().len() == 0 {
-            Context::create_region(RegionKind::VariableSizedGlobal { min: 0, max: None })
-        } else {
-            assert_eq!(wasmir_module.get_mems().len(), 1);
-            let mem = &wasmir_module.get_mems()[0];
-            Context::create_region(RegionKind::VariableSizedGlobal {
-                min: mem.get_type().get_lim().get_min() as usize,
-                max: mem.get_type().get_lim().get_max().map(|i| i as usize),
-            })
-        };
-        if let Some(name) = export_mems.clone().remove(&Memidx::new(0)) {
-            memory.set_name(name).set_linkage(Linkage::Export);
-        }
-        module.get_mut_dynamic_regions().push(memory);
-
-        for data in wasmir_module.get_data().iter() {
-            let mut mem = module.get_mut_dynamic_regions()[data.get_data().as_index()];
-            let offset = data.get_offset();
-            assert_eq!(offset.get_instr_sequences().len(), 1);
-            let offset = match &offset.get_instr_sequences()[0] {
-                &WasmInstr::Const(ref cst) => match cst {
-                    &Const::I32(i) => i as usize,
-                    &Const::I64(i) => i as usize,
-                },
-                _ => unreachable!(),
-            };
-
-            for (i, &init) in data.get_init().iter().enumerate() {
-                let var = mem.create_variable(Type::I8, Some(ConstKind::ConstI8(init)));
-                mem.get_mut_offset_map().insert(var, offset + i);
-            }
-        }
-
         let table = if wasmir_module.get_tables().len() == 0 {
             Context::create_region(RegionKind::VariableSizedGlobal { min: 0, max: None })
         } else {
