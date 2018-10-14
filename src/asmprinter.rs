@@ -61,7 +61,6 @@ impl ModulePass for ModuleInitPass {
         println!(".intel_syntax noprefix");
         println!();
 
-        self.emit_global_region(module.get_mutable_global_variable_region());
         for global_region in module.get_global_regions() {
             self.emit_global_region(*global_region);
         }

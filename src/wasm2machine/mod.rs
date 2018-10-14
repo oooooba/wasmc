@@ -18,7 +18,7 @@ use wasmir::instructions::{
     Const, Cvtop, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
 };
 use wasmir::types::{Functype, Mut, Resulttype, Valtype};
-use wasmir::{Exportdesc, Func, Importdesc, Labelidx, Memidx, Typeidx};
+use wasmir::{Exportdesc, Func, Globalidx, Importdesc, Labelidx, Memidx, Typeidx};
 
 #[derive(Debug)]
 enum StackElem {
@@ -236,6 +236,76 @@ impl WasmToMachine {
         memory_instances
     }
 
+    fn declare_global_variables(
+        wasm_module: &wasmir::Module,
+        mut machine_module: ModuleHandle,
+        export_globals: HashMap<Globalidx, String>,
+    ) -> Vec<VariableHandle> {
+        let export_mutable_region = machine_module
+            .create_global_region(RegionKind::MutableGlobal)
+            .set_linkage(Linkage::Export);
+        let private_mutable_region = machine_module
+            .create_global_region(RegionKind::MutableGlobal)
+            .set_linkage(Linkage::Private);
+        let export_readonly_region = machine_module
+            .create_global_region(RegionKind::ReadOnlyGlobal)
+            .set_linkage(Linkage::Export);
+        let private_readonly_region = machine_module
+            .create_global_region(RegionKind::ReadOnlyGlobal)
+            .set_linkage(Linkage::Private);
+
+        let mut export_mutable_offset = 0;
+        let mut private_mutable_offset = 0;
+        let mut export_readonly_offset = 0;
+        let mut private_readonly_offset = 0;
+
+        let mut global_variables = vec![];
+        for (i, global) in wasm_module.get_globals().iter().enumerate() {
+            let index = Globalidx::new(i as u32);
+            let mut region = match (
+                global.get_type().mutability(),
+                export_globals.contains_key(&index),
+            ) {
+                (&Mut::Var, true) => export_mutable_region,
+                (&Mut::Var, false) => private_mutable_region,
+                (&Mut::Const, true) => export_readonly_region,
+                (&Mut::Const, false) => private_readonly_region,
+            };
+
+            let typ = WasmToMachine::map_valtype(global.get_type().valtype());
+            let expr = global.get_init();
+            assert_eq!(expr.get_instr_sequences().len(), 1);
+            let init_val = match &expr.get_instr_sequences()[0] {
+                &WasmInstr::Const(ref cst) => match cst {
+                    &Const::I32(i) => ConstKind::ConstI32(i),
+                    &Const::I64(i) => ConstKind::ConstI64(i),
+                },
+                _ => unreachable!(),
+            };
+
+            let offset = if region == export_mutable_region {
+                &mut export_mutable_offset
+            } else if region == private_mutable_region {
+                &mut private_mutable_offset
+            } else if region == export_readonly_region {
+                &mut export_readonly_offset
+            } else if region == private_readonly_region {
+                &mut private_readonly_offset
+            } else {
+                unreachable!()
+            };
+            *offset = *offset + typ.get_size();
+            let offset = *offset;
+
+            let var = region.create_variable(typ, Some(init_val));
+            region.get_mut_offset_map().insert(var, offset);
+
+            global_variables.push(var);
+        }
+
+        global_variables
+    }
+
     pub fn new(wasmir_module: &wasmir::Module) -> WasmToMachine {
         let mut module = Context::create_module();
 
@@ -259,27 +329,8 @@ impl WasmToMachine {
             };
         }
 
-        let mut global_variables = vec![];
-        for global in wasmir_module.get_globals().iter() {
-            let mut region = match global.get_type().mutability() {
-                &Mut::Var => module.get_mutable_global_variable_region(),
-                &Mut::Const => module.get_const_global_variable_region(),
-            };
-
-            let typ = WasmToMachine::map_valtype(global.get_type().valtype());
-            let expr = global.get_init();
-            assert_eq!(expr.get_instr_sequences().len(), 1);
-            let init_val = match &expr.get_instr_sequences()[0] {
-                &WasmInstr::Const(ref cst) => match cst {
-                    &Const::I32(i) => ConstKind::ConstI32(i),
-                    &Const::I64(i) => ConstKind::ConstI64(i),
-                },
-                _ => unreachable!(),
-            };
-
-            let var = region.create_variable(typ, Some(init_val));
-            global_variables.push(var);
-        }
+        let global_variables =
+            WasmToMachine::declare_global_variables(wasmir_module, module, export_globals);
 
         let table = if wasmir_module.get_tables().len() == 0 {
             Context::create_region(RegionKind::VariableSizedGlobal { min: 0, max: None })
