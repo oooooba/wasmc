@@ -986,20 +986,30 @@ impl WasmToMachine {
                     offset
                 };
 
+                let memory_region = self.memory_instances[0].instance_region;
+                let memory = Context::create_register(Type::Pointer);
+                self.emit_on_current_basic_block(Opcode::Load {
+                    dst: memory,
+                    src: Address::LabelBaseImmOffset {
+                        base: memory_region,
+                        offset: 0,
+                    },
+                });
+
                 let dst = match attr {
                     &Loadattr::I32 => Context::create_register(Type::I32),
                     &Loadattr::I64 => Context::create_register(Type::I64),
                     &Loadattr::I32x8S | &Loadattr::I32x8U => Context::create_register(Type::I8),
                 };
 
-                let memory_region = self.module.get_dynamic_regions()[0];
                 self.emit_on_current_basic_block(Opcode::Load {
                     dst,
-                    src: Address::LabelBaseRegOffset {
-                        base: memory_region,
+                    src: Address::RegBaseRegOffset {
+                        base: memory,
                         offset,
                     },
                 });
+
                 let result = match attr {
                     &Loadattr::I32 => dst,
                     &Loadattr::I64 => dst,
@@ -1071,10 +1081,19 @@ impl WasmToMachine {
                     offset
                 };
 
-                let memory_region = self.module.get_dynamic_regions()[0];
-                self.emit_on_current_basic_block(Opcode::Store {
-                    dst: Address::LabelBaseRegOffset {
+                let memory_region = self.memory_instances[0].instance_region;
+                let memory = Context::create_register(Type::Pointer);
+                self.emit_on_current_basic_block(Opcode::Load {
+                    dst: memory,
+                    src: Address::LabelBaseImmOffset {
                         base: memory_region,
+                        offset: 0,
+                    },
+                });
+
+                self.emit_on_current_basic_block(Opcode::Store {
+                    dst: Address::RegBaseRegOffset {
+                        base: memory,
                         offset,
                     },
                     src,

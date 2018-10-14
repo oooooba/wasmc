@@ -112,7 +112,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                     } => {
                         match src {
                             &mut Address::Var(_) => {}
-                            &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
+                            &mut Address::LabelBaseImmOffset { .. } => {}
                             &mut Address::LabelBaseRegOffset { base, offset } => {
                                 let v_offset = self.registry_as_local_variable(function, offset);
 
@@ -138,7 +138,29 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 };
                             }
                             &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegOffset { base, offset } => {
+                                let v_base = self.registry_as_local_variable(function, base);
+                                let p_base = self.allocate_physical_register(0, v_base.get_type());
+                                new_instrs.push_back(self.create_load_instr(
+                                    basic_block,
+                                    p_base,
+                                    v_base,
+                                ));
+
+                                let v_offset = self.registry_as_local_variable(function, offset);
+                                let p_offset =
+                                    self.allocate_physical_register(1, v_offset.get_type());
+                                new_instrs.push_back(self.create_load_instr(
+                                    basic_block,
+                                    p_offset,
+                                    v_offset,
+                                ));
+
+                                *src = Address::RegBaseRegOffset {
+                                    base: p_base,
+                                    offset: p_offset,
+                                };
+                            }
                             &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
                         };
 
@@ -159,7 +181,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
 
                         match dst {
                             &mut Address::Var(_) => {}
-                            &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
+                            &mut Address::LabelBaseImmOffset { .. } => {}
                             &mut Address::LabelBaseRegOffset { base, offset } => {
                                 let v_offset = self.registry_as_local_variable(function, offset);
 
@@ -185,7 +207,29 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                                 };
                             }
                             &mut Address::RegBaseImmOffset { .. } => unimplemented!(),
-                            &mut Address::RegBaseRegOffset { .. } => unimplemented!(),
+                            &mut Address::RegBaseRegOffset { base, offset } => {
+                                let v_base = self.registry_as_local_variable(function, base);
+                                let p_base = self.allocate_physical_register(1, v_base.get_type());
+                                new_instrs.push_back(self.create_load_instr(
+                                    basic_block,
+                                    p_base,
+                                    v_base,
+                                ));
+
+                                let v_offset = self.registry_as_local_variable(function, offset);
+                                let p_offset =
+                                    self.allocate_physical_register(2, v_offset.get_type());
+                                new_instrs.push_back(self.create_load_instr(
+                                    basic_block,
+                                    p_offset,
+                                    v_offset,
+                                ));
+
+                                *dst = Address::RegBaseRegOffset {
+                                    base: p_base,
+                                    offset: p_offset,
+                                };
+                            }
                             &mut Address::RegBaseRegIndex { .. } => unimplemented!(),
                         };
                         new_instrs.push_back(instr);
@@ -638,7 +682,7 @@ impl FunctionPass for VariableAddressLoweringPass {
                                 &RegionKind::VariableSizedGlobal { .. } => unimplemented!(),
                             }
                         }
-                        &mut Address::LabelBaseImmOffset { .. } => unimplemented!(),
+                        &mut Address::LabelBaseImmOffset { .. } => {}
                         &mut Address::LabelBaseRegOffset { .. } => {}
                         &mut Address::RegBaseImmOffset { .. } => {}
                         &mut Address::RegBaseRegOffset { .. } => {}
