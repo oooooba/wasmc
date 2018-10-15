@@ -484,6 +484,30 @@ impl<'a> EmitX86AssemblyPass<'a> {
 }
 
 #[derive(Debug)]
+struct EmitAssemblyBasicBlockPass<'a> {
+    emit_assembly_function_pass: &'a EmitAssemblyFunctionPass<'a>,
+}
+
+impl<'a> BasicBlockPass for EmitAssemblyBasicBlockPass<'a> {
+    fn do_action(&mut self, basic_block: BasicBlockHandle) {
+        println!("{}:", basic_block.get_name());
+        basic_block.apply_instr_pass(&mut EmitX86AssemblyPass::new(
+            self.emit_assembly_function_pass,
+        ));
+    }
+}
+
+impl<'a> EmitAssemblyBasicBlockPass<'a> {
+    fn new(
+        emit_assembly_function_pass: &'a EmitAssemblyFunctionPass<'a>,
+    ) -> EmitAssemblyBasicBlockPass<'a> {
+        EmitAssemblyBasicBlockPass {
+            emit_assembly_function_pass,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct EmitAssemblyFunctionPass<'a> {
     register_name_map: &'a HashMap<RegisterHandle, &'static str>,
     base_pointer_register: RegisterHandle,
@@ -521,7 +545,7 @@ impl<'a> FunctionPass for EmitAssemblyFunctionPass<'a> {
         );
         println!("push rbx");
 
-        function.apply_instr_pass(&mut EmitX86AssemblyPass::new(self));
+        function.apply_basic_block_pass(&mut EmitAssemblyBasicBlockPass::new(self));
     }
 }
 
