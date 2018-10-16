@@ -4,7 +4,6 @@ use context::handle::{
     BasicBlockHandle, FunctionHandle, InstrHandle, ModuleHandle, RegionHandle, RegisterHandle,
     VariableHandle,
 };
-use context::Context;
 use machineir::module::Linkage;
 use machineir::opcode::{
     Address, BinaryOpKind, CallTargetKind, CastKind, ConstKind, JumpCondKind, JumpTargetKind,
@@ -13,24 +12,6 @@ use machineir::opcode::{
 use machineir::region::RegionKind;
 use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, InstrPass, ModulePass};
-
-#[derive(Debug)]
-struct InsertBasicBlockLabelPass {}
-
-impl BasicBlockPass for InsertBasicBlockLabelPass {
-    fn do_action(&mut self, mut basic_block: BasicBlockHandle) {
-        let opc = Opcode::Label(format!("label_{}", basic_block));
-        let instr = Context::create_instr(opc, basic_block);
-        let instrs = basic_block.get_mut_instrs();
-        instrs.push_front(instr);
-    }
-}
-
-impl InsertBasicBlockLabelPass {
-    fn new() -> InsertBasicBlockLabelPass {
-        InsertBasicBlockLabelPass {}
-    }
-}
 
 #[derive(Debug)]
 struct InsertCallingProgramInitializersInstrPass {}
@@ -142,9 +123,6 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
         match instr.get_opcode() {
             &Debug(ref msg) => {
                 println!("# {}", msg);
-            }
-            &Label(ref label) => {
-                println!("{}:", label);
             }
             &Copy { dst, src } => {
                 let dst_name = self.register_name_map.get(&dst).unwrap();
@@ -309,7 +287,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 use self::JumpCondKind::*;
                 match kind {
                     &Unconditional => {
-                        println!("jmp label_{}", target);
+                        println!("jmp {}", target.get_name());
                     }
                     &Eq0(preg) => self.emit_jump("test", "jz", target, preg, preg),
                     &Neq0(preg) => self.emit_jump("test", "jnz", target, preg, preg),
@@ -327,9 +305,9 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                         // ToDo: fix
                         for (i, basic_block) in table.iter().enumerate() {
                             self.emit_binop_reg_imm64("cmp", preg, i as u64);
-                            println!("jz label_{}", basic_block);
+                            println!("jz {}", basic_block.get_name());
                         }
-                        println!("jmp label_{}", target);
+                        println!("jmp {}", target.get_name());
                     }
                 }
             }
@@ -479,7 +457,7 @@ impl<'a> EmitX86AssemblyPass<'a> {
         rhs: RegisterHandle,
     ) {
         self.emit_binop_reg_reg(comp_op, lhs, rhs);
-        println!("{} label_{}", jump_op, target);
+        println!("{} {}", jump_op, target.get_name());
     }
 }
 
@@ -578,7 +556,6 @@ pub struct EmitAssemblyModulePass {
 
 impl ModulePass for EmitAssemblyModulePass {
     fn do_action(&mut self, module: ModuleHandle) {
-        module.apply_basic_block_pass(&mut InsertBasicBlockLabelPass::new());
         module.apply_module_pass(&mut ModuleInitPass::new());
         module.apply_function_pass(&mut EmitAssemblyFunctionPass::new(
             &self.register_name_map,

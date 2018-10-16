@@ -32,7 +32,6 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                 let instr = *instr;
                 match instr.clone().get_mut_opcode() {
                     &mut Opcode::Debug(..) => new_instrs.push_back(instr),
-                    &mut Opcode::Label(..) => new_instrs.push_back(instr),
                     &mut Opcode::Copy { dst, src } => {
                         let var_dst = self.registry_as_local_variable(function, dst);
                         let var_src = self.registry_as_local_variable(function, src);

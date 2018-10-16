@@ -197,7 +197,6 @@ pub enum CallTargetKind {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Opcode {
     Debug(String),
-    Label(String),
     Copy {
         dst: RegisterHandle,
         src: RegisterHandle,
@@ -257,11 +256,6 @@ impl Opcode {
                 print!("debug");
                 print!("\t");
                 print!("{}", msg);
-            }
-            &Label(ref label) => {
-                print!("label");
-                print!("\t");
-                print!("{}", label);
             }
             &Copy {
                 ref dst, ref src, ..
@@ -394,7 +388,6 @@ impl fmt::Display for Opcode {
         use self::Opcode::*;
         match self {
             &Debug(ref msg) => write!(f, format!(1), "debug", msg),
-            &Label(ref label) => write!(f, format!(1), "label", label),
             &Copy { .. } => unimplemented!(),
             &Const { .. } => unimplemented!(),
             &Cast { .. } => unimplemented!(),
