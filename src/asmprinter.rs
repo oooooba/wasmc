@@ -69,7 +69,12 @@ impl ModuleInitPass {
             &Linkage::Private => false,
         };
 
-        println!(".data");
+        match region.get_kind() {
+            &RegionKind::Local => unreachable!(),
+            &RegionKind::MutableGlobal => println!(".data"),
+            &RegionKind::ReadOnlyGlobal => println!(".section .rodata"),
+            &RegionKind::VariableSizedGlobal { .. } => unimplemented!(),
+        };
         println!(".align {}", Type::Pointer.get_size());
         if export {
             println!(".global {}", region.get_variable().get_name());
