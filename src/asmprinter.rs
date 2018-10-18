@@ -150,10 +150,10 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
                 match kind {
                     &CastKind::Wrap => println!("# UnaryOpKind::Wrap"),
                     &CastKind::ZeroExtension | &CastKind::SignExtension => {
-                        assert!(dst.get_typ().get_size() > src.get_typ().get_size());
+                        assert!(dst.get_type().get_size() > src.get_type().get_size());
                         match kind {
                             &CastKind::ZeroExtension => println!("# UnaryOpKind::ZeroExtension"),
-                            &CastKind::SignExtension => match (dst.get_typ(), src.get_typ()) {
+                            &CastKind::SignExtension => match (dst.get_type(), src.get_type()) {
                                 (&Type::I64, &Type::I32) => println!("cdqe"),
                                 (&Type::I32, &Type::I8) => {
                                     println!("cbw");
@@ -196,7 +196,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
             &Load { dst, ref src } => {
                 assert!(dst.is_physical());
                 let dst_name = self.register_name_map.get(&dst).unwrap();
-                let ptr_notation = dst.get_typ().get_ptr_notation();
+                let ptr_notation = dst.get_type().get_ptr_notation();
                 match src {
                     &Address::Var(_) => unreachable!(),
                     &Address::LabelBaseImmOffset { base, offset } => {
@@ -237,7 +237,7 @@ impl<'a> InstrPass for EmitX86AssemblyPass<'a> {
             &Store { ref dst, src } => {
                 assert!(src.is_physical());
                 let src_name = self.register_name_map.get(&src).unwrap();
-                let ptr_notation = src.get_typ().get_ptr_notation();
+                let ptr_notation = src.get_type().get_ptr_notation();
                 match dst {
                     &Address::Var(_) => unreachable!(),
                     &Address::LabelBaseImmOffset { base, offset } => {

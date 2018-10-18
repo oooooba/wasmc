@@ -348,7 +348,7 @@ impl<'a> FunctionPass for MemoryAccessInstrInsertionPass<'a> {
                             let p_arg =
                                 *self.physical_result_register.get(v_arg.get_type()).unwrap();
                             new_instrs.push_back(self.create_load_instr(basic_block, p_arg, v_arg));
-                            let p_arg = if p_arg.get_typ().get_size() == Type::Pointer.get_size() {
+                            let p_arg = if p_arg.get_type().get_size() == Type::Pointer.get_size() {
                                 p_arg
                             } else {
                                 let tmp =
@@ -491,7 +491,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         var: VariableHandle,
     ) -> InstrHandle {
         assert!(reg.is_physical());
-        assert_eq!(var.get_type().get_size(), reg.get_typ().get_size());
+        assert_eq!(var.get_type().get_size(), reg.get_type().get_size());
         Context::create_instr(
             Opcode::Load {
                 dst: reg,
@@ -508,7 +508,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         reg: RegisterHandle,
     ) -> InstrHandle {
         assert!(reg.is_physical());
-        assert_eq!(var.get_type().get_size(), reg.get_typ().get_size());
+        assert_eq!(var.get_type().get_size(), reg.get_type().get_size());
         Context::create_instr(
             Opcode::Store {
                 dst: Address::Var(var),
@@ -525,7 +525,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         var: VariableHandle,
     ) -> InstrHandle {
         assert!(reg.is_physical());
-        assert_eq!(var.get_type().get_size(), reg.get_typ().get_size());
+        assert_eq!(var.get_type().get_size(), reg.get_type().get_size());
         Context::create_instr(
             Opcode::AddressOf {
                 dst: reg,
@@ -558,7 +558,7 @@ impl<'a> MemoryAccessInstrInsertionPass<'a> {
         }
         let var = function
             .get_local_region()
-            .create_variable(register.get_typ().clone(), None);
+            .create_variable(register.get_type().clone(), None);
         self.virtual_register_to_local_variable_map
             .insert(register, var);
         var

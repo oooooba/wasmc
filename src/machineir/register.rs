@@ -23,7 +23,7 @@ impl Register {
         &self.handle
     }
 
-    pub fn get_typ(&self) -> &Type {
+    pub fn get_type(&self) -> &Type {
         &self.typ
     }
 

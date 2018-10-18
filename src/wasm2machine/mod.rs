@@ -905,7 +905,7 @@ impl WasmToMachine {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), var.get_type());
+                assert_eq!(src.get_type(), var.get_type());
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst: Address::Var(var),
                     src,
@@ -918,7 +918,7 @@ impl WasmToMachine {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), var.get_type());
+                assert_eq!(src.get_type(), var.get_type());
                 self.operand_stack.push_value(src);
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst: Address::Var(var),
@@ -942,7 +942,7 @@ impl WasmToMachine {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(src.get_typ(), var.get_type());
+                assert_eq!(src.get_type(), var.get_type());
                 self.emit_on_current_basic_block(Opcode::Store {
                     dst: Address::Var(var),
                     src,
@@ -1026,11 +1026,11 @@ impl WasmToMachine {
 
                 let src = match attr {
                     &Storeattr::I32 => {
-                        assert_eq!(value.get_typ(), &Type::I32);
+                        assert_eq!(value.get_type(), &Type::I32);
                         value
                     }
                     &Storeattr::I64 => {
-                        assert_eq!(value.get_typ(), &Type::I64);
+                        assert_eq!(value.get_type(), &Type::I64);
                         value
                     }
                     &Storeattr::I32x8 => {
@@ -1184,7 +1184,7 @@ impl WasmToMachine {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(cond.get_typ(), &Type::I32);
+                assert_eq!(cond.get_type(), &Type::I32);
                 let val_false = match self.operand_stack.pop().unwrap() {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
@@ -1193,9 +1193,9 @@ impl WasmToMachine {
                     StackElem::Value(reg) => reg,
                     StackElem::Label(_) => unreachable!(),
                 };
-                assert_eq!(val_true.get_typ(), val_false.get_typ());
+                assert_eq!(val_true.get_type(), val_false.get_type());
 
-                let result = Context::create_register(val_true.get_typ().clone());
+                let result = Context::create_register(val_true.get_type().clone());
                 let bb_true = Context::create_basic_block(self.current_function);
                 let bb_false = Context::create_basic_block(self.current_function);
                 let bb_merge = Context::create_basic_block(self.current_function);
@@ -1386,7 +1386,7 @@ impl WasmToMachine {
 
     fn pop_conditional_register(&mut self) -> RegisterHandle {
         match self.operand_stack.pop().unwrap() {
-            StackElem::Value(reg) if reg.get_typ() == &Type::I32 => reg,
+            StackElem::Value(reg) if reg.get_type() == &Type::I32 => reg,
             StackElem::Value(_) => unreachable!(),
             StackElem::Label(_) => unreachable!(),
         }
