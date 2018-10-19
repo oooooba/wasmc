@@ -1,6 +1,7 @@
 use context::handle::{FunctionHandle, ModuleHandle, RegionHandle};
 use context::Context;
 use machineir::region::RegionKind;
+use machineir::typ::Type;
 use pass::{BasicBlockPass, FunctionPass, ModulePass};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,6 +53,18 @@ impl Module {
         let region = Context::create_region(kind);
         self.global_regions.push(region);
         region
+    }
+
+    pub fn create_function(
+        &mut self,
+        func_name: String,
+        parameter_types: Vec<Type>,
+        result_types: Vec<Type>,
+    ) -> FunctionHandle {
+        let function =
+            Context::create_function(func_name, parameter_types, result_types, self.handle);
+        self.functions.push(function);
+        function
     }
 
     pub fn get_indirect_function_tables(&self) -> &Vec<RegionHandle> {

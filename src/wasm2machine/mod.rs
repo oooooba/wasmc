@@ -125,10 +125,9 @@ impl WasmToMachine {
         mut machine_module: ModuleHandle,
     ) {
         let (parameter_types, result_types) = function_types[typeidx.as_index()].clone();
-        let function =
-            Context::create_function(func_name, parameter_types, result_types, machine_module)
-                .set_linkage(linkage);
-        machine_module.get_mut_functions().push(function);
+        machine_module
+            .create_function(func_name, parameter_types, result_types)
+            .set_linkage(linkage);
     }
 
     fn declare_functions(
@@ -382,25 +381,26 @@ impl WasmToMachine {
     }
 
     fn emit_memory_instance_initialization_function(&mut self) {
-        let mut module = self.module;
+        let wasmc_allocate_memory_function = self
+            .module
+            .create_function(
+                "_wasmc_allocate_memory".to_string(),
+                vec![Type::Pointer, Type::I32, Type::I64],
+                vec![],
+            ).set_linkage(Linkage::Import);
+        let wasmc_initialize_memory_function = self
+            .module
+            .create_function(
+                "_wasmc_initialize_memory".to_string(),
+                vec![Type::Pointer, Type::I32, Type::Pointer, Type::I64],
+                vec![],
+            ).set_linkage(Linkage::Import);
 
-        let wasmc_allocate_memory_function = Context::create_function(
-            "_wasmc_allocate_memory".to_string(),
-            vec![Type::Pointer, Type::I32, Type::I64],
-            vec![],
-            module,
-        ).set_linkage(Linkage::Import);
-        let wasmc_initialize_memory_function = Context::create_function(
-            "_wasmc_initialize_memory".to_string(),
-            vec![Type::Pointer, Type::I32, Type::Pointer, Type::I64],
-            vec![],
-            module,
-        ).set_linkage(Linkage::Import);
-
-        let mut function =
-            Context::create_function("_wasmc_memory_setup".to_string(), vec![], vec![], module)
-                .set_program_initializer()
-                .set_linkage(Linkage::Private);
+        let mut function = self
+            .module
+            .create_function("_wasmc_memory_setup".to_string(), vec![], vec![])
+            .set_program_initializer()
+            .set_linkage(Linkage::Private);
         let mut body = Context::create_basic_block(function);
 
         for memory_instance in self.memory_instances.iter() {
@@ -506,7 +506,6 @@ impl WasmToMachine {
         body.add_instr(return_instr);
 
         function.get_mut_basic_blocks().push_back(body);
-        module.get_mut_functions().push(function);
     }
 
     fn emit_unop(&mut self, _op: &Iunop) {
