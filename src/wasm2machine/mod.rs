@@ -18,7 +18,7 @@ use wasmir::instructions::{
     Const, Cvtop, Ibinop, Irelop, Itestop, Iunop, Loadattr, Storeattr, WasmInstr,
 };
 use wasmir::types::{Functype, Mut, Resulttype, Valtype};
-use wasmir::{Exportdesc, Func, Globalidx, Importdesc, Labelidx, Memidx, Typeidx};
+use wasmir::{Exportdesc, Func, Funcidx, Globalidx, Importdesc, Labelidx, Memidx, Typeidx};
 
 #[derive(Debug)]
 enum StackElem {
@@ -134,6 +134,7 @@ impl WasmToMachine {
         wasm_module: &wasmir::Module,
         function_types: &Vec<(Vec<Type>, Vec<Type>)>,
         machine_module: ModuleHandle,
+        export_funcs: HashMap<Funcidx, String>,
     ) -> (usize, usize) {
         for import in wasm_module.get_imports().iter() {
             use self::Importdesc::*;
@@ -152,14 +153,15 @@ impl WasmToMachine {
         let num_import_functions = machine_module.get_functions().len();
 
         for (i, func) in wasm_module.get_funcs().iter().enumerate() {
+            let index = num_import_functions + i;
+            let (name, linkage) = if let Some(name) = export_funcs.get(&Funcidx::new(index as u32))
+            {
+                (name.clone(), Linkage::Export)
+            } else {
+                (format!("f_{}", index), Linkage::Private)
+            };
             let typeidx = *func.get_type();
-            WasmToMachine::declare_function(
-                format!("f_{}", num_import_functions + i),
-                typeidx,
-                Linkage::Private,
-                function_types,
-                machine_module,
-            );
+            WasmToMachine::declare_function(name, typeidx, linkage, function_types, machine_module);
         }
         let num_define_functions = machine_module.get_functions().len() - num_import_functions;
 
@@ -349,13 +351,7 @@ impl WasmToMachine {
             .map(|functype| WasmToMachine::map_functype(functype))
             .collect();
         let (num_import_functions, _) =
-            WasmToMachine::declare_functions(wasmir_module, &function_types, module);
-        for (funcidx, name) in export_funcs {
-            let index = funcidx.as_index();
-            module.get_mut_functions()[index]
-                .set_func_name(name)
-                .set_linkage(Linkage::Export);
-        }
+            WasmToMachine::declare_functions(wasmir_module, &function_types, module, export_funcs);
 
         let memory_instances =
             WasmToMachine::declare_memory_instances(wasmir_module, module, export_mems);

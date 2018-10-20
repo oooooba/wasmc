@@ -37,10 +37,6 @@ impl Module {
         &self.functions
     }
 
-    pub fn get_mut_functions(&mut self) -> &mut Vec<FunctionHandle> {
-        &mut self.functions
-    }
-
     pub fn get_global_regions(&self) -> &Vec<RegionHandle> {
         &self.global_regions
     }
