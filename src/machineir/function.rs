@@ -75,6 +75,12 @@ impl Function {
         &mut self.basic_blocks
     }
 
+    pub fn create_basic_block(&mut self) -> BasicBlockHandle {
+        let basic_block = Context::create_basic_block(self.handle);
+        self.basic_blocks.push_back(basic_block);
+        basic_block
+    }
+
     pub fn get_parameter_types(&self) -> &Vec<Type> {
         &self.parameter_types
     }
