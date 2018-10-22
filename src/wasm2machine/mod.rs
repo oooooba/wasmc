@@ -397,7 +397,7 @@ impl WasmToMachine {
             .create_function("_wasmc_memory_setup".to_string(), vec![], vec![])
             .set_program_initializer()
             .set_linkage(Linkage::Private);
-        let mut body = Context::create_basic_block(function);
+        let mut body = function.create_entry_block();
 
         for memory_instance in self.memory_instances.iter() {
             let reg_memory_instance = Context::create_register(Type::Pointer);
@@ -500,8 +500,6 @@ impl WasmToMachine {
         }
         let return_instr = Context::create_instr(Opcode::Return { result: None }, body);
         body.add_instr(return_instr);
-
-        function.get_mut_basic_blocks().push_back(body);
     }
 
     fn emit_unop(&mut self, _op: &Iunop) {
