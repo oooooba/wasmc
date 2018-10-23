@@ -2,6 +2,8 @@ use std::collections::VecDeque;
 use std::fmt;
 
 use context::handle::{BasicBlockHandle, FunctionHandle, InstrHandle};
+use context::Context;
+use machineir::opcode::Opcode;
 use pass::{BasicBlockPass, InstrPass};
 
 pub struct Iterator {
@@ -108,6 +110,12 @@ impl BasicBlock {
 
     pub fn add_instr(&mut self, instr: InstrHandle) {
         self.instrs.push_back(instr)
+    }
+
+    pub fn create_instr(&mut self, opcode: Opcode) -> InstrHandle {
+        let instr = Context::create_instr(opcode, self.handle);
+        self.instrs.push_back(instr);
+        instr
     }
 
     pub fn get_function(&self) -> FunctionHandle {
