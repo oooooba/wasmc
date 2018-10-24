@@ -1309,9 +1309,7 @@ impl WasmToMachine {
     }
 
     fn emit_on_current_basic_block(&mut self, opcode: Opcode) -> InstrHandle {
-        let instr = Context::create_instr(opcode, self.current_basic_block);
-        self.current_basic_block.add_instr(instr);
-        instr
+        self.current_basic_block.create_instr(opcode)
     }
 
     fn emit_instrs(&mut self, instrs: &Vec<WasmInstr>) {
