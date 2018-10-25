@@ -401,17 +401,13 @@ impl WasmToMachine {
 
         for memory_instance in self.memory_instances.iter() {
             let reg_memory_instance = Context::create_register(Type::Pointer);
-            let addressof_instr = Context::create_instr(
-                Opcode::AddressOf {
-                    dst: reg_memory_instance,
-                    location: Address::LabelBaseImmOffset {
-                        base: memory_instance.instance_region,
-                        offset: 0,
-                    },
+            body.create_instr(Opcode::AddressOf {
+                dst: reg_memory_instance,
+                location: Address::LabelBaseImmOffset {
+                    base: memory_instance.instance_region,
+                    offset: 0,
                 },
-                body,
-            );
-            body.add_instr(addressof_instr);
+            });
 
             {
                 let reg_min_num_pages = Context::create_register(Type::I32);
