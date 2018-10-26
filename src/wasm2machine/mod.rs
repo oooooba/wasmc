@@ -401,7 +401,7 @@ impl WasmToMachine {
 
         for memory_instance in self.memory_instances.iter() {
             let reg_memory_instance = Context::create_register(Type::Pointer);
-            body.create_instr(Opcode::AddressOf {
+            body.emit_instr(Opcode::AddressOf {
                 dst: reg_memory_instance,
                 location: Address::LabelBaseImmOffset {
                     base: memory_instance.instance_region,
@@ -1305,7 +1305,7 @@ impl WasmToMachine {
     }
 
     fn emit_on_current_basic_block(&mut self, opcode: Opcode) -> InstrHandle {
-        self.current_basic_block.create_instr(opcode)
+        self.current_basic_block.emit_instr(opcode)
     }
 
     fn emit_instrs(&mut self, instrs: &Vec<WasmInstr>) {

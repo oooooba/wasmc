@@ -112,7 +112,7 @@ impl BasicBlock {
         self.instrs.push_back(instr)
     }
 
-    pub fn create_instr(&mut self, opcode: Opcode) -> InstrHandle {
+    pub fn emit_instr(&mut self, opcode: Opcode) -> InstrHandle {
         let instr = Context::create_instr(opcode, self.handle);
         self.instrs.push_back(instr);
         instr
