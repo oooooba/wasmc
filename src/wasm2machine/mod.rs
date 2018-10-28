@@ -418,14 +418,10 @@ impl WasmToMachine {
 
                 let reg_max_num_pages = Context::create_register(Type::I64);
                 let n = memory_instance.var_max.map(|n| n as i64).unwrap_or(-1);
-                let const_instr = Context::create_instr(
-                    Opcode::Const {
-                        dst: reg_max_num_pages,
-                        src: ConstKind::ConstI64(n as u64),
-                    },
-                    body,
-                );
-                body.add_instr(const_instr);
+                body.emit_instr(Opcode::Const {
+                    dst: reg_max_num_pages,
+                    src: ConstKind::ConstI64(n as u64),
+                });
 
                 let call_instr = Context::create_instr(
                     Opcode::Call {
