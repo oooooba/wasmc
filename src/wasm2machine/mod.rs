@@ -423,15 +423,11 @@ impl WasmToMachine {
                     src: ConstKind::ConstI64(n as u64),
                 });
 
-                let call_instr = Context::create_instr(
-                    Opcode::Call {
-                        func: CallTargetKind::Function(wasmc_allocate_memory_function),
-                        result: None,
-                        args: vec![reg_memory_instance, reg_min_num_pages, reg_max_num_pages],
-                    },
-                    body,
-                );
-                body.add_instr(call_instr);
+                body.emit_instr(Opcode::Call {
+                    func: CallTargetKind::Function(wasmc_allocate_memory_function),
+                    result: None,
+                    args: vec![reg_memory_instance, reg_min_num_pages, reg_max_num_pages],
+                });
             }
             {
                 let reg_offset = Context::create_register(Type::I32);
