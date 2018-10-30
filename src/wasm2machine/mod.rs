@@ -431,14 +431,10 @@ impl WasmToMachine {
             }
             {
                 let reg_offset = Context::create_register(Type::I32);
-                let const_instr = Context::create_instr(
-                    Opcode::Const {
-                        dst: reg_offset,
-                        src: ConstKind::ConstI32(memory_instance.var_offset),
-                    },
-                    body,
-                );
-                body.add_instr(const_instr);
+                body.emit_instr(Opcode::Const {
+                    dst: reg_offset,
+                    src: ConstKind::ConstI32(memory_instance.var_offset),
+                });
 
                 let mut initial_image_region = memory_instance.initial_image_region;
 
