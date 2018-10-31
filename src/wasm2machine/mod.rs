@@ -439,17 +439,13 @@ impl WasmToMachine {
                 let mut initial_image_region = memory_instance.initial_image_region;
 
                 let reg_initial_vec = Context::create_register(Type::Pointer);
-                let addressof_instr = Context::create_instr(
-                    Opcode::AddressOf {
-                        dst: reg_initial_vec,
-                        location: Address::LabelBaseImmOffset {
-                            base: initial_image_region,
-                            offset: 0,
-                        },
+                body.emit_instr(Opcode::AddressOf {
+                    dst: reg_initial_vec,
+                    location: Address::LabelBaseImmOffset {
+                        base: initial_image_region,
+                        offset: 0,
                     },
-                    body,
-                );
-                body.add_instr(addressof_instr);
+                });
 
                 let reg_initial_vec_len = Context::create_register(Type::I64);
                 let len = initial_image_region.get_offset_map().len(); // ToDo: fix
