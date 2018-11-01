@@ -449,14 +449,10 @@ impl WasmToMachine {
 
                 let reg_initial_vec_len = Context::create_register(Type::I64);
                 let len = initial_image_region.get_offset_map().len(); // ToDo: fix
-                let const_instr = Context::create_instr(
-                    Opcode::Const {
-                        dst: reg_initial_vec_len,
-                        src: ConstKind::ConstI64(len as u64),
-                    },
-                    body,
-                );
-                body.add_instr(const_instr);
+                body.emit_instr(Opcode::Const {
+                    dst: reg_initial_vec_len,
+                    src: ConstKind::ConstI64(len as u64),
+                });
 
                 let call_instr = Context::create_instr(
                     Opcode::Call {
