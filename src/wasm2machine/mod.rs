@@ -454,20 +454,16 @@ impl WasmToMachine {
                     src: ConstKind::ConstI64(len as u64),
                 });
 
-                let call_instr = Context::create_instr(
-                    Opcode::Call {
-                        func: CallTargetKind::Function(wasmc_initialize_memory_function),
-                        result: None,
-                        args: vec![
-                            reg_memory_instance,
-                            reg_offset,
-                            reg_initial_vec,
-                            reg_initial_vec_len,
-                        ],
-                    },
-                    body,
-                );
-                body.add_instr(call_instr);
+                body.emit_instr(Opcode::Call {
+                    func: CallTargetKind::Function(wasmc_initialize_memory_function),
+                    result: None,
+                    args: vec![
+                        reg_memory_instance,
+                        reg_offset,
+                        reg_initial_vec,
+                        reg_initial_vec_len,
+                    ],
+                });
             }
         }
         let return_instr = Context::create_instr(Opcode::Return { result: None }, body);
