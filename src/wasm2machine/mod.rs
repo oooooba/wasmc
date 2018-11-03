@@ -466,8 +466,7 @@ impl WasmToMachine {
                 });
             }
         }
-        let return_instr = Context::create_instr(Opcode::Return { result: None }, body);
-        body.add_instr(return_instr);
+        body.emit_instr(Opcode::Return { result: None });
     }
 
     fn emit_unop(&mut self, _op: &Iunop) {
